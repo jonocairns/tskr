@@ -2,6 +2,12 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+If you have Nix + direnv installed, entering the repo will automatically load the dev shell:
+
+```bash
+direnv allow
+```
+
 First, run the development server:
 
 ```bash
