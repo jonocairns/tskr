@@ -21,8 +21,8 @@ export async function POST() {
 	}
 
 	await broadcastPush({
-		title: "Taskr test notification",
-		body: "This is a test push from Taskr.",
+		title: "tskr test notification",
+		body: "This is a test push from tskr.",
 		url: "/",
 		icon: "/icon-192.png",
 		badge: "/icon-192.png",

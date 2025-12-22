@@ -1,6 +1,6 @@
 {
-	"name": "Taskr",
-	"short_name": "Taskr",
+	"name": "tskr",
+	"short_name": "tskr",
 	"description": "Track and reward chores with time-based points.",
 	"start_url": "/",
 	"display": "standalone",

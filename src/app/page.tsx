@@ -134,7 +134,7 @@ export default async function Home() {
 				<header className="flex items-center justify-between">
 					<div>
 						<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-							Taskr
+							tskr
 						</p>
 						<h1 className="text-3xl font-semibold tracking-tight">
 							Task points dashboard

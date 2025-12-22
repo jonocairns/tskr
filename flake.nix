@@ -1,5 +1,5 @@
 {
-  description = "Taskr dev shell";
+  description = "tskr dev shell";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";

@@ -8,7 +8,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("push", (event) => {
 	const fallback = {
-		title: "Taskr",
+		title: "tskr",
 		body: "New task activity",
 		url: "/",
 		icon: "/icon-192.png",
