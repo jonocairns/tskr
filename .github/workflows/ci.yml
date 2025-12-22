@@ -9,7 +9,7 @@ jobs:
   build-and-lint:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "file:./dev.db"
+      DATABASE_URL: "file:./prisma/dev.db"
       NEXTAUTH_URL: "http://localhost:3000"
       NEXTAUTH_SECRET: "ci-placeholder-secret"
       REWARD_THRESHOLD_POINTS: "50"
@@ -31,6 +31,12 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Generate Prisma client
         run: pnpm prisma generate
+      # Enable this if build-time Prisma queries fail due to missing tables.
+      # - name: Setup database schema
+      #   run: pnpm prisma db push --skip-generate
+      # If you add prisma/migrations/, prefer this to mirror production.
+      # - name: Apply migrations
+      #   run: pnpm prisma migrate deploy
       - name: Lint
         run: pnpm run lint
       - name: Build
