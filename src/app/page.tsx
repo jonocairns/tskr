@@ -153,13 +153,13 @@ export default async function Home() {
 					rewardsClaimed={myClaims}
 				/>
 
-				<PushNotifications />
-
 				<TaskActions />
 
 				<AuditLog entries={auditEntries} />
 
 				<Leaderboard entries={leaderboardEntries} />
+
+				<PushNotifications />
 			</div>
 		</main>
 	);

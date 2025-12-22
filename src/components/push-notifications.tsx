@@ -34,6 +34,7 @@ export function PushNotifications() {
 	const [registration, setRegistration] =
 		useState<ServiceWorkerRegistration | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
+	const [isTesting, setIsTesting] = useState(false);
 	const [vapidPublicKey, setVapidPublicKey] = useState("");
 	const [isKeyLoaded, setIsKeyLoaded] = useState(false);
 	const { toast } = useToast();
@@ -163,15 +164,6 @@ export function PushNotifications() {
 	}, [status]);
 
 	const handleEnable = async () => {
-		if (!registration) {
-			toast({
-				title: "Notifications unavailable",
-				description: "Service worker not ready yet.",
-				variant: "destructive",
-			});
-			return;
-		}
-
 		if (!isKeyLoaded) {
 			toast({
 				title: "Loading push settings",
@@ -192,13 +184,48 @@ export function PushNotifications() {
 
 		setIsBusy(true);
 		try {
-			const permission = await Notification.requestPermission();
+			const activeRegistration =
+				registration ?? (await navigator.serviceWorker.ready);
+
+			if (!activeRegistration?.pushManager) {
+				toast({
+					title: "Notifications unavailable",
+					description: "Push manager not available on this device.",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			const existing = await activeRegistration.pushManager.getSubscription();
+			if (existing) {
+				const res = await fetch("/api/push/subscribe", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(existing.toJSON()),
+				});
+
+				if (!res.ok) {
+					throw new Error("Subscription sync failed");
+				}
+
+				setStatus("subscribed");
+				toast({
+					title: "Notifications enabled",
+					description: "You will now receive task updates.",
+				});
+				return;
+			}
+
+			const permission =
+				Notification.permission === "granted"
+					? "granted"
+					: await Notification.requestPermission();
 			if (permission !== "granted") {
 				setStatus(permission === "denied" ? "blocked" : "ready");
 				return;
 			}
 
-			const subscription = await registration.pushManager.subscribe({
+			const subscription = await activeRegistration.pushManager.subscribe({
 				userVisibleOnly: true,
 				applicationServerKey: toUint8Array(vapidPublicKey),
 			});
@@ -265,6 +292,30 @@ export function PushNotifications() {
 		}
 	};
 
+	const handleTest = async () => {
+		setIsTesting(true);
+		try {
+			const res = await fetch("/api/push/test", { method: "POST" });
+			if (!res.ok) {
+				throw new Error("Test push failed");
+			}
+
+			toast({
+				title: "Test notification sent",
+				description: "Check your device for the push alert.",
+			});
+		} catch (error) {
+			console.error("[push] test failed", error);
+			toast({
+				title: "Unable to send test",
+				description: "Please try again.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsTesting(false);
+		}
+	};
+
 	return (
 		<Card>
 			<CardHeader className="space-y-1">
@@ -322,6 +373,17 @@ export function PushNotifications() {
 							Enable
 						</Button>
 					)}
+					<Button
+						type="button"
+						variant="outline"
+						onClick={handleTest}
+						disabled={isTesting || status !== "subscribed"}
+					>
+						{isTesting ? (
+							<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+						) : null}
+						Send test
+					</Button>
 				</div>
 				{isKeyLoaded && !hasVapidKey ? (
 					<span className="text-xs text-muted-foreground">
