@@ -29,6 +29,36 @@ const toUint8Array = (base64String: string) => {
 	return outputArray;
 };
 
+const subscribeWithTimeout = async (
+	registration: ServiceWorkerRegistration,
+	publicKey: string,
+	timeoutMs = 10000,
+) => {
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+	try {
+		const subscribePromise = registration.pushManager.subscribe({
+			userVisibleOnly: true,
+			applicationServerKey: toUint8Array(publicKey),
+		});
+
+		const timeoutPromise = new Promise<never>((_resolve, reject) => {
+			timeoutId = setTimeout(() => {
+				reject(new Error("Subscription timed out"));
+			}, timeoutMs);
+		});
+
+		return (await Promise.race([
+			subscribePromise,
+			timeoutPromise,
+		])) as PushSubscription;
+	} finally {
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+		}
+	}
+};
+
 export function PushNotifications() {
 	const [status, setStatus] = useState<Status>("loading");
 	const [registration, setRegistration] =
@@ -40,6 +70,18 @@ export function PushNotifications() {
 	const { toast } = useToast();
 
 	const hasVapidKey = vapidPublicKey.length > 0;
+
+	const describeError = (error: unknown) => {
+		if (error instanceof Error) {
+			return { name: error.name, message: error.message };
+		}
+
+		if (typeof error === "string") {
+			return { name: "Error", message: error };
+		}
+
+		return { name: "Error", message: "Unknown error" };
+	};
 
 	useEffect(() => {
 		let active = true;
@@ -184,6 +226,11 @@ export function PushNotifications() {
 
 		setIsBusy(true);
 		try {
+			toast({
+				title: "Enabling notifications",
+				description: "Waiting for the browser subscription.",
+			});
+
 			const activeRegistration =
 				registration ?? (await navigator.serviceWorker.ready);
 
@@ -225,10 +272,10 @@ export function PushNotifications() {
 				return;
 			}
 
-			const subscription = await activeRegistration.pushManager.subscribe({
-				userVisibleOnly: true,
-				applicationServerKey: toUint8Array(vapidPublicKey),
-			});
+			const subscription = await subscribeWithTimeout(
+				activeRegistration,
+				vapidPublicKey,
+			);
 
 			const res = await fetch("/api/push/subscribe", {
 				method: "POST",
@@ -246,10 +293,17 @@ export function PushNotifications() {
 				description: "You will now receive task updates.",
 			});
 		} catch (error) {
+			const { name, message } = describeError(error);
+			if (name === "NotAllowedError") {
+				setStatus("blocked");
+			} else if (name === "NotSupportedError") {
+				setStatus("unsupported");
+			}
+
 			console.error("[push] subscribe failed", error);
 			toast({
 				title: "Unable to enable notifications",
-				description: "Please try again.",
+				description: `${name}: ${message}`,
 				variant: "destructive",
 			});
 		} finally {

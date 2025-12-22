@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { AuditLog } from "@/components/audit-log";
 import { AuthCta } from "@/components/auth-cta";
 import { Leaderboard } from "@/components/leaderboard";
+import { ModeToggle } from "@/components/mode-toggle";
 import { PointsSummary } from "@/components/points-summary";
 import { PushNotifications } from "@/components/push-notifications";
 import { TaskActions } from "@/components/task-actions";
@@ -28,7 +29,7 @@ export default async function Home() {
 
 	if (!session?.user?.id) {
 		return (
-			<main className="flex min-h-screen items-center bg-gradient-to-br from-slate-50 via-white to-blue-50 px-4 py-12">
+			<main className="flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-12">
 				<AuthCta />
 			</main>
 		);
@@ -128,7 +129,7 @@ export default async function Home() {
 	});
 
 	return (
-		<main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
 			<div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10">
 				<header className="flex items-center justify-between">
 					<div>
@@ -143,7 +144,10 @@ export default async function Home() {
 							the threshold.
 						</p>
 					</div>
-					<UserMenu user={session.user} />
+					<div className="flex items-center gap-2">
+						<ModeToggle />
+						<UserMenu user={session.user} />
+					</div>
 				</header>
 
 				<PointsSummary
