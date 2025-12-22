@@ -4,6 +4,7 @@ import { AuditLog } from "@/components/audit-log";
 import { AuthCta } from "@/components/auth-cta";
 import { Leaderboard } from "@/components/leaderboard";
 import { PointsSummary } from "@/components/points-summary";
+import { PushNotifications } from "@/components/push-notifications";
 import { TaskActions } from "@/components/task-actions";
 import { UserMenu } from "@/components/user-menu";
 import { authOptions } from "@/lib/auth";
@@ -151,6 +152,8 @@ export default async function Home() {
 					tasksLogged={myTasks}
 					rewardsClaimed={myClaims}
 				/>
+
+				<PushNotifications />
 
 				<TaskActions />
 

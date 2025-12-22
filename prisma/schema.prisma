@@ -16,6 +16,7 @@ model User {
   sessions       Session[]
   pointLogs      PointLog[]
   revertedLogs   PointLog[] @relation("RevertedBy")
+  pushSubscriptions PushSubscription[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
@@ -74,4 +75,18 @@ model PointLog {
   @@index([userId])
   @@index([kind])
   @@index([revertedAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
