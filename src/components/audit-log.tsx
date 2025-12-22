@@ -16,8 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-
-type LogKind = "PRESET" | "TIMED" | "REWARD";
+import type { LogKind } from "@/lib/points";
 
 export type AuditLogEntry = {
   id: string;

@@ -18,6 +18,8 @@
             openssl
             sqlite
             pkg-config
+            docker
+            docker-compose
           ];
           shellHook = ''
             export PATH=$PATH:./node_modules/.bin

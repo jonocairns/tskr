@@ -7,12 +7,20 @@ import { PointsSummary } from "@/components/points-summary";
 import { TaskActions } from "@/components/task-actions";
 import { UserMenu } from "@/components/user-menu";
 import { authOptions } from "@/lib/auth";
-import { DURATION_BUCKETS, DurationKey, rewardThreshold } from "@/lib/points";
+import {
+  DURATION_BUCKETS,
+  DurationKey,
+  LOG_KINDS,
+  LogKind,
+  rewardThreshold,
+} from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 
 const bucketLabelMap = Object.fromEntries(
   DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label])
 );
+const isLogKind = (kind: string): kind is LogKind =>
+  LOG_KINDS.includes(kind as LogKind);
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -90,21 +98,25 @@ export default async function Home() {
   const myTasks = taskCountMap.get(userId) ?? 0;
   const myClaims = rewardCountMap.get(userId) ?? 0;
 
-  const auditEntries = recentLogs.map((log) => ({
-    id: log.id,
-    userName: log.user?.name ?? log.user?.email ?? "Unknown",
-    description: log.description,
-    points: log.points,
-    kind: log.kind,
-    bucketLabel:
-      log.kind === "REWARD"
-        ? "Reward"
-        : (log.duration as DurationKey | null)
-          ? bucketLabelMap[log.duration as DurationKey]
-          : null,
-    createdAt: log.createdAt.toISOString(),
-    revertedAt: log.revertedAt?.toISOString() ?? null,
-  }));
+  const auditEntries = recentLogs.map((log) => {
+    const kind = isLogKind(log.kind) ? log.kind : "PRESET";
+
+    return {
+      id: log.id,
+      userName: log.user?.name ?? log.user?.email ?? "Unknown",
+      description: log.description,
+      points: log.points,
+      kind,
+      bucketLabel:
+        kind === "REWARD"
+          ? "Reward"
+          : (log.duration as DurationKey | null)
+            ? bucketLabelMap[log.duration as DurationKey]
+            : null,
+      createdAt: log.createdAt.toISOString(),
+      revertedAt: log.revertedAt?.toISOString() ?? null,
+    };
+  });
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
