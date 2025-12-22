@@ -2,5 +2,6 @@ node_modules
 .next
 .git
 .env
+.env.*
 dev.db
 npm-debug.log

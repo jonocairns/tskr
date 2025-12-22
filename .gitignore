@@ -71,6 +71,7 @@ web_modules/
 !.env.example
 
 # Local SQLite database
+dev.db
 prisma/*.db
 prisma/*.db-journal
 
