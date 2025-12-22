@@ -1,4 +1,6 @@
-import webPush, { type PushSubscription as WebPushSubscription } from "web-push";
+import webPush, {
+	type PushSubscription as WebPushSubscription,
+} from "web-push";
 
 import { prisma } from "@/lib/prisma";
 
