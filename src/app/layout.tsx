@@ -20,7 +20,6 @@ export const metadata: Metadata = {
 	title: "Taskr points",
 	description: "Track and reward chores with time-based points.",
 	manifest: "/manifest.json",
-	themeColor: "#f8fafc",
 	appleWebApp: {
 		capable: true,
 		title: "Taskr",
@@ -35,6 +34,10 @@ export const metadata: Metadata = {
 			{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
 		],
 	},
+};
+
+export const viewport = {
+	themeColor: "#f8fafc",
 };
 
 export default async function RootLayout({

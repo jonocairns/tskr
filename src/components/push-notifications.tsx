@@ -34,9 +34,10 @@ export function PushNotifications() {
 	const [registration, setRegistration] =
 		useState<ServiceWorkerRegistration | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
+	const [vapidPublicKey, setVapidPublicKey] = useState("");
+	const [isKeyLoaded, setIsKeyLoaded] = useState(false);
 	const { toast } = useToast();
 
-	const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 	const hasVapidKey = vapidPublicKey.length > 0;
 
 	useEffect(() => {
@@ -64,16 +65,6 @@ export function PushNotifications() {
 			}
 
 			if (subscription) {
-				if (hasVapidKey) {
-					fetch("/api/push/subscribe", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify(subscription.toJSON()),
-					}).catch((error) => {
-						console.error("[push] sync failed", error);
-					});
-				}
-
 				setStatus("subscribed");
 				return;
 			}
@@ -91,7 +82,70 @@ export function PushNotifications() {
 		return () => {
 			active = false;
 		};
-	}, [hasVapidKey]);
+	}, []);
+
+	useEffect(() => {
+		let active = true;
+
+		const loadKey = async () => {
+			try {
+				const res = await fetch("/api/push/key");
+				if (!res.ok) {
+					return;
+				}
+
+				const data = await res.json().catch(() => ({}));
+				if (typeof data?.publicKey === "string" && active) {
+					setVapidPublicKey(data.publicKey);
+				}
+			} catch (error) {
+				console.error("[push] key fetch failed", error);
+			} finally {
+				if (active) {
+					setIsKeyLoaded(true);
+				}
+			}
+		};
+
+		loadKey();
+
+		return () => {
+			active = false;
+		};
+	}, []);
+
+	useEffect(() => {
+		if (!registration || !hasVapidKey) {
+			return;
+		}
+
+		let active = true;
+
+		const syncSubscription = async () => {
+			const subscription = await registration.pushManager.getSubscription();
+			if (!subscription || !active) {
+				return;
+			}
+
+			const res = await fetch("/api/push/subscribe", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(subscription.toJSON()),
+			});
+
+			if (!res.ok) {
+				throw new Error("Subscription sync failed");
+			}
+		};
+
+		syncSubscription().catch((error) => {
+			console.error("[push] sync failed", error);
+		});
+
+		return () => {
+			active = false;
+		};
+	}, [registration, hasVapidKey]);
 
 	const statusLabel = useMemo(() => {
 		switch (status) {
@@ -118,10 +172,19 @@ export function PushNotifications() {
 			return;
 		}
 
+		if (!isKeyLoaded) {
+			toast({
+				title: "Loading push settings",
+				description: "Try again in a moment.",
+				variant: "destructive",
+			});
+			return;
+		}
+
 		if (!hasVapidKey) {
 			toast({
 				title: "Missing VAPID key",
-				description: "Set NEXT_PUBLIC_VAPID_PUBLIC_KEY to enable push.",
+				description: "Set VAPID_PUBLIC_KEY to enable push.",
 				variant: "destructive",
 			});
 			return;
@@ -247,7 +310,9 @@ export function PushNotifications() {
 						<Button
 							type="button"
 							onClick={handleEnable}
-							disabled={isBusy || status !== "ready"}
+							disabled={
+								isBusy || status !== "ready" || !hasVapidKey || !isKeyLoaded
+							}
 						>
 							{isBusy ? (
 								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
@@ -258,9 +323,9 @@ export function PushNotifications() {
 						</Button>
 					)}
 				</div>
-				{!hasVapidKey ? (
+				{isKeyLoaded && !hasVapidKey ? (
 					<span className="text-xs text-muted-foreground">
-						Missing NEXT_PUBLIC_VAPID_PUBLIC_KEY.
+						Missing VAPID_PUBLIC_KEY.
 					</span>
 				) : null}
 			</CardContent>
