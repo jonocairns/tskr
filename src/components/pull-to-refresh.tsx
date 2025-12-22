@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 const MAX_PULL = 120;
 const TRIGGER_PULL = 80;
@@ -25,8 +25,9 @@ const isStandaloneMode = () => {
 		return false;
 	}
 
-	const mediaStandalone = window.matchMedia?.("(display-mode: standalone)")
-		?.matches;
+	const mediaStandalone = window.matchMedia?.(
+		"(display-mode: standalone)",
+	)?.matches;
 	const nav = navigator as Navigator & { standalone?: boolean };
 	const navigatorStandalone = Boolean(nav.standalone);
 

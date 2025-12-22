@@ -1,4 +1,4 @@
-const databaseUrl = process.env.DATABASE_URL ?? "file:./dev.db";
+const databaseUrl = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
 
 export default {
 	schema: "prisma/schema.prisma",

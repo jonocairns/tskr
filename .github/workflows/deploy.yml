@@ -12,6 +12,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      # Optional: enable if Docker build fails due to build-time Prisma queries.
+      # (Requires Node/pnpm setup steps before this.)
+      # - name: Setup database schema
+      #   run: pnpm prisma db push --skip-generate
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5

@@ -18,6 +18,8 @@ import {
 } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 const bucketLabelMap = Object.fromEntries(
 	DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]),
 );
@@ -131,7 +133,7 @@ export default async function Home() {
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
 			<div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10">
-				<header className="flex items-center justify-between">
+				<header className="flex items-start justify-between">
 					<div>
 						<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
 							tskr
