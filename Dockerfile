@@ -14,7 +14,7 @@ WORKDIR /prisma-deps
 COPY package.json ./
 RUN PRISMA_VERSION=$(node -p "const pkg=require('./package.json'); pkg.devDependencies?.prisma || pkg.dependencies?.prisma || ''") \
   && if [ -z "$PRISMA_VERSION" ]; then echo "prisma version not found"; exit 1; fi \
-  && printf '{ "name": "prisma-cli", "private": true, "dependencies": { "prisma": "%s", "dotenv": "17.2.3" } }\n' "$PRISMA_VERSION" > /prisma-deps/package.json \
+  && printf '{ "name": "prisma-cli", "private": true, "dependencies": { "prisma": "%s" } }\n' "$PRISMA_VERSION" > /prisma-deps/package.json \
   && npm install --omit=dev --no-audit --no-fund
 
 FROM base AS builder
