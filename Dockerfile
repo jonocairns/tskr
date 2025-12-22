@@ -1,11 +1,9 @@
-FROM node:20-bookworm-slim AS base
+FROM node:24.12.0-alpine AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
 FROM base AS deps
-RUN apt-get update \
-  && apt-get install -y openssl \
-  && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache openssl python3 make g++
 COPY package.json ./
 RUN corepack enable \
   && pnpm install --no-frozen-lockfile
@@ -30,10 +28,8 @@ RUN pnpm run build
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
-RUN apt-get update \
-  && apt-get install -y openssl \
-  && rm -rf /var/lib/apt/lists/*
-RUN useradd --system --uid 1001 nextjs
+RUN apk add --no-cache openssl
+RUN addgroup -S nextjs && adduser -S -u 1001 -G nextjs nextjs
 RUN mkdir -p /data && chown nextjs:nextjs /data
 ENV DATABASE_URL="file:/data/dev.db"
 COPY --from=builder --chown=nextjs:nextjs /app/public ./public
