@@ -109,14 +109,6 @@ export function TaskActions({ currentPoints }: Props) {
           <CardTitle className="text-xl">Prebaked chores</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Pick the chore you finished. We&apos;ll apply the predefined points.
-            Add a quick note if you want more detail.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Current balance: <span className="font-semibold text-foreground">{currentPoints}</span>{" "}
-            pts
-          </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {PRESET_TASKS.map((task) => {
               const bucket = DURATION_BUCKETS.find((b) => b.key === task.bucket);
@@ -159,7 +151,7 @@ export function TaskActions({ currentPoints }: Props) {
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleTimed}>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               {DURATION_BUCKETS.map((bucket) => (
                 <button
                   key={bucket.key}
@@ -182,7 +174,7 @@ export function TaskActions({ currentPoints }: Props) {
               ))}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-[2fr,1fr]">
+            <div className="grid gap-3">
               <div className="space-y-2">
                 <Label htmlFor="description">What was the task?</Label>
                 <Textarea
@@ -195,26 +187,6 @@ export function TaskActions({ currentPoints }: Props) {
                   disabled={disabled}
                   required
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="minutes">Actual minutes (optional)</Label>
-                <div className="relative">
-                  <ClockIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="minutes"
-                    type="number"
-                    min={1}
-                    max={120}
-                    placeholder="e.g. 12"
-                    className="pl-9"
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(e.target.value)}
-                    disabled={disabled}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  We&apos;ll still award based on the chosen bracket.
-                </p>
               </div>
             </div>
 
