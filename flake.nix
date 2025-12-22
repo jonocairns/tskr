@@ -15,6 +15,7 @@
           packages = with pkgs; [
             nodejs_20
             corepack
+            pnpm
             openssl
             sqlite
             pkg-config
