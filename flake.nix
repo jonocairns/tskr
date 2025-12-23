@@ -14,9 +14,7 @@
         pname = "taskr";
         version = "0.1.0";
         nodejs = pkgs.nodejs_24;
-        pnpm = pkgs.nodePackages.pnpm;
-        pnpmVersion = "9.12.0";
-        corepackCmd = "${nodejs}/bin/corepack";
+        pnpm = pkgs.pnpm_10;
         src = lib.cleanSourceWith {
           src = ./.;
           filter = path: type:
@@ -29,33 +27,17 @@
                 || base == "node_modules"
                 || base == "result");
         };
-        pnpmDeps = pkgs.stdenv.mkDerivation {
-          pname = "${pname}-pnpm-deps";
-          inherit version src;
-          nativeBuildInputs = [ nodejs pnpm pkgs.cacert ];
-          outputHashMode = "recursive";
-          outputHashAlgo = "sha256";
-          outputHash = lib.fakeHash; # Replace with the real hash after the first build.
-          buildPhase = ''
-            export HOME=$TMPDIR
-            export XDG_CACHE_HOME=$TMPDIR/xdg-cache
-            export XDG_CONFIG_HOME=$TMPDIR/xdg-config
-            export COREPACK_ENABLE_STRICT=0
-            export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-            export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
-            export NODE_EXTRA_CA_CERTS=$SSL_CERT_FILE
-            ${corepackCmd} prepare pnpm@${pnpmVersion} --activate
-            pnpmBin="$HOME/.local/share/pnpm/.tools/pnpm/${pnpmVersion}/bin/pnpm"
-            "$pnpmBin" config set store-dir $out
-            "$pnpmBin" fetch --frozen-lockfile
-          '';
-          installPhase = "true";
+        pnpmDeps = pkgs.fetchPnpmDeps {
+          inherit pname version src;
+          fetcherVersion = 2;
+          hash = "sha256-Oh2FaueTm68Kt3Z1+0sx51BKzGSbrhByw44LvbAqmUs="; # Replace with the real hash after the first build.
         };
         app = pkgs.stdenv.mkDerivation {
           inherit pname version src;
+          inherit pnpmDeps;
           nativeBuildInputs = [
             nodejs
-            pnpm
+            pnpm.configHook
             pkgs.cacert
             pkgs.python3
             pkgs.pkg-config
@@ -67,22 +49,13 @@
             export HOME=$TMPDIR
             export XDG_CACHE_HOME=$TMPDIR/xdg-cache
             export XDG_CONFIG_HOME=$TMPDIR/xdg-config
-            export COREPACK_ENABLE_STRICT=0
-            export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
             export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
             export NODE_EXTRA_CA_CERTS=$SSL_CERT_FILE
             export NEXT_TELEMETRY_DISABLED=1
             export DATABASE_URL="file:./dev.db"
 
-            cp -r ${pnpmDeps} $TMPDIR/pnpm-store
-            chmod -R +w $TMPDIR/pnpm-store
-            ${corepackCmd} prepare pnpm@${pnpmVersion} --activate
-            pnpmBin="$HOME/.local/share/pnpm/.tools/pnpm/${pnpmVersion}/bin/pnpm"
-            "$pnpmBin" config set store-dir $TMPDIR/pnpm-store
-
-            "$pnpmBin" install --frozen-lockfile --offline
-            "$pnpmBin" prisma generate
-            "$pnpmBin" run build
+            pnpm prisma generate
+            pnpm run build
           '';
           installPhase = ''
             mkdir -p $out/app
@@ -159,6 +132,7 @@ EOF
         packages = {
           app = app;
           containerImage = containerImage;
+          pnpmDeps = pnpmDeps;
           default = containerImage;
         };
       });
