@@ -21,13 +21,10 @@ const presetSchema = z
 		presetId: z.string().min(1).optional(),
 		description: z.string().max(120).optional(),
 	})
-	.refine(
-		(data) => Boolean(data.presetKey) !== Boolean(data.presetId),
-		{
-			message: "Provide presetKey or presetId",
-			path: ["presetKey"],
-		},
-	);
+	.refine((data) => Boolean(data.presetKey) !== Boolean(data.presetId), {
+		message: "Provide presetKey or presetId",
+		path: ["presetKey"],
+	});
 
 const timedSchema = z.object({
 	type: z.literal("timed"),

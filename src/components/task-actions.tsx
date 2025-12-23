@@ -25,7 +25,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { DURATION_BUCKETS, PRESET_TASKS, type DurationKey } from "@/lib/points";
+import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 type PresetSummary = {
@@ -51,13 +51,11 @@ export function TaskActions({ presets, currentUserId }: TaskActionsProps) {
 	const [durationMinutes, setDurationMinutes] = useState("");
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [customLabel, setCustomLabel] = useState("");
-	const [customBucket, setCustomBucket] =
-		useState<DurationKey>(defaultBucket);
+	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
 	const [customShared, setCustomShared] = useState(true);
 	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
 	const [editLabel, setEditLabel] = useState("");
-	const [editBucket, setEditBucket] =
-		useState<DurationKey>(defaultBucket);
+	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
 	const [editShared, setEditShared] = useState(true);
 	const [isPending, startTransition] = useTransition();
 	const [isPresetPending, startPresetTransition] = useTransition();
