@@ -10,7 +10,7 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 fallback_to_tmp() {
-  DATABASE_URL="file:/tmp/taskr.db"
+  DATABASE_URL="file:/tmp/tskr.db"
   export DATABASE_URL
   echo "Database directory not writable; using $DATABASE_URL (not persistent)."
 }
@@ -28,7 +28,7 @@ case "$DATABASE_URL" in
     if ! mkdir -p "$db_dir" 2>/dev/null || [ ! -w "$db_dir" ]; then
       if [ "$default_db" = "1" ]; then
         fallback_to_tmp
-        db_path="/tmp/taskr.db"
+        db_path="/tmp/tskr.db"
       else
         echo "Database directory is not writable: $db_dir" >&2
         exit 1
