@@ -101,12 +101,23 @@ export async function POST(req: Request) {
 					);
 				}
 
+				const bucket = DURATION_KEYS.includes(preset.bucket as DurationKey)
+					? (preset.bucket as DurationKey)
+					: null;
+
+				if (!bucket) {
+					return NextResponse.json(
+						{ error: "Unknown preset task" },
+						{ status: 400 },
+					);
+				}
+
 				const entry = await prisma.pointLog.create({
 					data: {
 						userId,
 						kind: "PRESET",
-						duration: preset.bucket,
-						points: getBucketPoints(preset.bucket as DurationKey),
+						duration: bucket,
+						points: getBucketPoints(bucket),
 						description: payload.description?.trim() || preset.label,
 						presetId: preset.id,
 					},

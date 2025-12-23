@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 			createdById: session.user.id,
 			label: parsed.data.label,
 			bucket: parsed.data.bucket,
-			isShared: parsed.data.isShared ?? false,
+			isShared: parsed.data.isShared ?? true,
 		},
 		select: {
 			id: true,

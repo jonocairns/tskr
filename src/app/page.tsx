@@ -183,7 +183,7 @@ export default async function Home() {
 					rewardsClaimed={myClaims}
 				/>
 
-				<TaskActions presets={presetSummaries} />
+				<TaskActions presets={presetSummaries} currentUserId={userId} />
 
 				<AuditLog entries={auditEntries} />
 
