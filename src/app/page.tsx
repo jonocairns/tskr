@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { AuditLog } from "@/components/audit-log";
 import { AuthCta } from "@/components/auth-cta";
 import { Leaderboard } from "@/components/leaderboard";
+import { LiveRefresh } from "@/components/live-refresh";
 import { ModeToggle } from "@/components/mode-toggle";
 import { PointsSummary } from "@/components/points-summary";
 import { PushNotifications } from "@/components/push-notifications";
@@ -190,6 +191,8 @@ export default async function Home() {
 				<Leaderboard entries={leaderboardEntries} />
 
 				<PushNotifications />
+
+				<LiveRefresh />
 			</div>
 		</main>
 	);
