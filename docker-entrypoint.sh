@@ -75,7 +75,7 @@ elif [ "$db_existed" != "1" ]; then
   echo "Initializing database with prisma db push..."
   node "$prisma_cli" db push --schema=./prisma/schema.prisma $config_arg
 else
-  echo "Database already exists; skipping Prisma schema sync."
+  echo "Database already exists; skipping Prisma db push."
 fi
 
 exec "$@"
