@@ -33,7 +33,7 @@ RUN pnpm run build
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
-RUN addgroup -S -g 1001 nextjs && adduser -S -G nextjs -u 1001 nextjs
+RUN groupadd -g 1001 nextjs && useradd -m -u 1001 -g 1001 nextjs
 RUN mkdir -p /data && chown nextjs:nextjs /data
 ENV DATABASE_URL="file:/data/dev.db"
 COPY --from=builder --chown=nextjs:nextjs /app/public ./public
