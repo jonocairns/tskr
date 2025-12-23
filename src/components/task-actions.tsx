@@ -15,12 +15,32 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { DURATION_BUCKETS, PRESET_TASKS } from "@/lib/points";
+import { DURATION_BUCKETS, PRESET_TASKS, type DurationKey } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
-export function TaskActions() {
+type PresetSummary = {
+	id: string;
+	label: string;
+	bucket: DurationKey;
+	isShared: boolean;
+	createdById: string;
+};
+
+type TaskActionsProps = {
+	presets: PresetSummary[];
+};
+
+export function TaskActions({ presets }: TaskActionsProps) {
 	const [selectedBucket, setSelectedBucket] = useState(
 		DURATION_BUCKETS.find((bucket) => bucket.key === "QUICK")?.key ??
 			DURATION_BUCKETS[0].key,
@@ -28,21 +48,30 @@ export function TaskActions() {
 	const [note, setNote] = useState("");
 	const [description, setDescription] = useState("");
 	const [durationMinutes, setDurationMinutes] = useState("");
+	const [customPresets, setCustomPresets] = useState(presets);
+	const [customLabel, setCustomLabel] = useState("");
+	const [customBucket, setCustomBucket] = useState<DurationKey>(
+		DURATION_BUCKETS.find((bucket) => bucket.key === "QUICK")?.key ??
+			DURATION_BUCKETS[0].key,
+	);
+	const [customShared, setCustomShared] = useState(false);
 	const [isPending, startTransition] = useTransition();
+	const [isPresetPending, startPresetTransition] = useTransition();
 
 	const router = useRouter();
 	const { toast } = useToast();
 
-	const disabled = isPending;
+	const disabled = isPending || isPresetPending;
+	const canCreatePreset = customLabel.trim().length >= 2;
 
-	const handlePreset = (presetKey: string) => {
+	const logPreset = (payload: { presetKey?: string; presetId?: string }) => {
 		startTransition(async () => {
 			const res = await fetch("/api/logs", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					type: "preset",
-					presetKey,
+					...payload,
 					description: note.trim() || undefined,
 				}),
 			});
@@ -65,6 +94,65 @@ export function TaskActions() {
 			router.refresh();
 		});
 	};
+
+	const handleCreatePreset = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!canCreatePreset) {
+			return;
+		}
+
+		startPresetTransition(async () => {
+			const res = await fetch("/api/presets", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					label: customLabel.trim(),
+					bucket: customBucket,
+					isShared: customShared,
+				}),
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({}));
+				toast({
+					title: "Unable to add preset",
+					description: body?.error ?? "Please try again.",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			const body = await res.json().catch(() => ({}));
+			if (body?.preset) {
+				setCustomPresets((prev) => [body.preset, ...prev]);
+			}
+			setCustomLabel("");
+			setCustomShared(false);
+			toast({
+				title: "Preset added",
+				description: customShared
+					? "Shared preset is now available to everyone."
+					: "Your preset is ready to log.",
+			});
+		});
+	};
+
+	const presetButtons = [
+		...PRESET_TASKS.map((task) => ({
+			kind: "builtin" as const,
+			id: task.key,
+			label: task.label,
+			bucket: task.bucket,
+			isShared: false,
+		})),
+		...customPresets.map((task) => ({
+			kind: "custom" as const,
+			id: task.id,
+			label: task.label,
+			bucket: task.bucket,
+			isShared: task.isShared,
+		})),
+	];
 
 	const handleTimed = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -112,21 +200,30 @@ export function TaskActions() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="grid gap-2 sm:grid-cols-2">
-						{PRESET_TASKS.map((task) => {
+						{presetButtons.map((task) => {
 							const bucket = DURATION_BUCKETS.find(
 								(b) => b.key === task.bucket,
 							);
 							return (
 								<Button
-									key={task.key}
+									key={task.id}
 									variant="outline"
 									className="flex h-auto flex-col items-start gap-1 py-3"
-									onClick={() => handlePreset(task.key)}
+									onClick={() =>
+										task.kind === "builtin"
+											? logPreset({ presetKey: task.id })
+											: logPreset({ presetId: task.id })
+									}
 									disabled={disabled}
 								>
-									<div className="flex w-full items-center justify-between">
+									<div className="flex w-full items-center justify-between gap-2">
 										<span className="font-semibold">{task.label}</span>
-										<Badge variant="secondary">{bucket?.label}</Badge>
+										<div className="flex items-center gap-1">
+											{task.isShared ? (
+												<Badge variant="outline">Shared</Badge>
+											) : null}
+											<Badge variant="secondary">{bucket?.label}</Badge>
+										</div>
 									</div>
 									<span className="text-xs text-muted-foreground">
 										{bucket?.points ?? 0} pts · {bucket?.window}
@@ -145,6 +242,70 @@ export function TaskActions() {
 							disabled={disabled}
 						/>
 					</div>
+					<Separator />
+					<form className="space-y-3" onSubmit={handleCreatePreset}>
+						<div className="space-y-2">
+							<Label htmlFor="preset-label">Add a custom preset</Label>
+							<Input
+								id="preset-label"
+								placeholder="Preset name (e.g. “Laundry”)"
+								value={customLabel}
+								onChange={(e) => setCustomLabel(e.target.value)}
+								disabled={disabled}
+							/>
+						</div>
+						<div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+							<div className="space-y-2">
+								<Label htmlFor="preset-bucket">Bucket</Label>
+								<Select
+									value={customBucket}
+									onValueChange={(value) =>
+										setCustomBucket(value as DurationKey)
+									}
+									disabled={disabled}
+								>
+									<SelectTrigger id="preset-bucket">
+										<SelectValue placeholder="Pick a bucket" />
+									</SelectTrigger>
+									<SelectContent>
+										{DURATION_BUCKETS.map((bucket) => (
+											<SelectItem key={bucket.key} value={bucket.key}>
+												{bucket.label} ({bucket.points} pts)
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="flex items-end">
+								<Button
+									type="submit"
+									variant="secondary"
+									disabled={disabled || !canCreatePreset}
+								>
+									{isPresetPending ? (
+										<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+									) : null}
+									Add preset
+								</Button>
+							</div>
+						</div>
+						<div className="flex items-center gap-2 text-sm">
+							<input
+								id="preset-shared"
+								type="checkbox"
+								className="h-4 w-4 rounded border-input"
+								checked={customShared}
+								onChange={(e) => setCustomShared(e.target.checked)}
+								disabled={disabled}
+							/>
+							<Label htmlFor="preset-shared" className="font-normal">
+								Share with everyone
+							</Label>
+						</div>
+						<p className="text-xs text-muted-foreground">
+							Shared presets appear for all users.
+						</p>
+					</form>
 				</CardContent>
 			</Card>
 

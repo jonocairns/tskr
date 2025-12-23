@@ -3,28 +3,43 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { DURATION_KEYS, findPreset, getBucketPoints } from "@/lib/points";
+import {
+	DURATION_KEYS,
+	type DurationKey,
+	findPreset,
+	getBucketPoints,
+} from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
 
 export const runtime = "nodejs";
 
-const payloadSchema = z.discriminatedUnion("type", [
-	z.object({
+const presetSchema = z
+	.object({
 		type: z.literal("preset"),
-		presetKey: z.string(),
+		presetKey: z.string().min(1).optional(),
+		presetId: z.string().min(1).optional(),
 		description: z.string().max(120).optional(),
-	}),
-	z.object({
-		type: z.literal("timed"),
-		bucket: z.enum(DURATION_KEYS),
-		description: z
-			.string()
-			.min(1, "Describe what you did")
-			.max(160, "Keep the note short"),
-		durationMinutes: z.number().int().positive().max(120).optional(),
-	}),
-]);
+	})
+	.refine(
+		(data) => Boolean(data.presetKey) !== Boolean(data.presetId),
+		{
+			message: "Provide presetKey or presetId",
+			path: ["presetKey"],
+		},
+	);
+
+const timedSchema = z.object({
+	type: z.literal("timed"),
+	bucket: z.enum(DURATION_KEYS),
+	description: z
+		.string()
+		.min(1, "Describe what you did")
+		.max(160, "Keep the note short"),
+	durationMinutes: z.number().int().positive().max(120).optional(),
+});
+
+const payloadSchema = z.union([presetSchema, timedSchema]);
 
 export async function POST(req: Request) {
 	const session = await getServerSession(authOptions);
@@ -70,7 +85,46 @@ export async function POST(req: Request) {
 	try {
 		const payload = parsed.data;
 		if (payload.type === "preset") {
-			const preset = findPreset(payload.presetKey);
+			if (payload.presetId) {
+				const preset = await prisma.presetTask.findFirst({
+					where: {
+						id: payload.presetId,
+						OR: [{ isShared: true }, { createdById: userId }],
+					},
+					select: { id: true, label: true, bucket: true },
+				});
+
+				if (!preset) {
+					return NextResponse.json(
+						{ error: "Unknown preset task" },
+						{ status: 400 },
+					);
+				}
+
+				const entry = await prisma.pointLog.create({
+					data: {
+						userId,
+						kind: "PRESET",
+						duration: preset.bucket,
+						points: getBucketPoints(preset.bucket as DurationKey),
+						description: payload.description?.trim() || preset.label,
+						presetId: preset.id,
+					},
+				});
+				await notifyTask(entry.description, entry.points);
+
+				const total = await prisma.pointLog.aggregate({
+					where: { userId, revertedAt: null },
+					_sum: { points: true },
+				});
+
+				return NextResponse.json(
+					{ entry, totalPoints: total._sum.points ?? 0 },
+					{ status: 201 },
+				);
+			}
+
+			const preset = findPreset(payload.presetKey ?? "");
 			if (!preset) {
 				return NextResponse.json(
 					{ error: "Unknown preset task" },

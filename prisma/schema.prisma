@@ -16,6 +16,7 @@ model User {
   sessions       Session[]
   pointLogs      PointLog[]
   revertedLogs   PointLog[] @relation("RevertedBy")
+  presetTasks    PresetTask[]
   pushSubscriptions PushSubscription[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -64,6 +65,8 @@ model PointLog {
   points          Int
   description     String
   presetKey       String?
+  presetId        String?
+  preset          PresetTask?     @relation(fields: [presetId], references: [id], onDelete: SetNull)
   durationMinutes Int?
   rewardCost      Int?
   revertedAt      DateTime?
@@ -77,6 +80,7 @@ model PointLog {
   @@index([revertedAt])
   @@index([createdAt])
   @@index([userId, revertedAt])
+  @@index([presetId])
 }
 
 model PushSubscription {
@@ -91,4 +95,20 @@ model PushSubscription {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+model PresetTask {
+  id          String    @id @default(cuid())
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  label       String
+  bucket      String
+  isShared    Boolean   @default(false)
+  logs        PointLog[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([createdById])
+  @@index([isShared])
+  @@index([bucket])
 }

@@ -40,8 +40,15 @@ export default async function Home() {
 	const userId = session.user.id;
 	const threshold = rewardThreshold();
 
-	const [pointSums, taskCounts, rewardCounts, lastActivity, users, recentLogs] =
-		await Promise.all([
+	const [
+		pointSums,
+		taskCounts,
+		rewardCounts,
+		lastActivity,
+		users,
+		recentLogs,
+		presets,
+	] = await Promise.all([
 			prisma.pointLog.groupBy({
 				by: ["userId"],
 				where: { revertedAt: null },
@@ -74,6 +81,19 @@ export default async function Home() {
 				},
 				orderBy: { createdAt: "desc" },
 				take: 30,
+			}),
+			prisma.presetTask.findMany({
+				where: {
+					OR: [{ isShared: true }, { createdById: userId }],
+				},
+				orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
+				select: {
+					id: true,
+					label: true,
+					bucket: true,
+					isShared: true,
+					createdById: true,
+				},
 			}),
 		]);
 
@@ -109,6 +129,10 @@ export default async function Home() {
 		leaderboardEntries.find((entry) => entry.userId === userId)?.points ?? 0;
 	const myTasks = taskCountMap.get(userId) ?? 0;
 	const myClaims = rewardCountMap.get(userId) ?? 0;
+	const presetSummaries = presets.map((preset) => ({
+		...preset,
+		bucket: preset.bucket as DurationKey,
+	}));
 
 	const auditEntries = recentLogs.map((log) => {
 		const kind = isLogKind(log.kind) ? log.kind : "PRESET";
@@ -159,7 +183,7 @@ export default async function Home() {
 					rewardsClaimed={myClaims}
 				/>
 
-				<TaskActions />
+				<TaskActions presets={presetSummaries} />
 
 				<AuditLog entries={auditEntries} />
 
