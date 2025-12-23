@@ -53,7 +53,24 @@ fi
 
 if [ -d "./prisma/migrations" ] && [ "$(ls -A ./prisma/migrations 2>/dev/null)" ]; then
   echo "Running prisma migrate deploy..."
-  node "$prisma_cli" migrate deploy --schema=./prisma/schema.prisma $config_arg
+  migrate_output="$(node "$prisma_cli" migrate deploy --schema=./prisma/schema.prisma $config_arg 2>&1)" || migrate_status=$?
+  if [ -n "$migrate_output" ]; then
+    echo "$migrate_output"
+  fi
+  if [ "${migrate_status:-0}" -ne 0 ]; then
+    if echo "$migrate_output" | grep -q "P3005" && [ "$db_existed" = "1" ]; then
+      echo "Existing database without migration history detected; baselining migrations."
+      for migration in ./prisma/migrations/*; do
+        [ -d "$migration" ] || continue
+        migration_name="$(basename "$migration")"
+        node "$prisma_cli" migrate resolve --schema=./prisma/schema.prisma $config_arg --applied "$migration_name"
+      done
+      echo "Re-running prisma migrate deploy..."
+      node "$prisma_cli" migrate deploy --schema=./prisma/schema.prisma $config_arg
+    else
+      exit "${migrate_status:-1}"
+    fi
+  fi
 elif [ "$db_existed" != "1" ]; then
   echo "Initializing database with prisma db push..."
   node "$prisma_cli" db push --schema=./prisma/schema.prisma $config_arg
