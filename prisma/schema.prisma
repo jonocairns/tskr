@@ -75,6 +75,8 @@ model PointLog {
   @@index([userId])
   @@index([kind])
   @@index([revertedAt])
+  @@index([createdAt])
+  @@index([userId, revertedAt])
 }
 
 model PushSubscription {

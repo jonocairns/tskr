@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "tskr points",
+	title: "tskr",
 	description: "Track and reward chores with time-based points.",
 	manifest: "/manifest.json",
 	appleWebApp: {
