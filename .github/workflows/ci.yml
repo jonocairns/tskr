@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: ["main"]
+    tags: ["v*.*.*"]
   pull_request:
 
 jobs:
@@ -31,12 +32,6 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Generate Prisma client
         run: pnpm prisma generate
-      # Enable this if build-time Prisma queries fail due to missing tables.
-      # - name: Setup database schema
-      #   run: pnpm prisma db push --skip-generate
-      # If you add prisma/migrations/, prefer this to mirror production.
-      # - name: Apply migrations
-      #   run: pnpm prisma migrate deploy
       - name: Lint
         run: pnpm run lint
       - name: Build

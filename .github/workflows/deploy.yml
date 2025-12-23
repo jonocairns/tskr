@@ -1,21 +1,22 @@
 name: Deploy
 
 on:
-  push:
-    branches: ["main"]
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      # Optional: enable if Docker build fails due to build-time Prisma queries.
-      # (Requires Node/pnpm setup steps before this.)
-      # - name: Setup database schema
-      #   run: pnpm prisma db push --skip-generate
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
