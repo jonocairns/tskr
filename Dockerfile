@@ -1,10 +1,14 @@
-FROM node:24.12.0-alpine AS base
+FROM node:24.12.0-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN apk add --no-cache openssl libc6-compat
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
-RUN apk add --no-cache python3 make g++
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 COPY package.json ./
 RUN corepack enable \
   && pnpm install --no-frozen-lockfile
