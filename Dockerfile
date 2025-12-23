@@ -9,13 +9,13 @@ FROM base AS deps
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
-COPY package.json ./
+COPY package.json pnpm-workspace.yaml ./
 RUN corepack enable \
   && pnpm install --no-frozen-lockfile
 
 FROM base AS prisma-deps
 WORKDIR /prisma-deps
-COPY package.json ./
+COPY package.json pnpm-workspace.yaml ./
 RUN PRISMA_VERSION=$(node -p "const pkg=require('./package.json'); pkg.devDependencies?.prisma || pkg.dependencies?.prisma || ''") \
   && if [ -z "$PRISMA_VERSION" ]; then echo "prisma version not found"; exit 1; fi \
   && printf '{ "name": "prisma-cli", "private": true, "dependencies": { "prisma": "%s" } }\n' "$PRISMA_VERSION" > /prisma-deps/package.json \
