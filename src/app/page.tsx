@@ -1,30 +1,22 @@
 import { getServerSession } from "next-auth";
 
-import { AuditLog } from "@/components/audit-log";
-import { AuthCta } from "@/components/auth-cta";
-import { Leaderboard } from "@/components/leaderboard";
-import { ModeToggle } from "@/components/mode-toggle";
-import { PointsSummary } from "@/components/points-summary";
-import { PushNotifications } from "@/components/push-notifications";
-import { TaskActions } from "@/components/task-actions";
-import { UserMenu } from "@/components/user-menu";
+import { AuditLog } from "@/components/AuditLog";
+import { AuthCta } from "@/components/AuthCta";
+import { Leaderboard } from "@/components/Leaderboard";
+import { LiveRefresh } from "@/components/LiveRefresh";
+import { ModeToggle } from "@/components/ModeToggle";
+import { PointsSummary } from "@/components/PointsSummary";
+import { PushNotifications } from "@/components/PushNotifications";
+import { TaskActions } from "@/components/TaskActions";
+import { UserMenu } from "@/components/UserMenu";
 import { authOptions } from "@/lib/auth";
-import {
-	DURATION_BUCKETS,
-	type DurationKey,
-	LOG_KINDS,
-	type LogKind,
-	rewardThreshold,
-} from "@/lib/points";
-import { prisma } from "@/lib/prisma";
+import { buildAuditEntries } from "@/lib/dashboard/audit-log";
+import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
+import { mapPresetSummaries } from "@/lib/dashboard/presets";
+import { getDashboardData } from "@/lib/dashboard/queries";
+import { rewardThreshold } from "@/lib/points";
 
 export const dynamic = "force-dynamic";
-
-const bucketLabelMap = Object.fromEntries(
-	DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]),
-);
-const isLogKind = (kind: string): kind is LogKind =>
-	LOG_KINDS.includes(kind as LogKind);
 
 export default async function Home() {
 	const session = await getServerSession(authOptions);
@@ -40,7 +32,7 @@ export default async function Home() {
 	const userId = session.user.id;
 	const threshold = rewardThreshold();
 
-	const [
+	const {
 		pointSums,
 		taskCounts,
 		rewardCounts,
@@ -48,111 +40,23 @@ export default async function Home() {
 		users,
 		recentLogs,
 		presets,
-	] = await Promise.all([
-		prisma.pointLog.groupBy({
-			by: ["userId"],
-			where: { revertedAt: null },
-			_sum: { points: true },
-		}),
-		prisma.pointLog.groupBy({
-			by: ["userId"],
-			where: {
-				revertedAt: null,
-				kind: { in: ["PRESET", "TIMED"] },
-			},
-			_count: { _all: true },
-		}),
-		prisma.pointLog.groupBy({
-			by: ["userId"],
-			where: { revertedAt: null, kind: "REWARD" },
-			_count: { _all: true },
-		}),
-		prisma.pointLog.groupBy({
-			by: ["userId"],
-			_max: { createdAt: true },
-		}),
-		prisma.user.findMany({
-			select: { id: true, name: true, email: true, image: true },
-			orderBy: { createdAt: "asc" },
-		}),
-		prisma.pointLog.findMany({
-			include: {
-				user: { select: { id: true, name: true, email: true } },
-			},
-			orderBy: { createdAt: "desc" },
-			take: 30,
-		}),
-		prisma.presetTask.findMany({
-			where: {
-				OR: [{ isShared: true }, { createdById: userId }],
-			},
-			orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
-			select: {
-				id: true,
-				label: true,
-				bucket: true,
-				isShared: true,
-				createdById: true,
-			},
-		}),
-	]);
+	} = await getDashboardData(userId);
 
-	const pointSumMap = new Map(
-		pointSums.map((item) => [item.userId, item._sum.points ?? 0]),
-	);
-	const taskCountMap = new Map(
-		taskCounts.map((item) => [item.userId, item._count._all]),
-	);
-	const rewardCountMap = new Map(
-		rewardCounts.map((item) => [item.userId, item._count._all]),
-	);
-	const lastActivityMap = new Map(
-		lastActivity.map((item) => [
-			item.userId,
-			item._max.createdAt?.toISOString() ?? null,
-		]),
-	);
-
-	const leaderboardEntries = users
-		.map((user) => ({
-			userId: user.id,
-			name: user.name ?? user.email ?? "Unknown player",
-			email: user.email,
-			points: pointSumMap.get(user.id) ?? 0,
-			tasks: taskCountMap.get(user.id) ?? 0,
-			claims: rewardCountMap.get(user.id) ?? 0,
-			lastActivity: lastActivityMap.get(user.id),
-		}))
-		.sort((a, b) => b.points - a.points);
-
-	const myPoints =
-		leaderboardEntries.find((entry) => entry.userId === userId)?.points ?? 0;
-	const myTasks = taskCountMap.get(userId) ?? 0;
-	const myClaims = rewardCountMap.get(userId) ?? 0;
-	const presetSummaries = presets.map((preset) => ({
-		...preset,
-		bucket: preset.bucket as DurationKey,
-	}));
-
-	const auditEntries = recentLogs.map((log) => {
-		const kind = isLogKind(log.kind) ? log.kind : "PRESET";
-
-		return {
-			id: log.id,
-			userName: log.user?.name ?? log.user?.email ?? "Unknown",
-			description: log.description,
-			points: log.points,
-			kind,
-			bucketLabel:
-				kind === "REWARD"
-					? "Reward"
-					: (log.duration as DurationKey | null)
-						? bucketLabelMap[log.duration as DurationKey]
-						: null,
-			createdAt: log.createdAt.toISOString(),
-			revertedAt: log.revertedAt?.toISOString() ?? null,
-		};
+	const {
+		entries: leaderboardEntries,
+		myPoints,
+		myTasks,
+		myClaims,
+	} = buildLeaderboardSummary({
+		userId,
+		users,
+		pointSums,
+		taskCounts,
+		rewardCounts,
+		lastActivity,
 	});
+	const presetSummaries = mapPresetSummaries(presets);
+	const auditEntries = buildAuditEntries(recentLogs);
 
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
@@ -190,6 +94,8 @@ export default async function Home() {
 				<Leaderboard entries={leaderboardEntries} />
 
 				<PushNotifications />
+
+				<LiveRefresh />
 			</div>
 		</main>
 	);

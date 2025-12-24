@@ -1,8 +1,10 @@
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@prisma/client";
 
+import { publishDashboardUpdate } from "@/lib/events";
+
 const globalForPrisma = globalThis as unknown as {
-	prisma: PrismaClient | undefined;
+	prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
 
 const databaseUrl = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
@@ -10,9 +12,42 @@ const adapter = new PrismaBetterSqlite3({
 	url: databaseUrl,
 });
 
-export const prisma =
-	globalForPrisma.prisma ??
-	new PrismaClient({ adapter, log: ["warn", "error"] });
+const DASHBOARD_MODELS = new Set(["PointLog", "PresetTask"]);
+const DASHBOARD_ACTIONS = new Set([
+	"create",
+	"createMany",
+	"update",
+	"updateMany",
+	"upsert",
+	"delete",
+	"deleteMany",
+]);
+
+const createPrismaClient = () => {
+	const client = new PrismaClient({ adapter, log: ["warn", "error"] });
+
+	return client.$extends({
+		query: {
+			$allModels: {
+				async $allOperations({ model, operation, args, query }) {
+					const result = await query(args);
+
+					if (
+						model &&
+						DASHBOARD_MODELS.has(model) &&
+						DASHBOARD_ACTIONS.has(operation)
+					) {
+						publishDashboardUpdate();
+					}
+
+					return result;
+				},
+			},
+		},
+	});
+};
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
 	globalForPrisma.prisma = prisma;

@@ -3,17 +3,17 @@
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 
-import { PullToRefresh } from "@/components/pull-to-refresh";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/toaster";
+import { PullToRefresh } from "@/components/PullToRefresh";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { Toaster } from "@/components/ui/Toaster";
 
-export function Providers({
+export const Providers = ({
 	session,
 	children,
 }: {
 	session: Session | null;
 	children: React.ReactNode;
-}) {
+}) => {
 	return (
 		<SessionProvider session={session}>
 			<ThemeProvider
@@ -28,4 +28,4 @@ export function Providers({
 			</ThemeProvider>
 		</SessionProvider>
 	);
-}
+};

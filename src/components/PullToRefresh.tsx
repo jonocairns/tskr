@@ -34,7 +34,7 @@ const isStandaloneMode = () => {
 	return Boolean(mediaStandalone || navigatorStandalone);
 };
 
-export function PullToRefresh() {
+export const PullToRefresh = () => {
 	const router = useRouter();
 	const [pullDistance, setPullDistance] = useState(0);
 	const [armed, setArmed] = useState(false);
@@ -136,4 +136,4 @@ export function PullToRefresh() {
 			{armed ? "Release to refresh" : "Pull to refresh"}
 		</div>
 	);
-}
+};

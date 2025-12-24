@@ -1,4 +1,5 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import type { PrismaClient } from "@prisma/client";
 import { type NextAuthOptions, getServerSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
@@ -14,7 +15,7 @@ if (!googleClientId || !googleClientSecret) {
 }
 
 export const authOptions: NextAuthOptions = {
-	adapter: PrismaAdapter(prisma),
+	adapter: PrismaAdapter(prisma as PrismaClient),
 	providers: [
 		GoogleProvider({
 			clientId: googleClientId ?? "",

@@ -3,15 +3,15 @@
 import { BellIcon, BellOffIcon, Loader2Icon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 import { useToast } from "@/hooks/use-toast";
 
 type Status = "loading" | "unsupported" | "blocked" | "ready" | "subscribed";
@@ -59,7 +59,7 @@ const subscribeWithTimeout = async (
 	}
 };
 
-export function PushNotifications() {
+export const PushNotifications = () => {
 	const [status, setStatus] = useState<Status>("loading");
 	const [registration, setRegistration] =
 		useState<ServiceWorkerRegistration | null>(null);
@@ -447,4 +447,4 @@ export function PushNotifications() {
 			</CardContent>
 		</Card>
 	);
-}
+};

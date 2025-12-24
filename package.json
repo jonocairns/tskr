@@ -12,7 +12,8 @@
 		"db:push": "prisma db push",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
-		"format": "biome format --write ."
+		"format": "biome format --write .",
+		"compile": "tsc"
 	},
 	"dependencies": {
 		"@next-auth/prisma-adapter": "^1.0.7",
