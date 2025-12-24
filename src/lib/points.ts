@@ -68,7 +68,7 @@ export const PRESET_TASKS: Array<{
 	{ key: "dinner", label: "Dinner", bucket: "HEAVY" },
 	{ key: "dishes", label: "Dishes", bucket: "ROUTINE" },
 	{ key: "folding", label: "Folding", bucket: "ROUTINE" },
-	{ key: "bed-made", label: "Bed made", bucket: "QUICK" },
+	{ key: "bed-made", label: "Bed sheets", bucket: "QUICK" },
 	{ key: "lawns", label: "Lawns", bucket: "HEAVY" },
 	{ key: "vanities", label: "Vanities", bucket: "QUICK" },
 	{ key: "vacuum", label: "Vacuum", bucket: "CHALLENGING" },
