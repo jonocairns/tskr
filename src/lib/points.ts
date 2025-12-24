@@ -65,13 +65,15 @@ export const PRESET_TASKS: Array<{
 	{ key: "bins", label: "Bins", bucket: "QUICK" },
 	{ key: "toilet", label: "Toilet", bucket: "ROUTINE" },
 	{ key: "kitchen", label: "Kitchen", bucket: "QUICK" },
-	{ key: "dinner", label: "Dinner", bucket: "HEAVY" },
-	{ key: "dishes", label: "Dishes", bucket: "ROUTINE" },
+	{ key: "cook", label: "Cook", bucket: "HEAVY" },
+	{ key: "dinner-dishes", label: "Dinner Dishes", bucket: "ROUTINE" },
 	{ key: "folding", label: "Folding", bucket: "ROUTINE" },
 	{ key: "bed-made", label: "Bed sheets", bucket: "QUICK" },
 	{ key: "lawns", label: "Lawns", bucket: "HEAVY" },
 	{ key: "vanities", label: "Vanities", bucket: "QUICK" },
 	{ key: "vacuum", label: "Vacuum", bucket: "CHALLENGING" },
+	{ key: "laundry", label: "Laundry", bucket: "QUICK" },
+	{ key: "dishwasher", label: "Dishwasher", bucket: "QUICK" },
 ];
 
 export function findPreset(key: string) {

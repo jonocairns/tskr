@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2Icon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -29,6 +30,8 @@ import { Separator } from "@/components/ui/Separator";
 import { useToast } from "@/hooks/use-toast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
 
+type CustomMode = "preset" | "timed";
+
 export const PresetActionsCard = () => {
 	const {
 		presetOptions,
@@ -39,11 +42,14 @@ export const PresetActionsCard = () => {
 		setNote,
 		disabled,
 		defaultBucket,
+		isPending,
 		isPresetPending,
+		startTransition,
 		startPresetTransition,
 		logPreset,
 	} = useTaskActions();
 	const [customLabel, setCustomLabel] = useState("");
+	const [customMode, setCustomMode] = useState<CustomMode>("preset");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
 	const [customShared, setCustomShared] = useState(true);
 	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
@@ -51,10 +57,16 @@ export const PresetActionsCard = () => {
 	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
 	const [editShared, setEditShared] = useState(true);
 
+	const router = useRouter();
 	const { toast } = useToast();
 
-	const canCreatePreset = customLabel.trim().length >= 2;
+	const trimmedCustomLabel = customLabel.trim();
+	const canCreatePreset = trimmedCustomLabel.length >= 2;
+	const canLogTimed = trimmedCustomLabel.length >= 2;
 	const canUpdatePreset = editLabel.trim().length >= 2;
+	const isCustomPending = customMode === "preset" ? isPresetPending : isPending;
+	const canSubmitCustom =
+		customMode === "preset" ? canCreatePreset : canLogTimed;
 
 	const ownedPresets = customPresets.filter(
 		(preset) => preset.createdById === currentUserId,
@@ -106,6 +118,42 @@ export const PresetActionsCard = () => {
 					? "Shared preset is now available to everyone."
 					: "Your preset is ready to log.",
 			});
+		});
+	};
+
+	const handleLogTimed = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		if (!canLogTimed) {
+			return;
+		}
+
+		startTransition(async () => {
+			const res = await fetch("/api/logs", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					type: "timed",
+					bucket: customBucket,
+					description: trimmedCustomLabel,
+				}),
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({}));
+				toast({
+					title: "Unable to log task",
+					description: body?.error ?? "Please try again.",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			setCustomLabel("");
+			toast({
+				title: "Task logged",
+				description: "Time-based task recorded and points added.",
+			});
+			router.refresh();
 		});
 	};
 
@@ -196,10 +244,10 @@ export const PresetActionsCard = () => {
 		<Card>
 			<CardHeader className="space-y-1">
 				<CardDescription>One tap tasks</CardDescription>
-				<CardTitle className="text-xl">Prebaked chores</CardTitle>
+				<CardTitle className="text-xl">Chores</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				<div className="grid gap-2 sm:grid-cols-2">
+				<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{presetOptions.map((task) => {
 						const bucket = DURATION_BUCKETS.find((b) => b.key === task.bucket);
 						return (
@@ -243,12 +291,39 @@ export const PresetActionsCard = () => {
 				<Separator />
 				<details className="rounded-lg border p-3">
 					<summary className="cursor-pointer text-sm font-medium">
-						Add a custom preset
+						Add a custom task
 					</summary>
-					<form className="mt-3 space-y-3" onSubmit={handleCreatePreset}>
+					<form
+						className="mt-3 space-y-3"
+						onSubmit={
+							customMode === "preset" ? handleCreatePreset : handleLogTimed
+						}
+					>
+						<div className="flex flex-wrap gap-2">
+							<Button
+								type="button"
+								variant={customMode === "preset" ? "default" : "outline"}
+								size="sm"
+								onClick={() => setCustomMode("preset")}
+								disabled={disabled}
+							>
+								Create preset
+							</Button>
+							<Button
+								type="button"
+								variant={customMode === "timed" ? "default" : "outline"}
+								size="sm"
+								onClick={() => setCustomMode("timed")}
+								disabled={disabled}
+							>
+								Log once
+							</Button>
+						</div>
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
-								<Label htmlFor="preset-label">Preset name</Label>
+								<Label htmlFor="preset-label">
+									{customMode === "preset" ? "Preset name" : "Task description"}
+								</Label>
 								<Button
 									type="button"
 									variant="ghost"
@@ -261,7 +336,11 @@ export const PresetActionsCard = () => {
 							</div>
 							<Input
 								id="preset-label"
-								placeholder="Preset name (e.g. “Laundry”)"
+								placeholder={
+									customMode === "preset"
+										? 'Preset name (e.g. "Laundry")'
+										: 'Task description (e.g. "Cleaned shed")'
+								}
 								value={customLabel}
 								onChange={(e) => setCustomLabel(e.target.value)}
 								disabled={disabled}
@@ -269,7 +348,7 @@ export const PresetActionsCard = () => {
 							{presetLabelMatches.length > 0 ? (
 								<div className="rounded-md border bg-muted/40 p-2 text-xs">
 									<p className="text-muted-foreground">
-										This preset already exists. Log it instead:
+										This looks like an existing preset. Log it instead:
 									</p>
 									<div className="mt-2 flex flex-wrap gap-2">
 										{presetLabelMatches.slice(0, 6).map((preset) => {
@@ -324,31 +403,35 @@ export const PresetActionsCard = () => {
 								<Button
 									type="submit"
 									variant="secondary"
-									disabled={disabled || !canCreatePreset}
+									disabled={disabled || !canSubmitCustom}
 								>
-									{isPresetPending ? (
+									{isCustomPending ? (
 										<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
 									) : null}
-									Add preset
+									{customMode === "preset" ? "Add preset" : "Log task"}
 								</Button>
 							</div>
 						</div>
-						<div className="flex items-center gap-2 text-sm">
-							<input
-								id="preset-shared"
-								type="checkbox"
-								className="h-4 w-4 rounded border-input"
-								checked={customShared}
-								onChange={(e) => setCustomShared(e.target.checked)}
-								disabled={disabled}
-							/>
-							<Label htmlFor="preset-shared" className="font-normal">
-								Share with everyone
-							</Label>
-						</div>
-						<p className="text-xs text-muted-foreground">
-							Shared presets appear for all users.
-						</p>
+						{customMode === "preset" ? (
+							<>
+								<div className="flex items-center gap-2 text-sm">
+									<input
+										id="preset-shared"
+										type="checkbox"
+										className="h-4 w-4 rounded border-input"
+										checked={customShared}
+										onChange={(e) => setCustomShared(e.target.checked)}
+										disabled={disabled}
+									/>
+									<Label htmlFor="preset-shared" className="font-normal">
+										Share with everyone
+									</Label>
+								</div>
+								<p className="text-xs text-muted-foreground">
+									Shared presets appear for all users.
+								</p>
+							</>
+						) : null}
 					</form>
 				</details>
 				<div className="space-y-2">
