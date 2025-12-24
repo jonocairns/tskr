@@ -3,8 +3,8 @@
 import { LogOutIcon, Settings2Icon, UserRoundIcon } from "lucide-react";
 import { signOut } from "next-auth/react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/DropdownMenu";
 
 type Props = {
 	user: {
@@ -22,7 +22,7 @@ type Props = {
 	};
 };
 
-export function UserMenu({ user }: Props) {
+export const UserMenu = ({ user }: Props) => {
 	const initials =
 		user?.name?.slice(0, 1)?.toUpperCase() ??
 		user?.email?.slice(0, 1)?.toUpperCase() ??
@@ -69,4 +69,4 @@ export function UserMenu({ user }: Props) {
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
-}
+};

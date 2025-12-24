@@ -1,4 +1,4 @@
-import type { AuditLogEntry } from "@/components/audit-log";
+import type { AuditLogEntry } from "@/components/AuditLog";
 import {
 	DURATION_BUCKETS,
 	type DurationKey,

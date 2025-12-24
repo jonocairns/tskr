@@ -8,7 +8,7 @@ type Props = {
 	debounceMs?: number;
 };
 
-export function LiveRefresh({ enabled = true, debounceMs = 300 }: Props) {
+export const LiveRefresh = ({ enabled = true, debounceMs = 300 }: Props) => {
 	const router = useRouter();
 	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -42,4 +42,4 @@ export function LiveRefresh({ enabled = true, debounceMs = 300 }: Props) {
 	}, [debounceMs, enabled, router]);
 
 	return null;
-}
+};

@@ -3,9 +3,9 @@
 import { RocketIcon } from "lucide-react";
 import { signIn } from "next-auth/react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 
-export function AuthCta() {
+export const AuthCta = () => {
 	return (
 		<div className="mx-auto flex max-w-2xl flex-col items-center gap-6 rounded-2xl border bg-card/50 p-10 text-center shadow-sm">
 			<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -25,4 +25,4 @@ export function AuthCta() {
 			</Button>
 		</div>
 	);
-}
+};

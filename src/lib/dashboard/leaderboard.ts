@@ -1,4 +1,4 @@
-import type { LeaderboardEntry } from "@/components/leaderboard";
+import type { LeaderboardEntry } from "@/components/Leaderboard";
 
 type PointSum = {
 	userId: string;

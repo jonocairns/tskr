@@ -4,15 +4,15 @@ import { Undo2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 import {
 	Table,
 	TableBody,
@@ -20,7 +20,7 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 import type { LogKind } from "@/lib/points";
 
@@ -39,7 +39,7 @@ type Props = {
 	entries: AuditLogEntry[];
 };
 
-export function AuditLog({ entries }: Props) {
+export const AuditLog = ({ entries }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
 	const { toast } = useToast();
@@ -138,4 +138,4 @@ export function AuditLog({ entries }: Props) {
 			</CardContent>
 		</Card>
 	);
-}
+};

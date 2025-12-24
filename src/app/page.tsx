@@ -1,14 +1,14 @@
 import { getServerSession } from "next-auth";
 
-import { AuditLog } from "@/components/audit-log";
-import { AuthCta } from "@/components/auth-cta";
-import { Leaderboard } from "@/components/leaderboard";
-import { LiveRefresh } from "@/components/live-refresh";
-import { ModeToggle } from "@/components/mode-toggle";
-import { PointsSummary } from "@/components/points-summary";
-import { PushNotifications } from "@/components/push-notifications";
-import { TaskActions } from "@/components/task-actions";
-import { UserMenu } from "@/components/user-menu";
+import { AuditLog } from "@/components/AuditLog";
+import { AuthCta } from "@/components/AuthCta";
+import { Leaderboard } from "@/components/Leaderboard";
+import { LiveRefresh } from "@/components/LiveRefresh";
+import { ModeToggle } from "@/components/ModeToggle";
+import { PointsSummary } from "@/components/PointsSummary";
+import { PushNotifications } from "@/components/PushNotifications";
+import { TaskActions } from "@/components/TaskActions";
+import { UserMenu } from "@/components/UserMenu";
 import { authOptions } from "@/lib/auth";
 import { buildAuditEntries } from "@/lib/dashboard/audit-log";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
@@ -42,15 +42,19 @@ export default async function Home() {
 		presets,
 	} = await getDashboardData(userId);
 
-	const { entries: leaderboardEntries, myPoints, myTasks, myClaims } =
-		buildLeaderboardSummary({
-			userId,
-			users,
-			pointSums,
-			taskCounts,
-			rewardCounts,
-			lastActivity,
-		});
+	const {
+		entries: leaderboardEntries,
+		myPoints,
+		myTasks,
+		myClaims,
+	} = buildLeaderboardSummary({
+		userId,
+		users,
+		pointSums,
+		taskCounts,
+		rewardCounts,
+		lastActivity,
+	});
 	const presetSummaries = mapPresetSummaries(presets);
 	const auditEntries = buildAuditEntries(recentLogs);
 

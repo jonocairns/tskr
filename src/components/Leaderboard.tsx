@@ -1,13 +1,13 @@
 import { CrownIcon, UsersIcon } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/Badge";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/Card";
 import {
 	Table,
 	TableBody,
@@ -15,7 +15,7 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/Table";
 
 export type LeaderboardEntry = {
 	userId: string;
@@ -31,7 +31,7 @@ type Props = {
 	entries: LeaderboardEntry[];
 };
 
-export function Leaderboard({ entries }: Props) {
+export const Leaderboard = ({ entries }: Props) => {
 	return (
 		<Card className="mt-4">
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -88,4 +88,4 @@ export function Leaderboard({ entries }: Props) {
 			</CardContent>
 		</Card>
 	);
-}
+};

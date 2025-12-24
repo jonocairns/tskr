@@ -4,15 +4,15 @@ import { GiftIcon, TrophyIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+} from "@/components/ui/Card";
+import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/use-toast";
 
 type Props = {
@@ -22,12 +22,12 @@ type Props = {
 	rewardsClaimed: number;
 };
 
-export function PointsSummary({
+export const PointsSummary = ({
 	points,
 	threshold,
 	tasksLogged,
 	rewardsClaimed,
-}: Props) {
+}: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const [isSubmitting, setSubmitting] = useState(false);
 	const router = useRouter();
@@ -125,7 +125,7 @@ export function PointsSummary({
 			</CardContent>
 		</Card>
 	);
-}
+};
 
 function Stat({
 	label,
