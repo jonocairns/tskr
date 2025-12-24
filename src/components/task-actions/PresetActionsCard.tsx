@@ -305,9 +305,7 @@ export const PresetActionsCard = () => {
 								<Label htmlFor="preset-bucket">Bucket</Label>
 								<Select
 									value={customBucket}
-									onValueChange={(value) =>
-										setCustomBucket(value as DurationKey)
-									}
+									onValueChange={(value: DurationKey) => setCustomBucket(value)}
 									disabled={disabled}
 								>
 									<SelectTrigger id="preset-bucket">
@@ -388,8 +386,8 @@ export const PresetActionsCard = () => {
 											</Label>
 											<Select
 												value={editBucket}
-												onValueChange={(value) =>
-													setEditBucket(value as DurationKey)
+												onValueChange={(value: DurationKey) =>
+													setEditBucket(value)
 												}
 												disabled={disabled}
 											>
