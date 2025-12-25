@@ -71,6 +71,7 @@ export async function PATCH(req: Request, { params }: Params) {
 			bucket: true,
 			isShared: true,
 			createdById: true,
+			createdAt: true,
 		},
 	});
 

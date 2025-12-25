@@ -36,6 +36,7 @@ export async function GET() {
 			bucket: true,
 			isShared: true,
 			createdById: true,
+			createdAt: true,
 		},
 	});
 
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
 			bucket: true,
 			isShared: true,
 			createdById: true,
+			createdAt: true,
 		},
 	});
 

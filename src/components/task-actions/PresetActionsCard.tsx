@@ -1,12 +1,11 @@
 "use client";
 
-import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
 import { useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
-import type { PresetSummary } from "@/components/task-actions/types";
+import { PresetActionsDrawer } from "@/components/task-actions/PresetActionsDrawer";
+import type { PresetTemplate } from "@/components/task-actions/types";
 import { normalizeText } from "@/components/task-actions/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -17,29 +16,16 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/Select";
-import { Separator } from "@/components/ui/Separator";
 import { useToast } from "@/hooks/use-toast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
-
-type CustomMode = "preset" | "timed";
 
 export const PresetActionsCard = () => {
 	const {
 		presetOptions,
+		presetTemplates,
 		customPresets,
 		setCustomPresets,
 		currentUserId,
-		note,
-		setNote,
 		disabled,
 		defaultBucket,
 		isPending,
@@ -48,525 +34,316 @@ export const PresetActionsCard = () => {
 		startPresetTransition,
 		logPreset,
 	} = useTaskActions();
-	const [customLabel, setCustomLabel] = useState("");
-	const [customMode, setCustomMode] = useState<CustomMode>("preset");
-	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
-	const [customShared, setCustomShared] = useState(true);
-	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
-	const [editLabel, setEditLabel] = useState("");
-	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
-	const [editShared, setEditShared] = useState(true);
+	const [isEditDrawerOpen, setEditDrawerOpen] = useState(false);
 
 	const router = useRouter();
 	const { toast } = useToast();
 
-	const trimmedCustomLabel = customLabel.trim();
-	const canCreatePreset = trimmedCustomLabel.length >= 2;
-	const canLogTimed = trimmedCustomLabel.length >= 2;
-	const canUpdatePreset = editLabel.trim().length >= 2;
-	const isCustomPending = customMode === "preset" ? isPresetPending : isPending;
-	const canSubmitCustom =
-		customMode === "preset" ? canCreatePreset : canLogTimed;
-
 	const ownedPresets = customPresets.filter(
 		(preset) => preset.createdById === currentUserId,
 	);
-	const customLabelQuery = normalizeText(customLabel);
-	const shouldSearchCustomLabel = customLabelQuery.length >= 2;
-	const presetLabelMatches = shouldSearchCustomLabel
-		? presetOptions.filter((preset) =>
-				normalizeText(preset.label).includes(customLabelQuery),
-			)
-		: [];
+	const sortedOwnedPresets = [...ownedPresets].sort((a, b) => {
+		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+	});
+	const appliedTemplateKeys = new Set(
+		presetOptions.map(
+			(preset) => `${normalizeText(preset.label)}|${preset.bucket}`,
+		),
+	);
+	const templatesByBucket = DURATION_BUCKETS.map((bucket) => ({
+		bucket,
+		templates: presetTemplates.filter(
+			(template) =>
+				template.bucket === bucket.key &&
+				!appliedTemplateKeys.has(
+					`${normalizeText(template.label)}|${template.bucket}`,
+				),
+		),
+	})).filter((group) => group.templates.length > 0);
 
-	const handleCreatePreset = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		if (!canCreatePreset) {
-			return;
+	const handleCreatePresetFromTemplate = async (template: PresetTemplate) => {
+		const key = `${normalizeText(template.label)}|${template.bucket}`;
+		if (appliedTemplateKeys.has(key)) {
+			return false;
 		}
 
-		startPresetTransition(async () => {
-			const res = await fetch("/api/presets", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					label: customLabel.trim(),
-					bucket: customBucket,
-					isShared: customShared,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to add preset",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
+		let success = false;
+		await new Promise<void>((resolve) =>
+			startPresetTransition(async () => {
+				const res = await fetch("/api/presets", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						label: template.label,
+						bucket: template.bucket,
+						isShared: true,
+					}),
 				});
-				return;
-			}
 
-			const body = await res.json().catch(() => ({}));
-			if (body?.preset) {
-				setCustomPresets((prev) => [body.preset, ...prev]);
-			}
-			setCustomLabel("");
-			setCustomShared(true);
-			toast({
-				title: "Preset added",
-				description: customShared
-					? "Shared preset is now available to everyone."
-					: "Your preset is ready to log.",
-			});
-		});
-	};
+				if (!res.ok) {
+					const body = await res.json().catch(() => ({}));
+					toast({
+						title: "Unable to add preset",
+						description: body?.error ?? "Please try again.",
+						variant: "destructive",
+					});
+					return;
+				}
 
-	const handleLogTimed = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		if (!canLogTimed) {
-			return;
-		}
-
-		startTransition(async () => {
-			const res = await fetch("/api/logs", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					type: "timed",
-					bucket: customBucket,
-					description: trimmedCustomLabel,
-				}),
-			});
-
-			if (!res.ok) {
 				const body = await res.json().catch(() => ({}));
+				if (body?.preset) {
+					setCustomPresets((prev) => [body.preset, ...prev]);
+					success = true;
+				}
 				toast({
-					title: "Unable to log task",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
+					title: "Preset added",
+					description: "Template added to your presets.",
 				});
-				return;
-			}
-
-			setCustomLabel("");
-			toast({
-				title: "Task logged",
-				description: "Time-based task recorded and points added.",
-			});
-			router.refresh();
-		});
-	};
-
-	const startEdit = (preset: PresetSummary) => {
-		setEditingPresetId(preset.id);
-		setEditLabel(preset.label);
-		setEditBucket(preset.bucket);
-		setEditShared(preset.isShared);
-	};
-
-	const cancelEdit = () => {
-		setEditingPresetId(null);
-	};
-
-	const handleUpdatePreset = (
-		event: FormEvent<HTMLFormElement>,
-		presetId: string,
-	) => {
-		event.preventDefault();
-		if (!canUpdatePreset) {
-			return;
-		}
-
-		startPresetTransition(async () => {
-			const res = await fetch(`/api/presets/${presetId}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					label: editLabel.trim(),
-					bucket: editBucket,
-					isShared: editShared,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to update preset",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			if (body?.preset) {
-				setCustomPresets((prev) =>
-					prev.map((preset) => (preset.id === presetId ? body.preset : preset)),
-				);
-			}
-			setEditingPresetId(null);
-			toast({ title: "Preset updated" });
-		});
-	};
-
-	const handleDeletePreset = (preset: PresetSummary) => {
-		const confirmed = window.confirm(
-			`Delete the "${preset.label}" preset? This cannot be undone.`,
+				resolve();
+			}),
 		);
-		if (!confirmed) {
-			return;
+		return success;
+	};
+
+	const handleCreatePreset = async (
+		label: string,
+		bucket: DurationKey,
+	): Promise<boolean> => {
+		if (label.trim().length < 2) {
+			return false;
 		}
 
-		startPresetTransition(async () => {
-			const res = await fetch(`/api/presets/${preset.id}`, {
-				method: "DELETE",
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to delete preset",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
+		let success = false;
+		await new Promise<void>((resolve) =>
+			startPresetTransition(async () => {
+				const res = await fetch("/api/presets", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						label: label.trim(),
+						bucket,
+						isShared: true,
+					}),
 				});
-				return;
-			}
 
-			setCustomPresets((prev) => prev.filter((item) => item.id !== preset.id));
-			if (editingPresetId === preset.id) {
-				setEditingPresetId(null);
-			}
-			toast({ title: "Preset deleted" });
-		});
+				if (!res.ok) {
+					const body = await res.json().catch(() => ({}));
+					toast({
+						title: "Unable to add preset",
+						description: body?.error ?? "Please try again.",
+						variant: "destructive",
+					});
+					return;
+				}
+
+				const body = await res.json().catch(() => ({}));
+				if (body?.preset) {
+					setCustomPresets((prev) => [body.preset, ...prev]);
+				}
+				toast({
+					title: "Preset added",
+					description: "Chore added to your presets.",
+				});
+				success = true;
+				resolve();
+			}),
+		);
+
+		return success;
+	};
+
+	const handleLogTimed = async (
+		label: string,
+		bucket: DurationKey,
+	): Promise<boolean> => {
+		if (label.trim().length < 2) {
+			return false;
+		}
+
+		let success = false;
+		await new Promise<void>((resolve) =>
+			startTransition(async () => {
+				const res = await fetch("/api/logs", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						type: "timed",
+						bucket,
+						description: label.trim(),
+					}),
+				});
+
+				if (!res.ok) {
+					const body = await res.json().catch(() => ({}));
+					toast({
+						title: "Unable to log task",
+						description: body?.error ?? "Please try again.",
+						variant: "destructive",
+					});
+					return;
+				}
+
+				toast({
+					title: "Task logged",
+					description: "Time-based task recorded and points added.",
+				});
+				router.refresh();
+				success = true;
+				resolve();
+			}),
+		);
+		return success;
+	};
+
+	const closeEditDrawer = () => {
+		setEditDrawerOpen(false);
+	};
+
+	const handleUpdatePreset = async (
+		presetId: string,
+		label: string,
+		bucket: DurationKey,
+	): Promise<boolean> => {
+		if (label.trim().length < 2) {
+			return false;
+		}
+
+		let success = false;
+		await new Promise<void>((resolve) =>
+			startPresetTransition(async () => {
+				const res = await fetch(`/api/presets/${presetId}`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						label: label.trim(),
+						bucket,
+					}),
+				});
+
+				if (!res.ok) {
+					const body = await res.json().catch(() => ({}));
+					toast({
+						title: "Unable to update preset",
+						description: body?.error ?? "Please try again.",
+						variant: "destructive",
+					});
+					return;
+				}
+
+				const body = await res.json().catch(() => ({}));
+				if (body?.preset) {
+					setCustomPresets((prev) =>
+						prev.map((preset) =>
+							preset.id === presetId ? body.preset : preset,
+						),
+					);
+				}
+				toast({ title: "Preset updated" });
+				success = true;
+				resolve();
+			}),
+		);
+		return success;
+	};
+
+	const handleDeletePreset = async (presetId: string): Promise<boolean> => {
+		let success = false;
+		await new Promise<void>((resolve) =>
+			startPresetTransition(async () => {
+				const res = await fetch(`/api/presets/${presetId}`, {
+					method: "DELETE",
+				});
+
+				if (!res.ok) {
+					const body = await res.json().catch(() => ({}));
+					toast({
+						title: "Unable to delete preset",
+						description: body?.error ?? "Please try again.",
+						variant: "destructive",
+					});
+					return;
+				}
+
+				setCustomPresets((prev) => prev.filter((item) => item.id !== presetId));
+				toast({ title: "Preset deleted" });
+				success = true;
+				resolve();
+			}),
+		);
+		return success;
 	};
 
 	return (
-		<Card>
-			<CardHeader className="space-y-1">
-				<CardDescription>One tap tasks</CardDescription>
-				<CardTitle className="text-xl">Chores</CardTitle>
-			</CardHeader>
-			<CardContent className="space-y-4">
-				<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-					{presetOptions.map((task) => {
-						const bucket = DURATION_BUCKETS.find((b) => b.key === task.bucket);
-						return (
-							<Button
-								key={task.id}
-								variant="outline"
-								className="flex h-auto flex-col items-start gap-1 py-3"
-								onClick={() =>
-									task.kind === "builtin"
-										? logPreset({ presetKey: task.id })
-										: logPreset({ presetId: task.id })
-								}
-								disabled={disabled}
-							>
-								<div className="flex w-full items-center justify-between gap-2">
-									<span className="font-semibold">{task.label}</span>
-									<div className="flex items-center gap-1">
-										{task.isShared ? (
-											<Badge variant="outline">Shared</Badge>
-										) : null}
-										<Badge variant="secondary">{bucket?.label}</Badge>
-									</div>
-								</div>
-								<span className="text-xs text-muted-foreground">
-									{bucket?.points ?? 0} pts · {bucket?.window}
-								</span>
-							</Button>
-						);
-					})}
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="note">Note (optional)</Label>
-					<Input
-						id="note"
-						placeholder="Add context (e.g. “extra messy today”)"
-						value={note}
-						onChange={(e) => setNote(e.target.value)}
-						disabled={disabled}
-					/>
-				</div>
-				<Separator />
-				<details className="rounded-lg border p-3">
-					<summary className="cursor-pointer text-sm font-medium">
-						Add a custom task
-					</summary>
-					<form
-						className="mt-3 space-y-3"
-						onSubmit={
-							customMode === "preset" ? handleCreatePreset : handleLogTimed
-						}
-					>
-						<div className="flex flex-wrap gap-2">
-							<Button
-								type="button"
-								variant={customMode === "preset" ? "default" : "outline"}
-								size="sm"
-								onClick={() => setCustomMode("preset")}
-								disabled={disabled}
-							>
-								Create preset
-							</Button>
-							<Button
-								type="button"
-								variant={customMode === "timed" ? "default" : "outline"}
-								size="sm"
-								onClick={() => setCustomMode("timed")}
-								disabled={disabled}
-							>
-								Log once
-							</Button>
+		<>
+			<Card>
+				<CardHeader className="space-y-1">
+					<div className="flex items-start justify-between gap-2">
+						<div className="space-y-1">
+							<CardTitle className="text-xl">Chores</CardTitle>
+							<CardDescription>
+								Tap a chore once you've completed it.
+							</CardDescription>
 						</div>
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label htmlFor="preset-label">
-									{customMode === "preset" ? "Preset name" : "Task description"}
-								</Label>
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									onClick={() => setCustomLabel("")}
-									disabled={disabled || customLabel.trim().length === 0}
-								>
-									Clear
-								</Button>
-							</div>
-							<Input
-								id="preset-label"
-								placeholder={
-									customMode === "preset"
-										? 'Preset name (e.g. "Laundry")'
-										: 'Task description (e.g. "Cleaned shed")'
-								}
-								value={customLabel}
-								onChange={(e) => setCustomLabel(e.target.value)}
-								disabled={disabled}
-							/>
-							{presetLabelMatches.length > 0 ? (
-								<div className="rounded-md border bg-muted/40 p-2 text-xs">
-									<p className="text-muted-foreground">
-										This looks like an existing preset. Log it instead:
-									</p>
-									<div className="mt-2 flex flex-wrap gap-2">
-										{presetLabelMatches.slice(0, 6).map((preset) => {
-											const bucket = DURATION_BUCKETS.find(
-												(item) => item.key === preset.bucket,
-											);
-											return (
-												<Button
-													key={`preset-match-${preset.id}`}
-													type="button"
-													variant="secondary"
-													size="sm"
-													onClick={() => {
-														logPreset(
-															preset.kind === "builtin"
-																? { presetKey: preset.id }
-																: { presetId: preset.id },
-														);
-														setCustomLabel("");
-													}}
-													disabled={disabled}
-												>
-													Log {preset.label} · {bucket?.label ?? preset.bucket}
-												</Button>
-											);
-										})}
-									</div>
-								</div>
-							) : null}
-						</div>
-						<div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-							<div className="space-y-2">
-								<Label htmlFor="preset-bucket">Bucket</Label>
-								<Select
-									value={customBucket}
-									onValueChange={(value: DurationKey) => setCustomBucket(value)}
-									disabled={disabled}
-								>
-									<SelectTrigger id="preset-bucket">
-										<SelectValue placeholder="Pick a bucket" />
-									</SelectTrigger>
-									<SelectContent>
-										{DURATION_BUCKETS.map((bucket) => (
-											<SelectItem key={bucket.key} value={bucket.key}>
-												{bucket.label} ({bucket.points} pts)
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-							<div className="flex items-end">
-								<Button
-									type="submit"
-									variant="secondary"
-									disabled={disabled || !canSubmitCustom}
-								>
-									{isCustomPending ? (
-										<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-									) : null}
-									{customMode === "preset" ? "Add preset" : "Log task"}
-								</Button>
-							</div>
-						</div>
-						{customMode === "preset" ? (
-							<>
-								<div className="flex items-center gap-2 text-sm">
-									<input
-										id="preset-shared"
-										type="checkbox"
-										className="h-4 w-4 rounded border-input"
-										checked={customShared}
-										onChange={(e) => setCustomShared(e.target.checked)}
-										disabled={disabled}
-									/>
-									<Label htmlFor="preset-shared" className="font-normal">
-										Share with everyone
-									</Label>
-								</div>
-								<p className="text-xs text-muted-foreground">
-									Shared presets appear for all users.
-								</p>
-							</>
-						) : null}
-					</form>
-				</details>
-				<div className="space-y-2">
-					<p className="text-sm font-medium">Your presets</p>
-					{ownedPresets.length === 0 ? (
-						<p className="text-xs text-muted-foreground">
-							No custom presets yet.
-						</p>
-					) : (
-						ownedPresets.map((preset) => {
-							const bucket = DURATION_BUCKETS.find(
-								(item) => item.key === preset.bucket,
-							);
-							const isEditing = editingPresetId === preset.id;
-
-							if (isEditing) {
-								return (
-									<form
-										key={preset.id}
-										className="space-y-3 rounded-lg border p-3"
-										onSubmit={(event) => handleUpdatePreset(event, preset.id)}
-									>
-										<div className="space-y-2">
-											<Label htmlFor={`preset-edit-${preset.id}`}>Name</Label>
-											<Input
-												id={`preset-edit-${preset.id}`}
-												value={editLabel}
-												onChange={(e) => setEditLabel(e.target.value)}
-												disabled={disabled}
-											/>
-										</div>
-										<div className="space-y-2">
-											<Label htmlFor={`preset-bucket-${preset.id}`}>
-												Bucket
-											</Label>
-											<Select
-												value={editBucket}
-												onValueChange={(value: DurationKey) =>
-													setEditBucket(value)
-												}
-												disabled={disabled}
-											>
-												<SelectTrigger id={`preset-bucket-${preset.id}`}>
-													<SelectValue placeholder="Pick a bucket" />
-												</SelectTrigger>
-												<SelectContent>
-													{DURATION_BUCKETS.map((item) => (
-														<SelectItem key={item.key} value={item.key}>
-															{item.label} ({item.points} pts)
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										</div>
-										<div className="flex items-center gap-2 text-sm">
-											<input
-												id={`preset-share-${preset.id}`}
-												type="checkbox"
-												className="h-4 w-4 rounded border-input"
-												checked={editShared}
-												onChange={(e) => setEditShared(e.target.checked)}
-												disabled={disabled}
-											/>
-											<Label
-												htmlFor={`preset-share-${preset.id}`}
-												className="font-normal"
-											>
-												Share with everyone
-											</Label>
-										</div>
-										<div className="flex items-center gap-2">
-											<Button
-												type="submit"
-												size="sm"
-												disabled={disabled || !canUpdatePreset}
-											>
-												Save
-											</Button>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onClick={cancelEdit}
-												disabled={disabled}
-											>
-												Cancel
-											</Button>
-										</div>
-									</form>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => setEditDrawerOpen(true)}
+						>
+							Change
+						</Button>
+					</div>
+				</CardHeader>
+				<CardContent>
+					<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+						{presetOptions.length === 0 ? (
+							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">
+								No saved chores yet.
+							</p>
+						) : (
+							presetOptions.map((task) => {
+								const bucket = DURATION_BUCKETS.find(
+									(b) => b.key === task.bucket,
 								);
-							}
-
-							return (
-								<div
-									key={preset.id}
-									className="flex items-center justify-between gap-3 rounded-lg border p-3"
-								>
-									<div className="space-y-1">
-										<div className="flex items-center gap-2">
-											<p className="text-sm font-medium">{preset.label}</p>
-											{preset.isShared ? (
-												<Badge variant="outline">Shared</Badge>
-											) : null}
+								return (
+									<Button
+										key={task.id}
+										variant="outline"
+										className="flex h-auto flex-col items-start gap-1 py-3"
+										onClick={() => logPreset({ presetId: task.id })}
+										disabled={disabled}
+									>
+										<div className="flex w-full items-center justify-between gap-2">
+											<span className="font-semibold">{task.label}</span>
+											<div className="flex items-center gap-1">
+												<Badge variant="secondary">{bucket?.label}</Badge>
+											</div>
 										</div>
-										<p className="text-xs text-muted-foreground">
-											{bucket?.label ?? preset.bucket} · {bucket?.points ?? 0}{" "}
-											pts
-										</p>
-									</div>
-									<div className="flex items-center gap-2">
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onClick={() => startEdit(preset)}
-											disabled={disabled}
-										>
-											Edit
-										</Button>
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onClick={() => handleDeletePreset(preset)}
-											disabled={disabled}
-										>
-											Delete
-										</Button>
-									</div>
-								</div>
-							);
-						})
-					)}
-				</div>
-			</CardContent>
-		</Card>
+										<span className="text-xs text-muted-foreground">
+											{bucket?.points ?? 0} pts · {bucket?.window}
+										</span>
+									</Button>
+								);
+							})
+						)}
+					</div>
+				</CardContent>
+			</Card>
+			<PresetActionsDrawer
+				isOpen={isEditDrawerOpen}
+				onClose={closeEditDrawer}
+				defaultBucket={defaultBucket}
+				onLogTimed={handleLogTimed}
+				onCreatePreset={handleCreatePreset}
+				onCreatePresetFromTemplate={handleCreatePresetFromTemplate}
+				onUpdatePreset={handleUpdatePreset}
+				onDeletePreset={handleDeletePreset}
+				templatesByBucket={templatesByBucket}
+				disabled={disabled}
+				isPending={isPending}
+				isPresetPending={isPresetPending}
+				sortedOwnedPresets={sortedOwnedPresets}
+			/>
+		</>
 	);
 };

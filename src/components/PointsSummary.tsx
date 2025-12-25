@@ -20,6 +20,10 @@ type Props = {
 	threshold: number;
 	tasksLogged: number;
 	rewardsClaimed: number;
+	tasksLastWeek: number;
+	pointsLastWeek: number;
+	lastTaskAt: string | null;
+	currentStreak: number;
 };
 
 export const PointsSummary = ({
@@ -27,6 +31,10 @@ export const PointsSummary = ({
 	threshold,
 	tasksLogged,
 	rewardsClaimed,
+	tasksLastWeek,
+	pointsLastWeek,
+	lastTaskAt,
+	currentStreak,
 }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const [isSubmitting, setSubmitting] = useState(false);
@@ -69,9 +77,7 @@ export const PointsSummary = ({
 		<Card className="border-primary/10 bg-gradient-to-br from-primary/5 via-background to-background shadow-sm">
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
-					<CardTitle className="text-xl font-semibold">
-						Points overview
-					</CardTitle>
+					<CardTitle className="text-xl font-semibold">Overview</CardTitle>
 					<CardDescription>
 						Log tasks, climb the leaderboard, claim rewards.
 					</CardDescription>
@@ -100,13 +106,30 @@ export const PointsSummary = ({
 					</div>
 					<Progress value={progress} className="h-2" />
 				</div>
-				<div className="grid gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-3">
-					<Stat label="Tasks logged" value={tasksLogged} />
-					<Stat label="Rewards claimed" value={rewardsClaimed} />
+				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-3">
 					<Stat
-						label="Net balance"
-						value={`${points.toLocaleString()} pts`}
-						muted={points < 0}
+						label="Total tasks logged"
+						value={tasksLogged.toLocaleString()}
+					/>
+					<Stat
+						label="Total rewards claimed"
+						value={rewardsClaimed.toLocaleString()}
+					/>
+					<Stat label="Tasks (7 days)" value={tasksLastWeek.toLocaleString()} />
+					<Stat
+						label="Points (7 days)"
+						value={`${pointsLastWeek.toLocaleString()} pts`}
+						muted={pointsLastWeek < 0}
+					/>
+					<Stat
+						label="Last task logged"
+						value={formatLastTaskAt(lastTaskAt)}
+						muted={!lastTaskAt}
+					/>
+					<Stat
+						label="Current streak"
+						value={formatStreak(currentStreak)}
+						muted={currentStreak === 0}
 					/>
 				</div>
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -146,4 +169,41 @@ function Stat({
 			</p>
 		</div>
 	);
+}
+
+function formatLastTaskAt(lastTaskAt: string | null) {
+	if (!lastTaskAt) {
+		return "No tasks yet";
+	}
+	const last = new Date(lastTaskAt);
+	if (Number.isNaN(last.getTime())) {
+		return "Unknown";
+	}
+
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const lastDay = new Date(last);
+	lastDay.setHours(0, 0, 0, 0);
+	const diffDays = Math.floor(
+		(today.getTime() - lastDay.getTime()) / (24 * 60 * 60 * 1000),
+	);
+
+	if (diffDays <= 0) {
+		return "Today";
+	}
+	if (diffDays === 1) {
+		return "Yesterday";
+	}
+	if (diffDays < 7) {
+		return `${diffDays} days ago`;
+	}
+
+	return last.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatStreak(currentStreak: number) {
+	if (currentStreak <= 0) {
+		return "No streak yet";
+	}
+	return `${currentStreak} day${currentStreak === 1 ? "" : "s"}`;
 }

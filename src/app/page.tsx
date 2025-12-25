@@ -40,6 +40,10 @@ export default async function Home() {
 		users,
 		recentLogs,
 		presets,
+		weeklyTaskCount,
+		weeklyPoints,
+		lastTaskAt,
+		currentStreak,
 	} = await getDashboardData(userId);
 
 	const {
@@ -85,6 +89,10 @@ export default async function Home() {
 					threshold={threshold}
 					tasksLogged={myTasks}
 					rewardsClaimed={myClaims}
+					tasksLastWeek={weeklyTaskCount}
+					pointsLastWeek={weeklyPoints}
+					lastTaskAt={lastTaskAt?.toISOString() ?? null}
+					currentStreak={currentStreak}
 				/>
 
 				<TaskActions presets={presetSummaries} currentUserId={userId} />

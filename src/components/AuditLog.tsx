@@ -69,7 +69,7 @@ export const AuditLog = ({ entries }: Props) => {
 	return (
 		<Card className="mt-4">
 			<CardHeader>
-				<CardTitle>Audit log</CardTitle>
+				<CardTitle className="text-xl">History</CardTitle>
 				<CardDescription>
 					Everything recorded, including reward claims and reverts.
 				</CardDescription>

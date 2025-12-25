@@ -36,7 +36,7 @@ export const Leaderboard = ({ entries }: Props) => {
 		<Card className="mt-4">
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
-					<CardTitle>Leaderboard</CardTitle>
+					<CardTitle className="text-xl">Leaderboard</CardTitle>
 					<CardDescription>Totals for every player.</CardDescription>
 				</div>
 				<div className="rounded-full bg-primary/10 p-2 text-primary">
@@ -58,18 +58,18 @@ export const Leaderboard = ({ entries }: Props) => {
 						{entries.map((entry, idx) => (
 							<TableRow key={entry.userId}>
 								<TableCell className="flex items-center gap-2">
-									{idx === 0 ? (
-										<Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-											<CrownIcon className="mr-1 h-3 w-3" />
-											Top
-										</Badge>
-									) : null}
 									<div className="flex flex-col">
 										<span className="font-semibold">{entry.name}</span>
 										<span className="text-xs text-muted-foreground">
 											{entry.email ?? "—"}
 										</span>
 									</div>
+									{idx === 0 ? (
+										<Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+											<CrownIcon className="mr-1 h-3 w-3" />
+											Top
+										</Badge>
+									) : null}
 								</TableCell>
 								<TableCell className="text-right font-semibold">
 									{entry.points.toLocaleString()}

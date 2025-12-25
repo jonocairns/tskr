@@ -157,9 +157,7 @@ export const TimedActionsCard = () => {
 													size="sm"
 													onClick={() => {
 														logPreset(
-															preset.kind === "builtin"
-																? { presetKey: preset.id }
-																: { presetId: preset.id },
+															{ presetId: preset.id },
 															description.trim() || undefined,
 														);
 														setDescription("");

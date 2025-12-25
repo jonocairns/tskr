@@ -6,6 +6,7 @@ type PresetRecord = {
 	bucket: string;
 	isShared: boolean;
 	createdById: string;
+	createdAt: Date;
 };
 
 export type PresetSummary = {
@@ -14,11 +15,13 @@ export type PresetSummary = {
 	bucket: DurationKey;
 	isShared: boolean;
 	createdById: string;
+	createdAt: string;
 };
 
 export function mapPresetSummaries(presets: PresetRecord[]): PresetSummary[] {
 	return presets.map((preset) => ({
 		...preset,
 		bucket: preset.bucket as DurationKey,
+		createdAt: preset.createdAt.toISOString(),
 	}));
 }

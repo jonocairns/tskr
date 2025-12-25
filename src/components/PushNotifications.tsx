@@ -373,13 +373,13 @@ export const PushNotifications = () => {
 	return (
 		<Card>
 			<CardHeader className="space-y-1">
-				<CardDescription>Alerts</CardDescription>
 				<CardTitle className="flex items-center justify-between text-xl">
-					Task notifications
+					Notifications
 					<Badge variant={status === "subscribed" ? "default" : "secondary"}>
 						{statusLabel}
 					</Badge>
 				</CardTitle>
+				<CardDescription>Alerts</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-wrap items-center gap-3">
 				{status === "unsupported" ? (

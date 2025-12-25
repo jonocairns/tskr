@@ -13,12 +13,14 @@ import {
 import type {
 	PresetOption,
 	PresetSummary,
+	PresetTemplate,
 } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/use-toast";
 import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
 
 type TaskActionsContextValue = {
 	presetOptions: PresetOption[];
+	presetTemplates: PresetTemplate[];
 	customPresets: PresetSummary[];
 	setCustomPresets: React.Dispatch<React.SetStateAction<PresetSummary[]>>;
 	currentUserId: string;
@@ -64,22 +66,18 @@ export const TaskActionsProvider = ({
 		setCustomPresets(presets);
 	}, [presets]);
 
-	const presetOptions: PresetOption[] = [
-		...PRESET_TASKS.map((task) => ({
-			kind: "builtin" as const,
-			id: task.key,
-			label: task.label,
-			bucket: task.bucket,
-			isShared: false,
-		})),
-		...customPresets.map((task) => ({
-			kind: "custom" as const,
-			id: task.id,
-			label: task.label,
-			bucket: task.bucket,
-			isShared: task.isShared,
-		})),
-	];
+	const presetTemplates: PresetTemplate[] = PRESET_TASKS.map((task) => ({
+		key: task.key,
+		label: task.label,
+		bucket: task.bucket,
+	}));
+
+	const presetOptions: PresetOption[] = customPresets.map((task) => ({
+		id: task.id,
+		label: task.label,
+		bucket: task.bucket,
+		isShared: task.isShared,
+	}));
 
 	const logPreset = (
 		payload: { presetKey?: string; presetId?: string },
@@ -122,6 +120,7 @@ export const TaskActionsProvider = ({
 		<TaskActionsContext.Provider
 			value={{
 				presetOptions,
+				presetTemplates,
 				customPresets,
 				setCustomPresets,
 				currentUserId,

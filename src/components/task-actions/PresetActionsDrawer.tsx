@@ -1,0 +1,316 @@
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
+
+import { Loader2Icon } from "lucide-react";
+
+import { PresetListItem } from "@/components/task-actions/PresetListItem";
+import type {
+	PresetSummary,
+	PresetTemplate,
+} from "@/components/task-actions/types";
+import { Button } from "@/components/ui/Button";
+import { CardDescription, CardTitle } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/Select";
+import type { DurationKey } from "@/lib/points";
+import { DURATION_BUCKETS } from "@/lib/points";
+import { cn } from "@/lib/utils";
+
+const BUCKET_WINDOW_SHORT: Record<DurationKey, string> = {
+	TINY: "<1m",
+	QUICK: "1-5m",
+	ROUTINE: "5-15m",
+	CHALLENGING: "15-30m",
+	HEAVY: "30-60m",
+	MAJOR: "60-120m",
+};
+
+type TemplatesByBucket = Array<{
+	bucket: (typeof DURATION_BUCKETS)[number];
+	templates: PresetTemplate[];
+}>;
+
+type Props = {
+	isOpen: boolean;
+	onClose: () => void;
+	defaultBucket: DurationKey;
+	onLogTimed: (label: string, bucket: DurationKey) => Promise<boolean>;
+	onCreatePreset: (label: string, bucket: DurationKey) => Promise<boolean>;
+	onCreatePresetFromTemplate: (template: PresetTemplate) => Promise<boolean>;
+	onUpdatePreset: (
+		presetId: string,
+		label: string,
+		bucket: DurationKey,
+	) => Promise<boolean>;
+	onDeletePreset: (presetId: string) => Promise<boolean>;
+	templatesByBucket: TemplatesByBucket;
+	disabled: boolean;
+	isPending: boolean;
+	isPresetPending: boolean;
+	sortedOwnedPresets: PresetSummary[];
+};
+
+export function PresetActionsDrawer({
+	isOpen,
+	onClose,
+	defaultBucket,
+	onLogTimed,
+	onCreatePreset,
+	onCreatePresetFromTemplate,
+	onUpdatePreset,
+	onDeletePreset,
+	templatesByBucket,
+	disabled,
+	isPending,
+	isPresetPending,
+	sortedOwnedPresets,
+}: Props) {
+	const [customLabel, setCustomLabel] = useState("");
+	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
+	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+	const [editLabel, setEditLabel] = useState("");
+	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
+
+	useEffect(() => {
+		if (!isOpen) {
+			setCustomLabel("");
+			setCustomBucket(defaultBucket);
+			setEditingPresetId(null);
+			setEditLabel("");
+			setEditBucket(defaultBucket);
+		}
+	}, [isOpen, defaultBucket]);
+
+	const canCreate = customLabel.trim().length >= 2;
+	const canLogTimed = canCreate;
+	const canUpdate = editLabel.trim().length >= 2;
+
+	if (!isOpen) return null;
+
+	const handleCreatePreset = async () => {
+		if (!canCreate) return;
+		const success = await onCreatePreset(customLabel, customBucket);
+		if (success) {
+			setCustomLabel("");
+			setCustomBucket(defaultBucket);
+		}
+	};
+
+	const handleCreatePresetFromTemplate = async (template: PresetTemplate) => {
+		const success = await onCreatePresetFromTemplate(template);
+		if (success) {
+			setCustomLabel("");
+			setCustomBucket(defaultBucket);
+		}
+	};
+
+	const handleLogTimed = async () => {
+		if (!canLogTimed) return;
+		const success = await onLogTimed(customLabel, customBucket);
+		if (success) {
+			setCustomLabel("");
+			setCustomBucket(defaultBucket);
+			onClose();
+		}
+	};
+
+	const startEdit = (preset: PresetSummary) => {
+		setEditingPresetId(preset.id);
+		setEditLabel(preset.label);
+		setEditBucket(preset.bucket);
+	};
+
+	const cancelEdit = () => {
+		setEditingPresetId(null);
+		setEditLabel("");
+		setEditBucket(defaultBucket);
+	};
+
+	const handleUpdatePreset = async (
+		event: FormEvent<HTMLFormElement>,
+		presetId: string,
+	) => {
+		event.preventDefault();
+		if (!canUpdate) return;
+		const success = await onUpdatePreset(presetId, editLabel, editBucket);
+		if (success) {
+			setEditingPresetId(null);
+		}
+	};
+
+	const handleDeletePreset = async (presetId: string, label: string) => {
+		const confirmed = window.confirm(
+			`Delete the "${label}" preset? This cannot be undone.`,
+		);
+		if (!confirmed) return;
+		const success = await onDeletePreset(presetId);
+		if (success && editingPresetId === presetId) {
+			setEditingPresetId(null);
+		}
+	};
+
+	return (
+		<div className="fixed inset-0 z-40">
+			<button
+				type="button"
+				className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+				onClick={onClose}
+				aria-label="Close chores editor"
+			/>
+			<div
+				aria-modal="true"
+				className="absolute right-0 top-0 h-full w-full border-l bg-background shadow-xl sm:max-w-md"
+			>
+				<div className="flex h-full flex-col">
+					<div className="flex items-start justify-between gap-2 border-b px-6 py-5">
+						<div className="space-y-1">
+							<CardDescription>Manage chores</CardDescription>
+							<CardTitle className="text-lg">Add or edit chores</CardTitle>
+						</div>
+						<Button type="button" variant="ghost" size="sm" onClick={onClose}>
+							Close
+						</Button>
+					</div>
+					<div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
+						<div className="space-y-3">
+							<div className="space-y-3 rounded-lg border p-3">
+								<p className="text-sm font-medium">
+									Add or log a one off chore
+								</p>
+								<div className="space-y-2">
+									<Label htmlFor="custom-name">Task name</Label>
+									<Input
+										id="custom-name"
+										placeholder="Name your task"
+										value={customLabel}
+										onChange={(e) => setCustomLabel(e.target.value)}
+										disabled={disabled}
+									/>
+								</div>
+								<div className="space-y-2">
+									<p className="text-xs font-medium text-muted-foreground">
+										Bucket
+									</p>
+									<div
+										className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+										role="radiogroup"
+										aria-label="Bucket"
+									>
+										{DURATION_BUCKETS.map((bucket) => (
+											<button
+												key={bucket.key}
+												type="button"
+												onClick={() => setCustomBucket(bucket.key)}
+												className={cn(
+													"flex w-full flex-col items-start rounded-lg border p-3 text-left transition hover:border-primary disabled:pointer-events-none disabled:opacity-50",
+													customBucket === bucket.key &&
+														"border-primary bg-primary/5",
+												)}
+												aria-checked={customBucket === bucket.key}
+												disabled={disabled}
+											>
+												<span className="text-sm font-semibold">
+													{bucket.label}
+												</span>
+												<span className="text-xs text-muted-foreground">
+													{bucket.points} pts ·{" "}
+													{BUCKET_WINDOW_SHORT[bucket.key]}
+												</span>
+											</button>
+										))}
+									</div>
+								</div>
+								<div className="grid gap-2 sm:grid-cols-2">
+									<Button
+										type="button"
+										variant="secondary"
+										className="w-full"
+										onClick={handleLogTimed}
+										disabled={disabled || !canLogTimed}
+									>
+										{isPending ? (
+											<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+										) : null}
+										Log one off task
+									</Button>
+									<Button
+										type="button"
+										className="w-full"
+										onClick={handleCreatePreset}
+										disabled={disabled || !canCreate}
+									>
+										{isPresetPending ? (
+											<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+										) : null}
+										Create new chore
+									</Button>
+								</div>
+								{templatesByBucket.length > 0 ? (
+									<div className="space-y-2">
+										<p className="text-xs font-medium text-muted-foreground">
+											Templates
+										</p>
+										<div className="flex flex-wrap gap-2">
+											{templatesByBucket.flatMap(({ templates }) =>
+												templates.map((template) => (
+													<Button
+														key={template.key}
+														type="button"
+														variant="outline"
+														size="sm"
+														className="rounded-full px-3"
+														onClick={() =>
+															handleCreatePresetFromTemplate(template)
+														}
+														disabled={disabled}
+													>
+														{template.label}
+													</Button>
+												)),
+											)}
+										</div>
+									</div>
+								) : null}
+							</div>
+							<div className="space-y-2">
+								{sortedOwnedPresets.length === 0 ? (
+									<p className="text-xs text-muted-foreground">
+										No custom chores yet.
+									</p>
+								) : (
+									sortedOwnedPresets.map((preset) => (
+										<PresetListItem
+											key={preset.id}
+											preset={preset}
+											bucket={DURATION_BUCKETS.find(
+												(item) => item.key === preset.bucket,
+											)}
+											isEditing={editingPresetId === preset.id}
+											editLabel={editLabel}
+											onEditLabelChange={setEditLabel}
+											editBucket={editBucket}
+											onEditBucketChange={setEditBucket}
+											canUpdatePreset={canUpdate}
+											onUpdatePreset={handleUpdatePreset}
+											onCancelEdit={cancelEdit}
+											onStartEdit={startEdit}
+											onDeletePreset={handleDeletePreset}
+											disabled={disabled}
+										/>
+									))
+								)}
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
