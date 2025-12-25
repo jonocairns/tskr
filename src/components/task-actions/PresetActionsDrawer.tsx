@@ -54,7 +54,8 @@ type Props = {
 	disabled: boolean;
 	isPending: boolean;
 	isPresetPending: boolean;
-	sortedOwnedPresets: PresetSummary[];
+	sortedEditablePresets: PresetSummary[];
+	currentUserId: string;
 };
 
 export function PresetActionsDrawer({
@@ -70,7 +71,8 @@ export function PresetActionsDrawer({
 	disabled,
 	isPending,
 	isPresetPending,
-	sortedOwnedPresets,
+	sortedEditablePresets,
+	currentUserId,
 }: Props) {
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
@@ -280,12 +282,12 @@ export function PresetActionsDrawer({
 								) : null}
 							</div>
 							<div className="space-y-2">
-								{sortedOwnedPresets.length === 0 ? (
+								{sortedEditablePresets.length === 0 ? (
 									<p className="text-xs text-muted-foreground">
-										No custom chores yet.
+										No chores yet.
 									</p>
 								) : (
-									sortedOwnedPresets.map((preset) => (
+									sortedEditablePresets.map((preset) => (
 										<PresetListItem
 											key={preset.id}
 											preset={preset}
@@ -302,6 +304,7 @@ export function PresetActionsDrawer({
 											onCancelEdit={cancelEdit}
 											onStartEdit={startEdit}
 											onDeletePreset={handleDeletePreset}
+											canDelete={preset.createdById === currentUserId}
 											disabled={disabled}
 										/>
 									))

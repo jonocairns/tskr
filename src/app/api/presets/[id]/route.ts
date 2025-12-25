@@ -49,13 +49,25 @@ export async function PATCH(req: Request, { params }: Params) {
 		);
 	}
 
-	const preset = await prisma.presetTask.findFirst({
-		where: { id, createdById: session.user.id },
-		select: { id: true },
+	const preset = await prisma.presetTask.findUnique({
+		where: { id },
+		select: { id: true, createdById: true, isShared: true },
 	});
 
 	if (!preset) {
 		return NextResponse.json({ error: "Preset not found" }, { status: 404 });
+	}
+
+	const isOwner = preset.createdById === session.user.id;
+	if (!preset.isShared && !isOwner) {
+		return NextResponse.json({ error: "Preset not found" }, { status: 404 });
+	}
+
+	if (parsed.data.isShared !== undefined && !isOwner) {
+		return NextResponse.json(
+			{ error: "Only the owner can change sharing" },
+			{ status: 403 },
+		);
 	}
 
 	const updated = await prisma.presetTask.update({
@@ -63,7 +75,7 @@ export async function PATCH(req: Request, { params }: Params) {
 		data: {
 			label: parsed.data.label,
 			bucket: parsed.data.bucket,
-			isShared: parsed.data.isShared,
+			isShared: isOwner ? parsed.data.isShared : undefined,
 		},
 		select: {
 			id: true,

@@ -39,10 +39,10 @@ export const PresetActionsCard = () => {
 	const router = useRouter();
 	const { toast } = useToast();
 
-	const ownedPresets = customPresets.filter(
-		(preset) => preset.createdById === currentUserId,
+	const editablePresets = customPresets.filter(
+		(preset) => preset.isShared || preset.createdById === currentUserId,
 	);
-	const sortedOwnedPresets = [...ownedPresets].sort((a, b) => {
+	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
 		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 	});
 	const appliedTemplateKeys = new Set(
@@ -342,7 +342,8 @@ export const PresetActionsCard = () => {
 				disabled={disabled}
 				isPending={isPending}
 				isPresetPending={isPresetPending}
-				sortedOwnedPresets={sortedOwnedPresets}
+				sortedEditablePresets={sortedEditablePresets}
+				currentUserId={currentUserId}
 			/>
 		</>
 	);

@@ -27,6 +27,7 @@ type Props = {
 	onCancelEdit: () => void;
 	onStartEdit: (preset: PresetSummary) => void;
 	onDeletePreset: (presetId: string, label: string) => void;
+	canDelete: boolean;
 	disabled: boolean;
 };
 
@@ -43,6 +44,7 @@ export function PresetListItem({
 	onCancelEdit,
 	onStartEdit,
 	onDeletePreset,
+	canDelete,
 	disabled,
 }: Props) {
 	if (isEditing) {
@@ -121,15 +123,17 @@ export function PresetListItem({
 				>
 					Edit
 				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => onDeletePreset(preset.id, preset.label)}
-					disabled={disabled}
-				>
-					Delete
-				</Button>
+				{canDelete ? (
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => onDeletePreset(preset.id, preset.label)}
+						disabled={disabled}
+					>
+						Delete
+					</Button>
+				) : null}
 			</div>
 		</div>
 	);
