@@ -20,7 +20,7 @@ type Props = {
 	redirectTo?: string;
 };
 
-export const HouseholdJoinCard = ({ variant = "card", redirectTo }: Props) => {
+export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 	const [code, setCode] = useState("");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();

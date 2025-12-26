@@ -19,7 +19,7 @@ type Props = {
 	redirectTo?: string;
 };
 
-export const HouseholdCreateCard = ({ redirectTo }: Props) => {
+export const CreateCard = ({ redirectTo }: Props) => {
 	const [name, setName] = useState("");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();

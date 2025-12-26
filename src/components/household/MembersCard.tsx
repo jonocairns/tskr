@@ -42,7 +42,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const HouseholdMembersCard = ({
+export const MembersCard = ({
 	currentUserId,
 	canManageMembers,
 	variant = "card",

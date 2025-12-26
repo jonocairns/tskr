@@ -45,7 +45,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const HouseholdInvitesCard = ({
+export const InvitesCard = ({
 	canInvite,
 	variant = "card",
 }: Props) => {

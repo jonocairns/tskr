@@ -29,7 +29,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const HouseholdDangerZone = ({ canDelete, variant = "card" }: Props) => {
+export const DangerZone = ({ canDelete, variant = "card" }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
