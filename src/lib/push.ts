@@ -2,8 +2,8 @@ import webPush, {
 	type PushSubscription as WebPushSubscription,
 } from "web-push";
 
-import { config } from "@/config";
 import { prisma } from "@/lib/prisma";
+import { config } from "@/server-config";
 
 type PushPayload = {
 	title: string;

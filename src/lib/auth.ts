@@ -3,7 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import { type NextAuthOptions, getServerSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-import { config } from "@/config";
+import { config } from "@/server-config";
 import { prisma } from "./prisma";
 
 const { googleClientId, googleClientSecret } = config;

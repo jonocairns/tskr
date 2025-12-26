@@ -1,4 +1,4 @@
-import { config } from "./config";
+import { baseConfig } from "./config";
 
 export default {
 	schema: "prisma/schema.prisma",
@@ -6,6 +6,6 @@ export default {
 		path: "prisma/migrations",
 	},
 	datasource: {
-		url: config.databaseUrl,
+		url: baseConfig.databaseUrl,
 	},
 };

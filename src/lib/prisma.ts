@@ -1,8 +1,8 @@
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@prisma/client";
 
-import { config } from "@/config";
 import { publishDashboardUpdate } from "@/lib/events";
+import { config } from "@/server-config";
 
 const globalForPrisma = globalThis as unknown as {
 	prisma: ReturnType<typeof createPrismaClient> | undefined;

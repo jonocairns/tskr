@@ -1,6 +1,4 @@
-import "server-only";
-
-export const config = {
+export const baseConfig = {
 	// ENV
 	isDev: process.env.NODE_ENV !== "production",
 

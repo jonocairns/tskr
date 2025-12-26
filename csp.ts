@@ -1,4 +1,4 @@
-import { config } from "./config";
+import { baseConfig } from "./config";
 
 export const buildCsp = () =>
 	[
@@ -7,7 +7,7 @@ export const buildCsp = () =>
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"form-action 'self'",
-		`script-src 'self' 'unsafe-inline'${config.isDev ? " 'unsafe-eval'" : ""}`,
+		`script-src 'self' 'unsafe-inline'${baseConfig.isDev ? " 'unsafe-eval'" : ""}`,
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: blob:",
 		"font-src 'self' data:",

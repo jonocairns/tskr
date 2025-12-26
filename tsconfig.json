@@ -20,7 +20,8 @@
 		],
 		"paths": {
 			"@/*": ["./src/*"],
-			"@/config": ["./config.ts"]
+			"@/config": ["./config.ts"],
+			"@/server-config": ["./server-config.ts"]
 		}
 	},
 	"include": [

@@ -1,4 +1,4 @@
-import { config } from "@/config";
+import { config } from "@/server-config";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";

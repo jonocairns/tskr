@@ -1,4 +1,4 @@
-import { config } from "./config";
+import { baseConfig } from "./config";
 import { buildCsp } from "./csp";
 
 export const buildSecurityHeaders = () => {
@@ -22,7 +22,7 @@ export const buildSecurityHeaders = () => {
 			key: "Cross-Origin-Resource-Policy",
 			value: "same-origin",
 		},
-		...(config.isDev
+		...(baseConfig.isDev
 			? []
 			: [
 					{
