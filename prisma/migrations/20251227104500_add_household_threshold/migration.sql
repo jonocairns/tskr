@@ -1,0 +1,2 @@
+ALTER TABLE "Household"
+ADD COLUMN "rewardThreshold" INTEGER NOT NULL DEFAULT 50;

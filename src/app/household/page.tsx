@@ -1,17 +1,14 @@
-import { ChevronLeftIcon } from "lucide-react";
-import Link from "next/link";
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
 import { AuthCta } from "@/components/AuthCta";
+import { HouseholdDangerZone } from "@/components/HouseholdDangerZone";
 import { HouseholdInvitesCard } from "@/components/HouseholdInvitesCard";
 import { HouseholdJoinCard } from "@/components/HouseholdJoinCard";
 import { HouseholdMembersCard } from "@/components/HouseholdMembersCard";
 import { HouseholdSettingsCard } from "@/components/HouseholdSettingsCard";
-import { HouseholdSwitcher } from "@/components/HouseholdSwitcher";
-import { ModeToggle } from "@/components/ModeToggle";
+import { PageHeader } from "@/components/PageHeader";
 import { PushNotifications } from "@/components/PushNotifications";
-import { UserMenu } from "@/components/UserMenu";
-import { Button } from "@/components/ui/Button";
 import {
 	Card,
 	CardContent,
@@ -41,13 +38,7 @@ export default async function HouseholdPage() {
 		session.user.householdId ?? null,
 	);
 	if (!active) {
-		return (
-			<main className="flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-12">
-				<p className="text-sm text-muted-foreground">
-					Unable to load your household. Please try again.
-				</p>
-			</main>
-		);
+		redirect("/landing");
 	}
 
 	const { householdId, membership } = active;
@@ -55,39 +46,20 @@ export default async function HouseholdPage() {
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
 			<div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-10">
-				<header className="flex items-start justify-between">
-					<div className="flex items-start gap-3">
-						<Button asChild variant="ghost" size="icon">
-							<Link href="/" aria-label="Back to dashboard">
-								<ChevronLeftIcon className="h-5 w-5" />
-							</Link>
-						</Button>
-						<div>
-							<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-								tskr
-							</p>
-							<h1 className="text-3xl font-semibold tracking-tight">
-								Household management
-							</h1>
-							<p className="text-sm text-muted-foreground">
-								Manage settings, members, and invite codes.
-							</p>
-						</div>
-					</div>
-					<div className="flex items-center gap-2">
-						<ModeToggle />
-						<HouseholdSwitcher />
-						<UserMenu user={session.user} />
-					</div>
-				</header>
-
-				<HouseholdJoinCard />
+				<PageHeader
+					eyebrow="tskr"
+					title="Household management"
+					description="Manage settings, members, and invite codes."
+					backHref="/"
+					backLabel="Back to dashboard"
+					user={session.user}
+				/>
 
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-xl">Household</CardTitle>
+						<CardTitle className="text-xl">General</CardTitle>
 						<CardDescription>
-							Update the name, manage members, and share invite codes.
+							Update household settings, notifications, and manage deletion.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-8">
@@ -97,24 +69,29 @@ export default async function HouseholdPage() {
 							variant="section"
 						/>
 
-						{membership.role !== "DOER" ? (
-							<HouseholdMembersCard
-								householdId={householdId}
-								currentUserId={userId}
-								canManageMembers={membership.role === "DICTATOR"}
-								variant="section"
-							/>
-						) : null}
+						<PushNotifications variant="section" />
 
-						<HouseholdInvitesCard
-							householdId={householdId}
-							canInvite={membership.role === "DICTATOR"}
+						<HouseholdDangerZone
+							canDelete={membership.role === "DICTATOR"}
 							variant="section"
 						/>
 					</CardContent>
 				</Card>
 
-				<PushNotifications />
+				{membership.role !== "DOER" ? (
+					<HouseholdMembersCard
+						householdId={householdId}
+						currentUserId={userId}
+						canManageMembers={membership.role === "DICTATOR"}
+					/>
+				) : null}
+
+				<HouseholdInvitesCard
+					householdId={householdId}
+					canInvite={membership.role === "DICTATOR"}
+				/>
+
+				<HouseholdJoinCard />
 			</div>
 		</main>
 	);

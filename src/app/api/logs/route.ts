@@ -137,7 +137,7 @@ export async function POST(req: Request) {
 					icon: "/icon-192.png",
 					badge: "/icon-192.png",
 				},
-				{ householdId },
+				{ householdId, excludeUserId: userId },
 			);
 		} catch (error) {
 			console.error("[push] notify failed", error);
@@ -164,7 +164,12 @@ export async function POST(req: Request) {
 						householdId,
 						OR: [{ isShared: true }, { createdById: userId }],
 					},
-					select: { id: true, label: true, bucket: true, approvalOverride: true },
+					select: {
+						id: true,
+						label: true,
+						bucket: true,
+						approvalOverride: true,
+					},
 				});
 
 				if (!preset) {

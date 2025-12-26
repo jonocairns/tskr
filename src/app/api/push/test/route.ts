@@ -31,11 +31,11 @@ export async function POST() {
 
 	await broadcastPush(
 		{
-		title: "tskr test notification",
-		body: "This is a test push from tskr.",
-		url: "/",
-		icon: "/icon-192.png",
-		badge: "/icon-192.png",
+			title: "tskr test notification",
+			body: "This is a test push from tskr.",
+			url: "/",
+			icon: "/icon-192.png",
+			badge: "/icon-192.png",
 		},
 		{ householdId: active.householdId },
 	);

@@ -55,9 +55,26 @@ const createPrismaClient = () => {
 	});
 };
 
+const hasHouseholdRewardThreshold = (
+	client: ReturnType<typeof createPrismaClient>,
+) => {
+	const runtime = (client as { _runtimeDataModel?: unknown })
+		._runtimeDataModel as
+		| {
+				models?: Record<string, { fields?: Array<{ name?: string }> }>;
+		  }
+		| undefined;
+	const fields = runtime?.models?.Household?.fields ?? [];
+	return Array.isArray(fields)
+		? fields.some((field) => field.name === "rewardThreshold")
+		: false;
+};
+
 const existingClient = globalForPrisma.prisma;
 const prisma =
-	existingClient && "householdMember" in existingClient
+	existingClient &&
+	"householdMember" in existingClient &&
+	hasHouseholdRewardThreshold(existingClient)
 		? existingClient
 		: createPrismaClient();
 

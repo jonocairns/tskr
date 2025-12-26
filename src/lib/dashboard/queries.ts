@@ -19,6 +19,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		taskCounts,
 		rewardCounts,
 		lastActivity,
+		household,
 		users,
 		recentLogs,
 		pendingLogs,
@@ -50,6 +51,10 @@ export async function getDashboardData(userId: string, householdId: string) {
 			by: ["userId"],
 			where: approvedWhere,
 			_max: { createdAt: true },
+		}),
+		prisma.household.findUnique({
+			where: { id: householdId },
+			select: { rewardThreshold: true },
 		}),
 		prisma.user.findMany({
 			where: { memberships: { some: { householdId } } },
@@ -134,6 +139,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		taskCounts,
 		rewardCounts,
 		lastActivity,
+		rewardThreshold: household?.rewardThreshold ?? 50,
 		users,
 		recentLogs: trimmedLogs,
 		hasMoreHistory,

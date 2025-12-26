@@ -53,32 +53,7 @@ export async function ensureActiveHouseholdId(
 		return resolvedId;
 	}
 
-	const user = await prisma.user.findUnique({
-		where: { id: userId },
-		select: { name: true, email: true },
-	});
-	const householdName = user?.name ?? user?.email ?? "Household";
-	const household = await prisma.household.create({
-		data: {
-			name: householdName,
-			createdById: userId,
-			members: {
-				create: {
-					userId,
-					role: "DICTATOR",
-					requiresApprovalDefault: false,
-				},
-			},
-		},
-		select: { id: true },
-	});
-
-	await prisma.user.update({
-		where: { id: userId },
-		data: { lastHouseholdId: household.id },
-	});
-
-	return household.id;
+	return null;
 }
 
 export async function getActiveHouseholdMembership(

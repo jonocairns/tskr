@@ -57,6 +57,7 @@ model User {
 model Household {
   id                String            @id @default(cuid())
   name              String
+  rewardThreshold   Int               @default(50)
   createdById       String
   createdBy         User              @relation("HouseholdCreator", fields: [createdById], references: [id], onDelete: Cascade)
   members           HouseholdMember[]

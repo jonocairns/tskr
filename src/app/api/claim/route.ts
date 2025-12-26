@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { getActiveHouseholdMembership } from "@/lib/households";
-import { rewardThreshold } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 
 export async function POST() {
@@ -23,7 +22,11 @@ export async function POST() {
 
 	const userId = session.user.id;
 	const { householdId } = active;
-	const threshold = rewardThreshold();
+	const household = await prisma.household.findUnique({
+		where: { id: householdId },
+		select: { rewardThreshold: true },
+	});
+	const threshold = household?.rewardThreshold ?? 50;
 
 	const total = await prisma.pointLog.aggregate({
 		where: {

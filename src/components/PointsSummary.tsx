@@ -18,8 +18,6 @@ import { useToast } from "@/hooks/use-toast";
 type Props = {
 	points: number;
 	threshold: number;
-	tasksLogged: number;
-	rewardsClaimed: number;
 	tasksLastWeek: number;
 	pointsLastWeek: number;
 	lastTaskAt: string | null;
@@ -29,8 +27,6 @@ type Props = {
 export const PointsSummary = ({
 	points,
 	threshold,
-	tasksLogged,
-	rewardsClaimed,
 	tasksLastWeek,
 	pointsLastWeek,
 	lastTaskAt,
@@ -107,14 +103,6 @@ export const PointsSummary = ({
 					<Progress value={progress} className="h-2" />
 				</div>
 				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-3">
-					<Stat
-						label="Total tasks logged"
-						value={tasksLogged.toLocaleString()}
-					/>
-					<Stat
-						label="Total rewards claimed"
-						value={rewardsClaimed.toLocaleString()}
-					/>
 					<Stat label="Tasks (7 days)" value={tasksLastWeek.toLocaleString()} />
 					<Stat
 						label="Points (7 days)"

@@ -53,7 +53,13 @@ export async function PATCH(_req: Request, { params }: Params) {
 
 	const log = await prisma.pointLog.findFirst({
 		where: { id, householdId },
-		select: { id: true, userId: true, revertedAt: true, status: true, kind: true },
+		select: {
+			id: true,
+			userId: true,
+			revertedAt: true,
+			status: true,
+			kind: true,
+		},
 	});
 
 	if (!log) {
@@ -84,12 +90,21 @@ export async function PATCH(_req: Request, { params }: Params) {
 	}
 
 	if (log.revertedAt) {
-		return NextResponse.json({ error: "Log already reverted" }, { status: 400 });
+		return NextResponse.json(
+			{ error: "Log already reverted" },
+			{ status: 400 },
+		);
 	}
 
 	if (action === "approve" || action === "reject") {
 		if (membership.role === "DOER") {
 			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+		}
+		if (action === "approve" && log.userId === session.user.id) {
+			return NextResponse.json(
+				{ error: "You cannot approve your own tasks" },
+				{ status: 403 },
+			);
 		}
 		if (log.status !== "PENDING") {
 			return NextResponse.json(

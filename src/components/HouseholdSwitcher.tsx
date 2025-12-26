@@ -6,8 +6,8 @@ import {
 	HomeIcon,
 	Loader2Icon,
 } from "lucide-react";
-import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import {

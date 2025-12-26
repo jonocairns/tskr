@@ -54,11 +54,22 @@ export async function PATCH(req: Request, { params }: Params) {
 
 	const member = await prisma.householdMember.findFirst({
 		where: { id, householdId: active.householdId },
-		select: { id: true, role: true },
+		select: { id: true, role: true, userId: true },
 	});
 
 	if (!member) {
 		return NextResponse.json({ error: "Member not found" }, { status: 404 });
+	}
+
+	if (
+		parsed.data.role &&
+		parsed.data.role !== member.role &&
+		member.userId === session.user.id
+	) {
+		return NextResponse.json(
+			{ error: "You cannot change your own role" },
+			{ status: 400 },
+		);
 	}
 
 	if (

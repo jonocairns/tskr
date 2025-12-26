@@ -46,7 +46,6 @@ type Props = {
 };
 
 export const HouseholdInvitesCard = ({
-	householdId,
 	canInvite,
 	variant = "card",
 }: Props) => {
@@ -96,7 +95,7 @@ export const HouseholdInvitesCard = ({
 		return () => {
 			isActive = false;
 		};
-	}, [canInvite, householdId, toast]);
+	}, [canInvite, toast]);
 
 	if (!canInvite) {
 		return null;
@@ -173,7 +172,9 @@ export const HouseholdInvitesCard = ({
 			if (body?.invite) {
 				setInvites((prev) =>
 					prev.map((invite) =>
-						invite.id === body.invite.id ? { ...invite, ...body.invite } : invite,
+						invite.id === body.invite.id
+							? { ...invite, ...body.invite }
+							: invite,
 					),
 				);
 			}
@@ -258,9 +259,7 @@ export const HouseholdInvitesCard = ({
 									</div>
 								</TableCell>
 								<TableCell>
-									<Badge variant="secondary">
-										{invite.role.toLowerCase()}
-									</Badge>
+									<Badge variant="secondary">{invite.role.toLowerCase()}</Badge>
 								</TableCell>
 								<TableCell className="text-sm text-muted-foreground">
 									{invite.status === "EXPIRED" ? "Expired" : "Pending"}
@@ -322,7 +321,7 @@ export const HouseholdInvitesCard = ({
 	}
 
 	return (
-		<Card className="mt-4">
+		<Card>
 			<CardHeader>{header}</CardHeader>
 			<CardContent>{content}</CardContent>
 		</Card>

@@ -2,10 +2,10 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { randomBytes } from "node:crypto";
 import { authOptions } from "@/lib/auth";
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
-import { randomBytes } from "crypto";
 
 const INVITE_EXPIRY_DAYS = 14;
 const addExpiry = () => {

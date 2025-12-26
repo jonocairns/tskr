@@ -43,7 +43,6 @@ type Props = {
 };
 
 export const HouseholdMembersCard = ({
-	householdId,
 	currentUserId,
 	canManageMembers,
 	variant = "card",
@@ -89,7 +88,7 @@ export const HouseholdMembersCard = ({
 		return () => {
 			isActive = false;
 		};
-	}, [householdId, toast]);
+	}, [toast]);
 
 	const updateMember = (
 		memberId: string,
@@ -159,9 +158,7 @@ export const HouseholdMembersCard = ({
 									<TableCell>
 										<div className="flex flex-col">
 											<span className="font-semibold">
-												{member.user.name ??
-													member.user.email ??
-													"Unknown"}
+												{member.user.name ?? member.user.email ?? "Unknown"}
 											</span>
 											<span className="text-xs text-muted-foreground">
 												{member.user.email ?? "—"}
@@ -169,12 +166,12 @@ export const HouseholdMembersCard = ({
 										</div>
 									</TableCell>
 									<TableCell>
-										{canManageMembers ? (
+										{canManageMembers && !isSelf ? (
 											<Select
 												value={member.role}
-												onValueChange={(value: "DICTATOR" | "APPROVER" | "DOER") =>
-													updateMember(member.id, { role: value })
-												}
+												onValueChange={(
+													value: "DICTATOR" | "APPROVER" | "DOER",
+												) => updateMember(member.id, { role: value })}
 												disabled={isPending}
 											>
 												<SelectTrigger>
@@ -245,7 +242,7 @@ export const HouseholdMembersCard = ({
 	}
 
 	return (
-		<Card className="mt-4">
+		<Card>
 			<CardHeader>{header}</CardHeader>
 			<CardContent>{content}</CardContent>
 		</Card>

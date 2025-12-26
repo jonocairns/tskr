@@ -41,17 +41,22 @@ export const isPushConfigured = () => pushConfigured;
 
 export async function broadcastPush(
 	payload: PushPayload,
-	options?: { householdId?: string | null },
+	options?: { householdId?: string | null; excludeUserId?: string | null },
 ) {
 	if (!pushConfigured) {
 		return { sent: 0, removed: 0 };
 	}
 
 	const householdId = options?.householdId ?? null;
-	const subscriptions = await prisma.pushSubscription.findMany({
-		where: householdId
+	const excludeUserId = options?.excludeUserId ?? null;
+	const where = {
+		...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+		...(householdId
 			? { user: { memberships: { some: { householdId } } } }
-			: undefined,
+			: {}),
+	};
+	const subscriptions = await prisma.pushSubscription.findMany({
+		where: Object.keys(where).length > 0 ? where : undefined,
 		select: { endpoint: true, p256dh: true, auth: true },
 	});
 

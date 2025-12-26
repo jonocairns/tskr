@@ -1,23 +1,21 @@
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
+import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { AuditLog } from "@/components/AuditLog";
 import { AuthCta } from "@/components/AuthCta";
-import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveRefresh } from "@/components/LiveRefresh";
-import { ModeToggle } from "@/components/ModeToggle";
+import { PageHeader } from "@/components/PageHeader";
 import { PointsSummary } from "@/components/PointsSummary";
 import { TaskActions } from "@/components/TaskActions";
-import { HouseholdSwitcher } from "@/components/HouseholdSwitcher";
-import { UserMenu } from "@/components/UserMenu";
 import { authOptions } from "@/lib/auth";
-import { buildAuditEntries } from "@/lib/dashboard/audit-log";
 import { buildApprovalEntries } from "@/lib/dashboard/approvals";
+import { buildAuditEntries } from "@/lib/dashboard/audit-log";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { getActiveHouseholdMembership } from "@/lib/households";
-import { rewardThreshold } from "@/lib/points";
 
 export const dynamic = "force-dynamic";
 
@@ -38,16 +36,9 @@ export default async function Home() {
 		session.user.householdId ?? null,
 	);
 	if (!active) {
-		return (
-			<main className="flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-12">
-				<p className="text-sm text-muted-foreground">
-					Unable to load your household. Please try again.
-				</p>
-			</main>
-		);
+		redirect("/landing");
 	}
 	const { householdId, membership } = active;
-	const threshold = rewardThreshold();
 
 	const {
 		pointSums,
@@ -61,17 +52,13 @@ export default async function Home() {
 		presets,
 		weeklyTaskCount,
 		weeklyPoints,
+		rewardThreshold,
 		hasApprovalMembers,
 		lastTaskAt,
 		currentStreak,
 	} = await getDashboardData(userId, householdId);
 
-	const {
-		entries: leaderboardEntries,
-		myPoints,
-		myTasks,
-		myClaims,
-	} = buildLeaderboardSummary({
+	const { entries: leaderboardEntries, myPoints } = buildLeaderboardSummary({
 		userId,
 		users,
 		pointSums,
@@ -89,31 +76,16 @@ export default async function Home() {
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
 			<div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10">
-				<header className="flex items-start justify-between">
-					<div>
-						<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-							tskr
-						</p>
-						<h1 className="text-3xl font-semibold tracking-tight">
-							Task points dashboard
-						</h1>
-						<p className="text-sm text-muted-foreground">
-							Log chores, keep an audit trail, and claim rewards when you hit
-							the threshold.
-						</p>
-					</div>
-					<div className="flex items-center gap-2">
-						<ModeToggle />
-						<HouseholdSwitcher />
-						<UserMenu user={session.user} />
-					</div>
-				</header>
+				<PageHeader
+					eyebrow="tskr"
+					title="Task points dashboard"
+					description="Log chores, keep an audit trail, and claim rewards when you hit the threshold."
+					user={session.user}
+				/>
 
 				<PointsSummary
 					points={myPoints}
-					threshold={threshold}
-					tasksLogged={myTasks}
-					rewardsClaimed={myClaims}
+					threshold={rewardThreshold}
 					tasksLastWeek={weeklyTaskCount}
 					pointsLastWeek={weeklyPoints}
 					lastTaskAt={lastTaskAt?.toISOString() ?? null}
@@ -126,7 +98,9 @@ export default async function Home() {
 					currentUserRole={membership.role}
 				/>
 
-				{showApprovals ? <ApprovalQueue entries={approvalEntries} /> : null}
+				{showApprovals ? (
+					<ApprovalQueue entries={approvalEntries} currentUserId={userId} />
+				) : null}
 
 				<Leaderboard entries={leaderboardEntries} />
 

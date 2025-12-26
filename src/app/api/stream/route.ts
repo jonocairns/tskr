@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
-import { getActiveHouseholdMembership } from "@/lib/households";
 import { subscribeToDashboardUpdates } from "@/lib/events";
+import { getActiveHouseholdMembership } from "@/lib/households";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

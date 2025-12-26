@@ -50,11 +50,11 @@ export async function POST(req: Request) {
 	await prisma.$transaction(async (tx) => {
 		await tx.householdMember.upsert({
 			where: {
-					householdId_userId: {
-						householdId: invite.householdId,
-						userId,
-					},
+				householdId_userId: {
+					householdId: invite.householdId,
+					userId,
 				},
+			},
 			update: {},
 			create: {
 				householdId: invite.householdId,

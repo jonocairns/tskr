@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -17,9 +17,10 @@ import { useToast } from "@/hooks/use-toast";
 
 type Props = {
 	variant?: "card" | "section";
+	redirectTo?: string;
 };
 
-export const HouseholdJoinCard = ({ variant = "card" }: Props) => {
+export const HouseholdJoinCard = ({ variant = "card", redirectTo }: Props) => {
 	const [code, setCode] = useState("");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
@@ -53,7 +54,11 @@ export const HouseholdJoinCard = ({ variant = "card" }: Props) => {
 
 			setCode("");
 			toast({ title: "Joined household" });
-			router.refresh();
+			if (redirectTo) {
+				router.push(redirectTo);
+			} else {
+				router.refresh();
+			}
 		});
 	};
 
@@ -78,7 +83,11 @@ export const HouseholdJoinCard = ({ variant = "card" }: Props) => {
 					disabled={isPending}
 				/>
 			</div>
-			<Button type="button" onClick={handleJoin} disabled={!canSubmit || isPending}>
+			<Button
+				type="button"
+				onClick={handleJoin}
+				disabled={!canSubmit || isPending}
+			>
 				Join household
 			</Button>
 		</div>
@@ -94,7 +103,7 @@ export const HouseholdJoinCard = ({ variant = "card" }: Props) => {
 	}
 
 	return (
-		<Card className="mt-4">
+		<Card>
 			<CardHeader>{header}</CardHeader>
 			<CardContent>{content}</CardContent>
 		</Card>

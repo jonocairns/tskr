@@ -143,7 +143,8 @@ export function PresetListItem({
 				</p>
 				{preset.approvalOverride ? (
 					<p className="text-xs text-muted-foreground">
-						Approval {preset.approvalOverride === "REQUIRE" ? "required" : "skipped"}
+						Approval{" "}
+						{preset.approvalOverride === "REQUIRE" ? "required" : "skipped"}
 					</p>
 				) : null}
 			</div>

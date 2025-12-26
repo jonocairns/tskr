@@ -33,9 +33,10 @@ export type ApprovalEntry = {
 
 type Props = {
 	entries: ApprovalEntry[];
+	currentUserId: string;
 };
 
-export const ApprovalQueue = ({ entries }: Props) => {
+export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
 	const { toast } = useToast();
@@ -67,7 +68,7 @@ export const ApprovalQueue = ({ entries }: Props) => {
 	};
 
 	return (
-		<Card className="mt-4">
+		<Card>
 			<CardHeader>
 				<CardTitle className="text-xl">Approvals</CardTitle>
 				<CardDescription>Review pending tasks.</CardDescription>
@@ -118,7 +119,7 @@ export const ApprovalQueue = ({ entries }: Props) => {
 											<Button
 												type="button"
 												size="sm"
-												disabled={isPending}
+												disabled={isPending || entry.userId === currentUserId}
 												onClick={() => actOnEntry(entry.id, "approve")}
 											>
 												<CheckIcon className="mr-2 h-4 w-4" />

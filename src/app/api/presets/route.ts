@@ -84,7 +84,7 @@ export async function POST(req: Request) {
 
 	const allowShared = membership.role !== "DOER";
 	const approvalOverride =
-		membership.role === "DOER" ? null : parsed.data.approvalOverride ?? null;
+		membership.role === "DOER" ? null : (parsed.data.approvalOverride ?? null);
 	const preset = await prisma.presetTask.create({
 		data: {
 			householdId,
