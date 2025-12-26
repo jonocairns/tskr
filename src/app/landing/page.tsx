@@ -2,9 +2,9 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { AuthCta } from "@/components/AuthCta";
+import { PageHeader } from "@/components/PageHeader";
 import { CreateCard } from "@/components/household/CreateCard";
 import { JoinCard } from "@/components/household/JoinCard";
-import { PageHeader } from "@/components/PageHeader";
 import { authOptions } from "@/lib/auth";
 import { getActiveHouseholdMembership } from "@/lib/households";
 

@@ -1,9 +1,9 @@
 import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 
-import { Switcher } from "@/components/household/Switcher";
 import { ModeToggle } from "@/components/ModeToggle";
 import { UserMenu } from "@/components/UserMenu";
+import { Switcher } from "@/components/household/Switcher";
 import { Button } from "@/components/ui/Button";
 
 type Props = {

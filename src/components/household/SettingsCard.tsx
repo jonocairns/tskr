@@ -21,10 +21,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const SettingsCard = ({
-	canManage,
-	variant = "card",
-}: Props) => {
+export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 	const [name, setName] = useState("");
 	const [initialName, setInitialName] = useState("");
 	const [threshold, setThreshold] = useState("50");

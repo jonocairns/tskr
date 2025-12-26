@@ -45,10 +45,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const InvitesCard = ({
-	canInvite,
-	variant = "card",
-}: Props) => {
+export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 	const [invites, setInvites] = useState<Invite[]>([]);
 	const [role, setRole] = useState<Invite["role"]>("DOER");
 	const [isLoading, setIsLoading] = useState(true);
