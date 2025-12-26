@@ -1,9 +1,10 @@
+import { config } from "@/server-config";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-	const publicKey = process.env.VAPID_PUBLIC_KEY;
+	const publicKey = config.vapidPublicKey;
 
 	if (!publicKey) {
 		return NextResponse.json(

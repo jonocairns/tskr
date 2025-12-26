@@ -18,7 +18,7 @@ const actionSchema = z.object({
 	action: z.enum(["revoke", "resend"]),
 });
 
-const generateCode = () => randomBytes(4).toString("hex").toUpperCase();
+const generateCode = () => randomBytes(8).toString("hex").toUpperCase();
 
 type Params = {
 	params: { id: string } | Promise<{ id: string }>;

@@ -3,6 +3,7 @@ import webPush, {
 } from "web-push";
 
 import { prisma } from "@/lib/prisma";
+import { config } from "@/server-config";
 
 type PushPayload = {
 	title: string;
@@ -12,9 +13,7 @@ type PushPayload = {
 	badge?: string;
 };
 
-const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-const vapidSubject = process.env.VAPID_SUBJECT ?? "mailto:admin@example.com";
+const { vapidPublicKey, vapidPrivateKey, vapidSubject } = config;
 const pushConfigured = Boolean(vapidPublicKey && vapidPrivateKey);
 
 if (pushConfigured) {
@@ -41,7 +40,11 @@ export const isPushConfigured = () => pushConfigured;
 
 export async function broadcastPush(
 	payload: PushPayload,
-	options?: { householdId?: string | null; excludeUserId?: string | null },
+	options?: {
+		householdId?: string | null;
+		excludeUserId?: string | null;
+		userId?: string | null;
+	},
 ) {
 	if (!pushConfigured) {
 		return { sent: 0, removed: 0 };
@@ -49,8 +52,10 @@ export async function broadcastPush(
 
 	const householdId = options?.householdId ?? null;
 	const excludeUserId = options?.excludeUserId ?? null;
+	const userId = options?.userId ?? null;
 	const where = {
 		...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+		...(userId ? { userId } : {}),
 		...(householdId
 			? { user: { memberships: { some: { householdId } } } }
 			: {}),
