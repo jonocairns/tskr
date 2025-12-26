@@ -39,12 +39,19 @@ const toWebPushSubscription = (subscription: {
 
 export const isPushConfigured = () => pushConfigured;
 
-export async function broadcastPush(payload: PushPayload) {
+export async function broadcastPush(
+	payload: PushPayload,
+	options?: { householdId?: string | null },
+) {
 	if (!pushConfigured) {
 		return { sent: 0, removed: 0 };
 	}
 
+	const householdId = options?.householdId ?? null;
 	const subscriptions = await prisma.pushSubscription.findMany({
+		where: householdId
+			? { user: { memberships: { some: { householdId } } } }
+			: undefined,
 		select: { endpoint: true, p256dh: true, auth: true },
 	});
 

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
+import { getActiveHouseholdMembership } from "@/lib/households";
 import { DURATION_KEYS } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 
@@ -22,6 +23,7 @@ const updateSchema = z
 			.optional(),
 		bucket: z.enum(DURATION_KEYS).optional(),
 		isShared: z.boolean().optional(),
+		approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullable().optional(),
 	})
 	.refine((data) => Object.keys(data).length > 0, {
 		message: "No updates provided",
@@ -34,6 +36,15 @@ export async function PATCH(req: Request, { params }: Params) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
+	const active = await getActiveHouseholdMembership(
+		session.user.id,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return NextResponse.json({ error: "Household not found" }, { status: 403 });
+	}
+
+	const { householdId, membership } = active;
 	const { id } = await Promise.resolve(params);
 	if (!id) {
 		return NextResponse.json({ error: "Missing preset id" }, { status: 400 });
@@ -49,8 +60,8 @@ export async function PATCH(req: Request, { params }: Params) {
 		);
 	}
 
-	const preset = await prisma.presetTask.findUnique({
-		where: { id },
+	const preset = await prisma.presetTask.findFirst({
+		where: { id, householdId },
 		select: { id: true, createdById: true, isShared: true },
 	});
 
@@ -70,12 +81,33 @@ export async function PATCH(req: Request, { params }: Params) {
 		);
 	}
 
+	if (parsed.data.isShared === true && membership.role === "DOER") {
+		return NextResponse.json(
+			{ error: "Doers cannot share presets" },
+			{ status: 403 },
+		);
+	}
+
+	if (
+		parsed.data.approvalOverride !== undefined &&
+		membership.role === "DOER"
+	) {
+		return NextResponse.json(
+			{ error: "Doers cannot change approval overrides" },
+			{ status: 403 },
+		);
+	}
+
 	const updated = await prisma.presetTask.update({
 		where: { id },
 		data: {
 			label: parsed.data.label,
 			bucket: parsed.data.bucket,
 			isShared: isOwner ? parsed.data.isShared : undefined,
+			approvalOverride:
+				parsed.data.approvalOverride === undefined
+					? undefined
+					: parsed.data.approvalOverride,
 		},
 		select: {
 			id: true,
@@ -83,6 +115,7 @@ export async function PATCH(req: Request, { params }: Params) {
 			bucket: true,
 			isShared: true,
 			createdById: true,
+			approvalOverride: true,
 			createdAt: true,
 		},
 	});
@@ -97,13 +130,22 @@ export async function DELETE(_req: Request, { params }: Params) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
+	const active = await getActiveHouseholdMembership(
+		session.user.id,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return NextResponse.json({ error: "Household not found" }, { status: 403 });
+	}
+
+	const { householdId } = active;
 	const { id } = await Promise.resolve(params);
 	if (!id) {
 		return NextResponse.json({ error: "Missing preset id" }, { status: 400 });
 	}
 
 	const preset = await prisma.presetTask.findFirst({
-		where: { id, createdById: session.user.id },
+		where: { id, createdById: session.user.id, householdId },
 		select: { id: true },
 	});
 

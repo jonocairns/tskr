@@ -29,6 +29,7 @@ export const authOptions: NextAuthOptions = {
 		session: async ({ session, user }) => {
 			if (session.user) {
 				session.user.id = user.id;
+				session.user.householdId = user.lastHouseholdId ?? null;
 			}
 			return session;
 		},

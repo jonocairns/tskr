@@ -24,6 +24,7 @@ type TaskActionsContextValue = {
 	customPresets: PresetSummary[];
 	setCustomPresets: React.Dispatch<React.SetStateAction<PresetSummary[]>>;
 	currentUserId: string;
+	currentUserRole: "DICTATOR" | "APPROVER" | "DOER";
 	note: string;
 	setNote: React.Dispatch<React.SetStateAction<string>>;
 	defaultBucket: DurationKey;
@@ -41,6 +42,7 @@ type TaskActionsContextValue = {
 type TaskActionsProviderProps = {
 	presets: PresetSummary[];
 	currentUserId: string;
+	currentUserRole: "DICTATOR" | "APPROVER" | "DOER";
 	children: ReactNode;
 };
 
@@ -49,6 +51,7 @@ const TaskActionsContext = createContext<TaskActionsContextValue | null>(null);
 export const TaskActionsProvider = ({
 	presets,
 	currentUserId,
+	currentUserRole,
 	children,
 }: TaskActionsProviderProps) => {
 	const defaultBucket =
@@ -105,10 +108,14 @@ export const TaskActionsProvider = ({
 				return;
 			}
 
+			const body = await res.json().catch(() => ({}));
+			const isPending = body?.entry?.status === "PENDING";
 			setNote("");
 			toast({
-				title: "Task logged",
-				description: "Preset task recorded and points added.",
+				title: isPending ? "Submitted for approval" : "Task logged",
+				description: isPending
+					? "Task logged and waiting for approval."
+					: "Preset task recorded and points added.",
 			});
 			router.refresh();
 		});
@@ -124,6 +131,7 @@ export const TaskActionsProvider = ({
 				customPresets,
 				setCustomPresets,
 				currentUserId,
+				currentUserRole,
 				note,
 				setNote,
 				defaultBucket,

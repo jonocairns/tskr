@@ -33,7 +33,7 @@ type Props = {
 
 export const Leaderboard = ({ entries }: Props) => {
 	return (
-		<Card className="mt-4">
+		<Card>
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
 					<CardTitle className="text-xl">Leaderboard</CardTitle>

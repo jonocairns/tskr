@@ -2,18 +2,21 @@ import { getServerSession } from "next-auth";
 
 import { AuditLog } from "@/components/AuditLog";
 import { AuthCta } from "@/components/AuthCta";
+import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { ModeToggle } from "@/components/ModeToggle";
 import { PointsSummary } from "@/components/PointsSummary";
-import { PushNotifications } from "@/components/PushNotifications";
 import { TaskActions } from "@/components/TaskActions";
+import { HouseholdSwitcher } from "@/components/HouseholdSwitcher";
 import { UserMenu } from "@/components/UserMenu";
 import { authOptions } from "@/lib/auth";
 import { buildAuditEntries } from "@/lib/dashboard/audit-log";
+import { buildApprovalEntries } from "@/lib/dashboard/approvals";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";
+import { getActiveHouseholdMembership } from "@/lib/households";
 import { rewardThreshold } from "@/lib/points";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +33,20 @@ export default async function Home() {
 	}
 
 	const userId = session.user.id;
+	const active = await getActiveHouseholdMembership(
+		userId,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return (
+			<main className="flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-12">
+				<p className="text-sm text-muted-foreground">
+					Unable to load your household. Please try again.
+				</p>
+			</main>
+		);
+	}
+	const { householdId, membership } = active;
 	const threshold = rewardThreshold();
 
 	const {
@@ -39,12 +56,15 @@ export default async function Home() {
 		lastActivity,
 		users,
 		recentLogs,
+		hasMoreHistory,
+		pendingLogs,
 		presets,
 		weeklyTaskCount,
 		weeklyPoints,
+		hasApprovalMembers,
 		lastTaskAt,
 		currentStreak,
-	} = await getDashboardData(userId);
+	} = await getDashboardData(userId, householdId);
 
 	const {
 		entries: leaderboardEntries,
@@ -61,6 +81,10 @@ export default async function Home() {
 	});
 	const presetSummaries = mapPresetSummaries(presets);
 	const auditEntries = buildAuditEntries(recentLogs);
+	const approvalEntries = buildApprovalEntries(pendingLogs);
+	const showApprovals =
+		membership.role !== "DOER" &&
+		(hasApprovalMembers || approvalEntries.length > 0);
 
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
@@ -80,6 +104,7 @@ export default async function Home() {
 					</div>
 					<div className="flex items-center gap-2">
 						<ModeToggle />
+						<HouseholdSwitcher />
 						<UserMenu user={session.user} />
 					</div>
 				</header>
@@ -95,15 +120,23 @@ export default async function Home() {
 					currentStreak={currentStreak}
 				/>
 
-				<TaskActions presets={presetSummaries} currentUserId={userId} />
+				<TaskActions
+					presets={presetSummaries}
+					currentUserId={userId}
+					currentUserRole={membership.role}
+				/>
 
-				<AuditLog entries={auditEntries} />
+				{showApprovals ? <ApprovalQueue entries={approvalEntries} /> : null}
 
 				<Leaderboard entries={leaderboardEntries} />
 
-				<PushNotifications />
+				<AuditLog
+					entries={auditEntries}
+					currentUserId={userId}
+					initialHasMore={hasMoreHistory}
+				/>
 
-				<LiveRefresh />
+				<LiveRefresh key={householdId} />
 			</div>
 		</main>
 	);

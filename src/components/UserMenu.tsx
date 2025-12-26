@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOutIcon, Settings2Icon, UserRoundIcon } from "lucide-react";
+import { HomeIcon, LogOutIcon, UserRoundIcon } from "lucide-react";
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
@@ -54,9 +55,11 @@ export const UserMenu = ({ user }: Props) => {
 					<UserRoundIcon className="mr-2 h-4 w-4" />
 					{user?.email ?? "Google account"}
 				</DropdownMenuItem>
-				<DropdownMenuItem disabled>
-					<Settings2Icon className="mr-2 h-4 w-4" />
-					Rewards coming soon
+				<DropdownMenuItem asChild>
+					<Link href="/household">
+						<HomeIcon className="mr-2 h-4 w-4" />
+						Household settings
+					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem

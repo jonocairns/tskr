@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
+import { getActiveHouseholdMembership } from "@/lib/households";
 import { DURATION_KEYS } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 
@@ -16,6 +17,7 @@ const presetSchema = z.object({
 		.max(50, "Keep the name short"),
 	bucket: z.enum(DURATION_KEYS),
 	isShared: z.boolean().optional(),
+	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullable().optional(),
 });
 
 export async function GET() {
@@ -25,8 +27,18 @@ export async function GET() {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
+	const active = await getActiveHouseholdMembership(
+		session.user.id,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return NextResponse.json({ error: "Household not found" }, { status: 403 });
+	}
+
+	const { householdId } = active;
 	const presets = await prisma.presetTask.findMany({
 		where: {
+			householdId,
 			OR: [{ isShared: true }, { createdById: session.user.id }],
 		},
 		orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
@@ -36,6 +48,7 @@ export async function GET() {
 			bucket: true,
 			isShared: true,
 			createdById: true,
+			approvalOverride: true,
 			createdAt: true,
 		},
 	});
@@ -50,6 +63,15 @@ export async function POST(req: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
+	const active = await getActiveHouseholdMembership(
+		session.user.id,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return NextResponse.json({ error: "Household not found" }, { status: 403 });
+	}
+
+	const { householdId, membership } = active;
 	const json = await req.json();
 	const parsed = presetSchema.safeParse(json);
 
@@ -60,12 +82,17 @@ export async function POST(req: Request) {
 		);
 	}
 
+	const allowShared = membership.role !== "DOER";
+	const approvalOverride =
+		membership.role === "DOER" ? null : parsed.data.approvalOverride ?? null;
 	const preset = await prisma.presetTask.create({
 		data: {
+			householdId,
 			createdById: session.user.id,
 			label: parsed.data.label,
 			bucket: parsed.data.bucket,
-			isShared: parsed.data.isShared ?? true,
+			isShared: allowShared ? (parsed.data.isShared ?? true) : false,
+			approvalOverride,
 		},
 		select: {
 			id: true,
@@ -73,6 +100,7 @@ export async function POST(req: Request) {
 			bucket: true,
 			isShared: true,
 			createdById: true,
+			approvalOverride: true,
 			createdAt: true,
 		},
 	});

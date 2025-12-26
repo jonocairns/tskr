@@ -22,12 +22,15 @@ type Props = {
 	onEditLabelChange: (value: string) => void;
 	editBucket: DurationKey;
 	onEditBucketChange: (bucket: DurationKey) => void;
+	editApprovalOverride: "DEFAULT" | "REQUIRE" | "SKIP";
+	onEditApprovalOverrideChange: (value: "DEFAULT" | "REQUIRE" | "SKIP") => void;
 	canUpdatePreset: boolean;
 	onUpdatePreset: (event: FormEvent<HTMLFormElement>, presetId: string) => void;
 	onCancelEdit: () => void;
 	onStartEdit: (preset: PresetSummary) => void;
 	onDeletePreset: (presetId: string, label: string) => void;
 	canDelete: boolean;
+	canEditApprovalOverride: boolean;
 	disabled: boolean;
 };
 
@@ -39,12 +42,15 @@ export function PresetListItem({
 	onEditLabelChange,
 	editBucket,
 	onEditBucketChange,
+	editApprovalOverride,
+	onEditApprovalOverrideChange,
 	canUpdatePreset,
 	onUpdatePreset,
 	onCancelEdit,
 	onStartEdit,
 	onDeletePreset,
 	canDelete,
+	canEditApprovalOverride,
 	disabled,
 }: Props) {
 	if (isEditing) {
@@ -81,6 +87,29 @@ export function PresetListItem({
 						</SelectContent>
 					</Select>
 				</div>
+				{canEditApprovalOverride ? (
+					<div className="space-y-2">
+						<Label htmlFor={`preset-approval-${preset.id}`}>
+							Approval override
+						</Label>
+						<Select
+							value={editApprovalOverride}
+							onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") =>
+								onEditApprovalOverrideChange(value)
+							}
+							disabled={disabled}
+						>
+							<SelectTrigger id={`preset-approval-${preset.id}`}>
+								<SelectValue placeholder="Use member default" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="DEFAULT">Use member default</SelectItem>
+								<SelectItem value="REQUIRE">Require approval</SelectItem>
+								<SelectItem value="SKIP">Skip approval</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+				) : null}
 				<div className="flex items-center gap-2">
 					<Button
 						type="submit"
@@ -112,6 +141,11 @@ export function PresetListItem({
 				<p className="text-xs text-muted-foreground">
 					{bucket?.label ?? preset.bucket} · {bucket?.points ?? 0} pts
 				</p>
+				{preset.approvalOverride ? (
+					<p className="text-xs text-muted-foreground">
+						Approval {preset.approvalOverride === "REQUIRE" ? "required" : "skipped"}
+					</p>
+				) : null}
 			</div>
 			<div className="flex items-center gap-2">
 				<Button

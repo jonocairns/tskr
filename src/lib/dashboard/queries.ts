@@ -1,8 +1,18 @@
+import type { Prisma } from "@prisma/client";
+import { LogStatus } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 
-export async function getDashboardData(userId: string) {
+const HISTORY_LIMIT = 10;
+
+export async function getDashboardData(userId: string, householdId: string) {
 	const weekStart = new Date();
 	weekStart.setDate(weekStart.getDate() - 7);
+	const approvedWhere: Prisma.PointLogWhereInput = {
+		householdId,
+		revertedAt: null,
+		status: LogStatus.APPROVED,
+	};
 
 	const [
 		pointSums,
@@ -11,46 +21,65 @@ export async function getDashboardData(userId: string) {
 		lastActivity,
 		users,
 		recentLogs,
+		pendingLogs,
 		presets,
 		weeklyTaskCount,
 		weeklyPointSum,
 		taskLogDates,
+		approvalMemberCount,
 	] = await Promise.all([
 		prisma.pointLog.groupBy({
 			by: ["userId"],
-			where: { revertedAt: null },
+			where: approvedWhere,
 			_sum: { points: true },
 		}),
 		prisma.pointLog.groupBy({
 			by: ["userId"],
 			where: {
-				revertedAt: null,
+				...approvedWhere,
 				kind: { in: ["PRESET", "TIMED"] },
 			},
 			_count: { _all: true },
 		}),
 		prisma.pointLog.groupBy({
 			by: ["userId"],
-			where: { revertedAt: null, kind: "REWARD" },
+			where: { ...approvedWhere, kind: "REWARD" },
 			_count: { _all: true },
 		}),
 		prisma.pointLog.groupBy({
 			by: ["userId"],
+			where: approvedWhere,
 			_max: { createdAt: true },
 		}),
 		prisma.user.findMany({
+			where: { memberships: { some: { householdId } } },
 			select: { id: true, name: true, email: true, image: true },
 			orderBy: { createdAt: "asc" },
 		}),
 		prisma.pointLog.findMany({
+			where: { householdId },
 			include: {
 				user: { select: { id: true, name: true, email: true } },
 			},
 			orderBy: { createdAt: "desc" },
-			take: 30,
+			take: HISTORY_LIMIT + 1,
+		}),
+		prisma.pointLog.findMany({
+			where: {
+				householdId,
+				status: LogStatus.PENDING,
+				revertedAt: null,
+				kind: { in: ["PRESET", "TIMED"] },
+			},
+			include: {
+				user: { select: { id: true, name: true, email: true } },
+			},
+			orderBy: { createdAt: "desc" },
+			take: 20,
 		}),
 		prisma.presetTask.findMany({
 			where: {
+				householdId,
 				OR: [{ isShared: true }, { createdById: userId }],
 			},
 			orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
@@ -60,21 +89,22 @@ export async function getDashboardData(userId: string) {
 				bucket: true,
 				isShared: true,
 				createdById: true,
+				approvalOverride: true,
 				createdAt: true,
 			},
 		}),
 		prisma.pointLog.count({
 			where: {
+				...approvedWhere,
 				userId,
-				revertedAt: null,
 				kind: { in: ["PRESET", "TIMED"] },
 				createdAt: { gte: weekStart },
 			},
 		}),
 		prisma.pointLog.aggregate({
 			where: {
+				...approvedWhere,
 				userId,
-				revertedAt: null,
 				kind: { in: ["PRESET", "TIMED"] },
 				createdAt: { gte: weekStart },
 			},
@@ -82,14 +112,22 @@ export async function getDashboardData(userId: string) {
 		}),
 		prisma.pointLog.findMany({
 			where: {
+				...approvedWhere,
 				userId,
-				revertedAt: null,
 				kind: { in: ["PRESET", "TIMED"] },
 			},
 			select: { createdAt: true },
 			orderBy: { createdAt: "desc" },
 		}),
+		prisma.householdMember.count({
+			where: { householdId, requiresApprovalDefault: true },
+		}),
 	]);
+
+	const hasMoreHistory = recentLogs.length > HISTORY_LIMIT;
+	const trimmedLogs = hasMoreHistory
+		? recentLogs.slice(0, HISTORY_LIMIT)
+		: recentLogs;
 
 	return {
 		pointSums,
@@ -97,10 +135,13 @@ export async function getDashboardData(userId: string) {
 		rewardCounts,
 		lastActivity,
 		users,
-		recentLogs,
+		recentLogs: trimmedLogs,
+		hasMoreHistory,
+		pendingLogs,
 		presets,
 		weeklyTaskCount,
-		weeklyPoints: weeklyPointSum._sum.points ?? 0,
+		weeklyPoints: weeklyPointSum._sum?.points ?? 0,
+		hasApprovalMembers: approvalMemberCount > 0,
 		lastTaskAt: taskLogDates[0]?.createdAt ?? null,
 		currentStreak: getCurrentStreak(taskLogDates),
 	};

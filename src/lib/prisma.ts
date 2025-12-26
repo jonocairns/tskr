@@ -37,7 +37,15 @@ const createPrismaClient = () => {
 						DASHBOARD_MODELS.has(model) &&
 						DASHBOARD_ACTIONS.has(operation)
 					) {
-						publishDashboardUpdate();
+						const householdId =
+							result &&
+							typeof result === "object" &&
+							"householdId" in result &&
+							typeof (result as { householdId?: unknown }).householdId ===
+								"string"
+								? (result as { householdId: string }).householdId
+								: null;
+						publishDashboardUpdate(householdId);
 					}
 
 					return result;
@@ -47,7 +55,13 @@ const createPrismaClient = () => {
 	});
 };
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+const existingClient = globalForPrisma.prisma;
+const prisma =
+	existingClient && "householdMember" in existingClient
+		? existingClient
+		: createPrismaClient();
+
+export { prisma };
 
 if (process.env.NODE_ENV !== "production") {
 	globalForPrisma.prisma = prisma;
