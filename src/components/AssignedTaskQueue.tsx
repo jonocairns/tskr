@@ -41,6 +41,7 @@ export type AssignedTaskEntry = {
 const CADENCE_LABELS: Record<number, string> = {
 	1440: "Daily",
 	10080: "Weekly",
+	20160: "Fortnightly",
 	43200: "Monthly",
 	129600: "Quarterly",
 	525600: "Yearly",
@@ -150,18 +151,20 @@ export const AssignedTaskQueue = ({ entries }: Props) => {
 												<Progress value={progressValue} />
 											</div>
 										</TableCell>
-									<TableCell>
-										<div className="flex items-center gap-2 text-sm">
-											<Badge variant="secondary">
-												{entry.isRecurring ? "Recurring" : "One-off"}
-											</Badge>
-											<span className="text-muted-foreground">
-												{entry.isRecurring
-													? formatCadenceInterval(entry.cadenceIntervalMinutes)
-													: "None"}
-											</span>
-										</div>
-									</TableCell>
+										<TableCell>
+											<div className="flex items-center gap-2 text-sm">
+												<Badge variant="secondary">
+													{entry.isRecurring ? "Recurring" : "One-off"}
+												</Badge>
+												<span className="text-muted-foreground">
+													{entry.isRecurring
+														? formatCadenceInterval(
+																entry.cadenceIntervalMinutes,
+															)
+														: "None"}
+												</span>
+											</div>
+										</TableCell>
 										<TableCell className="text-right">
 											<Button
 												type="button"

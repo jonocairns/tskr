@@ -85,9 +85,7 @@ export async function PATCH(req: Request, { params }: Params) {
 			data: {
 				isRecurring: parsed.data.isRecurring,
 				cadenceTarget:
-					parsed.data.isRecurring === false
-						? 1
-						: parsed.data.cadenceTarget,
+					parsed.data.isRecurring === false ? 1 : parsed.data.cadenceTarget,
 				cadenceIntervalMinutes,
 			},
 		});

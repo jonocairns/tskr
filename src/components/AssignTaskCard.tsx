@@ -35,6 +35,7 @@ const CADENCE_OPTIONS = [
 	{ value: CADENCE_NONE_VALUE, label: "None" },
 	{ value: "1440", label: "Daily" },
 	{ value: "10080", label: "Weekly" },
+	{ value: "20160", label: "Fortnightly" },
 	{ value: "43200", label: "Monthly" },
 	{ value: "129600", label: "Quarterly" },
 	{ value: "525600", label: "Yearly" },

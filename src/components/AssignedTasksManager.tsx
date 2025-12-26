@@ -3,14 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
-import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -22,6 +14,14 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/AlertDialog";
+import { Button } from "@/components/ui/Button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import {
@@ -48,6 +48,7 @@ const CADENCE_OPTIONS = [
 	{ value: CADENCE_NONE_VALUE, label: "None" },
 	{ value: "1440", label: "Daily" },
 	{ value: "10080", label: "Weekly" },
+	{ value: "20160", label: "Fortnightly" },
 	{ value: "43200", label: "Monthly" },
 	{ value: "129600", label: "Quarterly" },
 	{ value: "525600", label: "Yearly" },
@@ -108,7 +109,8 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 	const sortedTasks = useMemo(
 		() =>
 			[...tasks].sort(
-				(a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime(),
+				(a, b) =>
+					new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime(),
 			),
 		[tasks],
 	);
@@ -269,152 +271,142 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 							<TableRow>
 								<TableHead>Task</TableHead>
 								<TableHead>Assignee</TableHead>
-									<TableHead>Recurring</TableHead>
-									<TableHead>Cadence</TableHead>
-									<TableHead>Completions</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{filteredTasks.map((task) => (
-									<TableRow key={task.id}>
-										<TableCell>
-											<span className="font-semibold">
-												{task.presetLabel}
+								<TableHead>Recurring</TableHead>
+								<TableHead>Cadence</TableHead>
+								<TableHead>Completions</TableHead>
+								<TableHead className="text-right">Actions</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{filteredTasks.map((task) => (
+								<TableRow key={task.id}>
+									<TableCell>
+										<span className="font-semibold">{task.presetLabel}</span>
+									</TableCell>
+									<TableCell>
+										<div className="flex flex-col">
+											<span className="text-sm">
+												{task.assigneeName ?? task.assigneeEmail ?? "Unknown"}
 											</span>
-										</TableCell>
-										<TableCell>
-											<div className="flex flex-col">
-												<span className="text-sm">
-													{task.assigneeName ??
-														task.assigneeEmail ??
-														"Unknown"}
-												</span>
-												<span className="text-xs text-muted-foreground">
-													{task.assigneeEmail ?? "—"}
-												</span>
-											</div>
-										</TableCell>
-										<TableCell>
-											<Switch
-												checked={task.isRecurring}
-												onCheckedChange={(value) =>
-													toggleRecurring(task.id, value)
+											<span className="text-xs text-muted-foreground">
+												{task.assigneeEmail ?? "—"}
+											</span>
+										</div>
+									</TableCell>
+									<TableCell>
+										<Switch
+											checked={task.isRecurring}
+											onCheckedChange={(value) =>
+												toggleRecurring(task.id, value)
+											}
+											disabled={isPending}
+											aria-label="Recurring"
+										/>
+									</TableCell>
+									<TableCell>
+										<Select
+											value={
+												task.isRecurring
+													? String(task.cadenceIntervalMinutes)
+													: CADENCE_NONE_VALUE
+											}
+											onValueChange={(value) => {
+												if (value === CADENCE_NONE_VALUE) {
+													toggleRecurring(task.id, false);
+													return;
 												}
-												disabled={isPending}
-												aria-label="Recurring"
-											/>
-										</TableCell>
-										<TableCell>
-											<Select
+												updateTask(task.id, {
+													cadenceIntervalMinutes: Number.parseInt(value, 10),
+													isRecurring: true,
+												});
+											}}
+											disabled={isPending || !task.isRecurring}
+										>
+											<SelectTrigger aria-label="Cadence">
+												<SelectValue placeholder="Select cadence" />
+											</SelectTrigger>
+											<SelectContent>
+												{CADENCE_OPTIONS.map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</TableCell>
+									<TableCell>
+										<div className="grid gap-2">
+											<Label className="sr-only" htmlFor={`cadence-${task.id}`}>
+												Completions per cycle
+											</Label>
+											<Input
+												id={`cadence-${task.id}`}
+												type="number"
+												min={1}
 												value={
 													task.isRecurring
-														? String(task.cadenceIntervalMinutes)
-														: CADENCE_NONE_VALUE
+														? task.cadenceTarget
+														: DEFAULT_CADENCE_TARGET
 												}
-												onValueChange={(value) => {
-													if (value === CADENCE_NONE_VALUE) {
-														toggleRecurring(task.id, false);
-														return;
-													}
+												onChange={(event) =>
 													updateTask(task.id, {
-														cadenceIntervalMinutes: Number.parseInt(value, 10),
-														isRecurring: true,
-													});
-												}}
+														cadenceTarget:
+															Number.parseInt(event.target.value, 10) || 1,
+													})
+												}
 												disabled={isPending || !task.isRecurring}
+											/>
+										</div>
+									</TableCell>
+									<TableCell className="text-right">
+										<div className="flex justify-end gap-2">
+											<Button
+												type="button"
+												size="sm"
+												disabled={isPending}
+												onClick={() => handleSave(task.id)}
 											>
-												<SelectTrigger aria-label="Cadence">
-													<SelectValue placeholder="Select cadence" />
-												</SelectTrigger>
-												<SelectContent>
-													{CADENCE_OPTIONS.map((option) => (
-														<SelectItem
-															key={option.value}
-															value={option.value}
-														>
-															{option.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										</TableCell>
-										<TableCell>
-											<div className="grid gap-2">
-												<Label
-													className="sr-only"
-													htmlFor={`cadence-${task.id}`}
-												>
-													Completions per cycle
-												</Label>
-												<Input
-													id={`cadence-${task.id}`}
-													type="number"
-													min={1}
-													value={
-														task.isRecurring
-															? task.cadenceTarget
-															: DEFAULT_CADENCE_TARGET
-													}
-													onChange={(event) =>
-														updateTask(task.id, {
-															cadenceTarget:
-																Number.parseInt(event.target.value, 10) || 1,
-														})
-													}
-													disabled={isPending || !task.isRecurring}
-												/>
-											</div>
-										</TableCell>
-										<TableCell className="text-right">
-											<div className="flex justify-end gap-2">
-												<Button
-													type="button"
-													size="sm"
-													disabled={isPending}
-													onClick={() => handleSave(task.id)}
-												>
-													Save
-												</Button>
-												<AlertDialog>
-													<AlertDialogTrigger asChild>
-														<Button
+												Save
+											</Button>
+											<AlertDialog>
+												<AlertDialogTrigger asChild>
+													<Button
+														type="button"
+														size="sm"
+														variant="outline"
+														disabled={isPending}
+													>
+														Delete
+													</Button>
+												</AlertDialogTrigger>
+												<AlertDialogContent>
+													<AlertDialogHeader>
+														<AlertDialogTitle>
+															Delete assigned task?
+														</AlertDialogTitle>
+														<AlertDialogDescription>
+															This removes the task from the queue. Existing
+															completions stay in the log.
+														</AlertDialogDescription>
+													</AlertDialogHeader>
+													<AlertDialogFooter>
+														<AlertDialogCancel>Cancel</AlertDialogCancel>
+														<AlertDialogAction
 															type="button"
-															size="sm"
-															variant="outline"
-															disabled={isPending}
+															onClick={() => handleDelete(task.id)}
+															className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 														>
 															Delete
-														</Button>
-													</AlertDialogTrigger>
-													<AlertDialogContent>
-														<AlertDialogHeader>
-															<AlertDialogTitle>
-																Delete assigned task?
-															</AlertDialogTitle>
-															<AlertDialogDescription>
-																This removes the task from the queue. Existing
-																completions stay in the log.
-															</AlertDialogDescription>
-														</AlertDialogHeader>
-														<AlertDialogFooter>
-															<AlertDialogCancel>Cancel</AlertDialogCancel>
-															<AlertDialogAction
-																type="button"
-																onClick={() => handleDelete(task.id)}
-																className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-															>
-																Delete
-															</AlertDialogAction>
-														</AlertDialogFooter>
-													</AlertDialogContent>
-												</AlertDialog>
-											</div>
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+														</AlertDialogAction>
+													</AlertDialogFooter>
+												</AlertDialogContent>
+											</AlertDialog>
+										</div>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
 				)}
 			</CardContent>
 		</Card>

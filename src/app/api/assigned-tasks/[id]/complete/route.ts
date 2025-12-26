@@ -56,7 +56,10 @@ export async function POST(_req: Request, { params }: Params) {
 	});
 
 	if (!task || !task.preset) {
-		return NextResponse.json({ error: "Assigned task not found" }, { status: 404 });
+		return NextResponse.json(
+			{ error: "Assigned task not found" },
+			{ status: 404 },
+		);
 	}
 
 	if (task.assignedToId !== session.user.id) {
@@ -107,7 +110,9 @@ export async function POST(_req: Request, { params }: Params) {
 	const bucket = isDurationKey(task.preset.bucket)
 		? task.preset.bucket
 		: "QUICK";
-	const requiresApproval = resolveRequiresApproval(task.preset.approvalOverride);
+	const requiresApproval = resolveRequiresApproval(
+		task.preset.approvalOverride,
+	);
 	const status = requiresApproval ? "PENDING" : "APPROVED";
 
 	try {
