@@ -59,6 +59,7 @@ export async function PATCH(_req: Request, { params }: Params) {
 			revertedAt: true,
 			status: true,
 			kind: true,
+			assignedTaskId: true,
 		},
 	});
 
@@ -132,6 +133,34 @@ export async function PATCH(_req: Request, { params }: Params) {
 							approvedAt: null,
 						},
 		});
+
+		if (action === "approve" && log.assignedTaskId) {
+			const task = await prisma.assignedTask.findFirst({
+				where: { id: log.assignedTaskId, householdId },
+				select: {
+					id: true,
+					status: true,
+					isRecurring: true,
+					cadenceTarget: true,
+				},
+			});
+			if (task && !task.isRecurring && task.status === "ACTIVE") {
+				const approvedCount = await prisma.pointLog.count({
+					where: {
+						assignedTaskId: task.id,
+						householdId,
+						revertedAt: null,
+						status: "APPROVED",
+					},
+				});
+				if (approvedCount >= task.cadenceTarget) {
+					await prisma.assignedTask.update({
+						where: { id: task.id },
+						data: { status: "COMPLETED" },
+					});
+				}
+			}
+		}
 
 		return NextResponse.json({ ok: true });
 	}

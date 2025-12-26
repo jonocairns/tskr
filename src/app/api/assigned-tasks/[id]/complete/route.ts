@@ -125,12 +125,21 @@ export async function POST(_req: Request, { params }: Params) {
 			},
 		});
 
-		const newCount = logs.length + 1;
-		if (!task.isRecurring && newCount >= task.cadenceTarget) {
-			await prisma.assignedTask.update({
-				where: { id: task.id },
-				data: { status: "COMPLETED" },
+		if (!task.isRecurring && status === "APPROVED") {
+			const approvedCount = await prisma.pointLog.count({
+				where: {
+					assignedTaskId: task.id,
+					householdId: active.householdId,
+					revertedAt: null,
+					status: LogStatus.APPROVED,
+				},
 			});
+			if (approvedCount >= task.cadenceTarget) {
+				await prisma.assignedTask.update({
+					where: { id: task.id },
+					data: { status: "COMPLETED" },
+				});
+			}
 		}
 
 		return NextResponse.json({ entry }, { status: 201 });
