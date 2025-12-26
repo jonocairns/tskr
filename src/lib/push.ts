@@ -2,6 +2,7 @@ import webPush, {
 	type PushSubscription as WebPushSubscription,
 } from "web-push";
 
+import { config } from "@/config";
 import { prisma } from "@/lib/prisma";
 
 type PushPayload = {
@@ -12,9 +13,7 @@ type PushPayload = {
 	badge?: string;
 };
 
-const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-const vapidSubject = process.env.VAPID_SUBJECT ?? "mailto:admin@example.com";
+const { vapidPublicKey, vapidPrivateKey, vapidSubject } = config;
 const pushConfigured = Boolean(vapidPublicKey && vapidPrivateKey);
 
 if (pushConfigured) {
