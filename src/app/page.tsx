@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { ApprovalQueue } from "@/components/ApprovalQueue";
+import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";
 import { AuditLog } from "@/components/AuditLog";
 import { AuthCta } from "@/components/AuthCta";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -50,6 +51,7 @@ export default async function Home() {
 		hasMoreHistory,
 		pendingLogs,
 		presets,
+		assignedTasks,
 		weeklyTaskCount,
 		weeklyPoints,
 		rewardThreshold,
@@ -79,7 +81,7 @@ export default async function Home() {
 				<PageHeader
 					eyebrow="tskr"
 					title="Task points dashboard"
-					description="Log chores, keep an audit trail, and claim rewards when you hit the threshold."
+					description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
 					user={session.user}
 				/>
 
@@ -91,6 +93,10 @@ export default async function Home() {
 					lastTaskAt={lastTaskAt?.toISOString() ?? null}
 					currentStreak={currentStreak}
 				/>
+
+				{assignedTasks.length > 0 ? (
+					<AssignedTaskQueue entries={assignedTasks} />
+				) : null}
 
 				<TaskActions
 					presets={presetSummaries}

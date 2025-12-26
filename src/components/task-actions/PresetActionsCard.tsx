@@ -302,9 +302,9 @@ export const PresetActionsCard = () => {
 				<CardHeader className="space-y-1">
 					<div className="flex items-start justify-between gap-2">
 						<div className="space-y-1">
-							<CardTitle className="text-xl">Chores</CardTitle>
+							<CardTitle className="text-xl">Tasks</CardTitle>
 							<CardDescription>
-								Tap a chore once you've completed it.
+								Tap a task once you've completed it.
 							</CardDescription>
 						</div>
 						<Button
@@ -321,7 +321,7 @@ export const PresetActionsCard = () => {
 					<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 						{presetOptions.length === 0 ? (
 							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">
-								No saved chores yet.
+								No saved tasks yet.
 							</p>
 						) : (
 							presetOptions.map((task) => {

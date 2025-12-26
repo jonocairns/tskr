@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { LogStatus } from "@prisma/client";
 
+import { buildAssignedTaskEntries } from "@/lib/dashboard/assigned";
 import { prisma } from "@/lib/prisma";
 
 const HISTORY_LIMIT = 10;
@@ -24,6 +25,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		recentLogs,
 		pendingLogs,
 		presets,
+		assignedTasks,
 		weeklyTaskCount,
 		weeklyPointSum,
 		taskLogDates,
@@ -98,6 +100,25 @@ export async function getDashboardData(userId: string, householdId: string) {
 				createdAt: true,
 			},
 		}),
+		prisma.assignedTask.findMany({
+			where: {
+				householdId,
+				assignedToId: userId,
+				status: "ACTIVE",
+			},
+			include: {
+				preset: { select: { id: true, label: true, bucket: true } },
+				logs: {
+					where: {
+						revertedAt: null,
+						status: { in: [LogStatus.PENDING, LogStatus.APPROVED] },
+					},
+					select: { createdAt: true },
+					orderBy: { createdAt: "asc" },
+				},
+			},
+			orderBy: { assignedAt: "desc" },
+		}),
 		prisma.pointLog.count({
 			where: {
 				...approvedWhere,
@@ -145,6 +166,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		hasMoreHistory,
 		pendingLogs,
 		presets,
+		assignedTasks: buildAssignedTaskEntries(assignedTasks),
 		weeklyTaskCount,
 		weeklyPoints: weeklyPointSum._sum?.points ?? 0,
 		hasApprovalMembers: approvalMemberCount > 0,

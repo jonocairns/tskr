@@ -1,7 +1,7 @@
 {
 	"name": "tskr",
 	"short_name": "tskr",
-	"description": "Track and reward chores with time-based points.",
+	"description": "Track and reward tasks with time-based points.",
 	"start_url": "/",
 	"display": "standalone",
 	"background_color": "#f8fafc",

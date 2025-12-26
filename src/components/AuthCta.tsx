@@ -13,7 +13,7 @@ export const AuthCta = () => {
 			</div>
 			<div className="space-y-2">
 				<h1 className="text-3xl font-semibold tracking-tight">
-					Track chores, claim rewards.
+					Track tasks, claim rewards.
 				</h1>
 				<p className="text-muted-foreground">
 					Sign in with Google to start logging tasks, watch your points climb,

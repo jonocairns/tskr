@@ -1,6 +1,11 @@
 "use client";
 
-import { HomeIcon, LogOutIcon, UserRoundIcon } from "lucide-react";
+import {
+	ClipboardListIcon,
+	HomeIcon,
+	LogOutIcon,
+	UserRoundIcon,
+} from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 
@@ -59,6 +64,12 @@ export const UserMenu = ({ user }: Props) => {
 					<Link href="/household">
 						<HomeIcon className="mr-2 h-4 w-4" />
 						Settings
+					</Link>
+				</DropdownMenuItem>
+				<DropdownMenuItem asChild className="cursor-pointer">
+					<Link href="/assignments">
+						<ClipboardListIcon className="mr-2 h-4 w-4" />
+						Assignments
 					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />

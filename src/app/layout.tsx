@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
 	title: "tskr",
-	description: "Track and reward chores with time-based points.",
+	description: "Track and reward tasks with time-based points.",
 	manifest: "/manifest.json",
 	appleWebApp: {
 		capable: true,

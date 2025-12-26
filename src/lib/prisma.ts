@@ -12,7 +12,7 @@ const adapter = new PrismaBetterSqlite3({
 	url: databaseUrl,
 });
 
-const DASHBOARD_MODELS = new Set(["PointLog", "PresetTask"]);
+const DASHBOARD_MODELS = new Set(["AssignedTask", "PointLog", "PresetTask"]);
 const DASHBOARD_ACTIONS = new Set([
 	"create",
 	"createMany",
@@ -70,11 +70,24 @@ const hasHouseholdRewardThreshold = (
 		: false;
 };
 
+const hasAssignedTaskModel = (
+	client: ReturnType<typeof createPrismaClient>,
+) => {
+	const runtime = (client as { _runtimeDataModel?: unknown })
+		._runtimeDataModel as
+		| {
+				models?: Record<string, { fields?: Array<{ name?: string }> }>;
+		  }
+		| undefined;
+	return Boolean(runtime?.models?.AssignedTask) && "assignedTask" in client;
+};
+
 const existingClient = globalForPrisma.prisma;
 const prisma =
 	existingClient &&
 	"householdMember" in existingClient &&
-	hasHouseholdRewardThreshold(existingClient)
+	hasHouseholdRewardThreshold(existingClient) &&
+	hasAssignedTaskModel(existingClient)
 		? existingClient
 		: createPrismaClient();
 

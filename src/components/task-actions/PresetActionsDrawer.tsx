@@ -213,7 +213,7 @@ export function PresetActionsDrawer({
 				type="button"
 				className="absolute inset-0 bg-background/80 backdrop-blur-sm"
 				onClick={onClose}
-				aria-label="Close chores editor"
+				aria-label="Close tasks editor"
 			/>
 			<div
 				aria-modal="true"
@@ -222,8 +222,8 @@ export function PresetActionsDrawer({
 				<div className="flex h-full flex-col">
 					<div className="flex items-start justify-between gap-2 border-b px-6 py-5">
 						<div className="space-y-1">
-							<CardDescription>Manage chores</CardDescription>
-							<CardTitle className="text-lg">Add or edit chores</CardTitle>
+							<CardDescription>Manage tasks</CardDescription>
+							<CardTitle className="text-lg">Add or edit tasks</CardTitle>
 						</div>
 						<Button type="button" variant="ghost" size="sm" onClick={onClose}>
 							Close
@@ -359,9 +359,7 @@ export function PresetActionsDrawer({
 							</div>
 							<div className="space-y-2">
 								{sortedEditablePresets.length === 0 ? (
-									<p className="text-xs text-muted-foreground">
-										No chores yet.
-									</p>
+									<p className="text-xs text-muted-foreground">No tasks yet.</p>
 								) : (
 									sortedEditablePresets.map((preset) => (
 										<PresetListItem
