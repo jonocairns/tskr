@@ -31,6 +31,11 @@ enum InviteStatus {
   EXPIRED
 }
 
+enum AssignedTaskStatus {
+  ACTIVE
+  COMPLETED
+}
+
 model User {
   id                String    @id @default(cuid())
   name              String?
@@ -49,6 +54,8 @@ model User {
   approvedLogs      PointLog[] @relation("ApprovedBy")
   rejectedLogs      PointLog[] @relation("RejectedBy")
   presetTasks       PresetTask[]
+  assignedTasks     AssignedTask[] @relation("AssignedTo")
+  createdAssignedTasks AssignedTask[] @relation("AssignedBy")
   pushSubscriptions PushSubscription[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -64,6 +71,7 @@ model Household {
   lastHouseholdUsers User[]            @relation("UserLastHousehold")
   invites           HouseholdInvite[]
   presetTasks       PresetTask[]
+  assignedTasks     AssignedTask[]
   pointLogs         PointLog[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -152,6 +160,8 @@ model PointLog {
   presetKey       String?
   presetId        String?
   preset          PresetTask?     @relation(fields: [presetId], references: [id], onDelete: SetNull)
+  assignedTaskId  String?
+  assignedTask    AssignedTask?   @relation(fields: [assignedTaskId], references: [id], onDelete: SetNull)
   durationMinutes Int?
   rewardCost      Int?
   status          LogStatus       @default(APPROVED)
@@ -175,6 +185,7 @@ model PointLog {
   @@index([createdAt])
   @@index([userId, revertedAt])
   @@index([presetId])
+  @@index([assignedTaskId])
 }
 
 model PushSubscription {
@@ -202,6 +213,7 @@ model PresetTask {
   isShared    Boolean   @default(false)
   approvalOverride ApprovalOverride?
   logs        PointLog[]
+  assignedTasks AssignedTask[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -209,4 +221,27 @@ model PresetTask {
   @@index([createdById])
   @@index([isShared])
   @@index([bucket])
+}
+
+model AssignedTask {
+  id                     String             @id @default(cuid())
+  householdId            String
+  household              Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  presetId               String
+  preset                 PresetTask         @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  assignedToId           String
+  assignedTo             User               @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: Cascade)
+  assignedById           String
+  assignedBy             User               @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: Cascade)
+  assignedAt             DateTime           @default(now())
+  status                 AssignedTaskStatus @default(ACTIVE)
+  cadenceTarget          Int
+  cadenceIntervalMinutes Int
+  isRecurring            Boolean            @default(false)
+  logs                   PointLog[]
+
+  @@index([householdId])
+  @@index([assignedToId])
+  @@index([presetId])
+  @@index([status])
 }

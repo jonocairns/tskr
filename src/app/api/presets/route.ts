@@ -44,6 +44,7 @@ export async function GET() {
 		orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
 		select: {
 			id: true,
+			householdId: true,
 			label: true,
 			bucket: true,
 			isShared: true,

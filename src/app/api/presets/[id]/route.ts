@@ -111,6 +111,7 @@ export async function PATCH(req: Request, { params }: Params) {
 		},
 		select: {
 			id: true,
+			householdId: true,
 			label: true,
 			bucket: true,
 			isShared: true,

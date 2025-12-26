@@ -144,8 +144,11 @@ export async function PATCH(_req: Request, { params }: Params) {
 			);
 		}
 
-		if (log.userId !== session.user.id && membership.role === "DOER") {
-			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+		if (log.userId !== session.user.id) {
+			return NextResponse.json(
+				{ error: "Only the log owner can resubmit" },
+				{ status: 403 },
+			);
 		}
 
 		await prisma.pointLog.update({
