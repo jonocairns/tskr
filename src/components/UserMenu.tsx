@@ -1,7 +1,13 @@
 "use client";
 
-import { LogOutIcon, Settings2Icon, UserRoundIcon } from "lucide-react";
+import {
+	ClipboardListIcon,
+	HomeIcon,
+	LogOutIcon,
+	UserRoundIcon,
+} from "lucide-react";
 import { signOut } from "next-auth/react";
+import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -31,7 +37,7 @@ export const UserMenu = ({ user }: Props) => {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" className="gap-2 px-2">
+				<Button variant="ghost" className="gap-2 py-6">
 					<Avatar className="h-9 w-9">
 						<AvatarImage
 							src={user?.image ?? undefined}
@@ -39,7 +45,7 @@ export const UserMenu = ({ user }: Props) => {
 						/>
 						<AvatarFallback>{initials}</AvatarFallback>
 					</Avatar>
-					<div className="hidden flex-col items-start text-left sm:flex">
+					<div className="hidden flex-col items-start text-left sm:flex ">
 						<span className="text-sm font-semibold leading-5">
 							{user?.name ?? "Player"}
 						</span>
@@ -54,13 +60,21 @@ export const UserMenu = ({ user }: Props) => {
 					<UserRoundIcon className="mr-2 h-4 w-4" />
 					{user?.email ?? "Google account"}
 				</DropdownMenuItem>
-				<DropdownMenuItem disabled>
-					<Settings2Icon className="mr-2 h-4 w-4" />
-					Rewards coming soon
+				<DropdownMenuItem asChild className="cursor-pointer">
+					<Link href="/household">
+						<HomeIcon className="mr-2 h-4 w-4" />
+						Settings
+					</Link>
+				</DropdownMenuItem>
+				<DropdownMenuItem asChild className="cursor-pointer">
+					<Link href="/assignments">
+						<ClipboardListIcon className="mr-2 h-4 w-4" />
+						Assignments
+					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
-					className="text-destructive focus:text-destructive"
+					className="cursor-pointer text-red-600 font-semibold opacity-100 hover:text-red-600 focus:text-red-600"
 					onSelect={() => signOut()}
 				>
 					<LogOutIcon className="mr-2 h-4 w-4" />

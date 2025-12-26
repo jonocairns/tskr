@@ -73,11 +73,15 @@ export const TimedActionsCard = () => {
 				return;
 			}
 
+			const body = await res.json().catch(() => ({}));
+			const isPending = body?.entry?.status === "PENDING";
 			setDescription("");
 			setDurationMinutes("");
 			toast({
-				title: "Task logged",
-				description: "Time-based task recorded and points added.",
+				title: isPending ? "Submitted for approval" : "Task logged",
+				description: isPending
+					? "Task logged and waiting for approval."
+					: "Time-based task recorded and points added.",
 			});
 			router.refresh();
 		});

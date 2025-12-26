@@ -1,17 +1,11 @@
 "use client";
 
-import { BellIcon, BellOffIcon, Loader2Icon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Label } from "@/components/ui/Label";
+import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/use-toast";
 
 type Status = "loading" | "unsupported" | "blocked" | "ready" | "subscribed";
@@ -59,7 +53,11 @@ const subscribeWithTimeout = async (
 	}
 };
 
-export const PushNotifications = () => {
+type Props = {
+	variant?: "card" | "section";
+};
+
+export const PushNotifications = ({ variant = "card" }: Props) => {
 	const [status, setStatus] = useState<Status>("loading");
 	const [registration, setRegistration] =
 		useState<ServiceWorkerRegistration | null>(null);
@@ -190,20 +188,23 @@ export const PushNotifications = () => {
 		};
 	}, [registration, hasVapidKey]);
 
-	const statusLabel = useMemo(() => {
-		switch (status) {
-			case "subscribed":
-				return "On";
-			case "blocked":
-				return "Blocked";
-			case "unsupported":
-				return "Unsupported";
-			case "ready":
-				return "Off";
-			default:
-				return "Checking";
+	const helperText = useMemo(() => {
+		if (status === "unsupported") {
+			return "Your browser does not support Web Push.";
 		}
-	}, [status]);
+		if (status === "blocked") {
+			return "Notifications are blocked in browser settings.";
+		}
+		if (isKeyLoaded && !hasVapidKey) {
+			return "Missing VAPID_PUBLIC_KEY.";
+		}
+		return null;
+	}, [status, isKeyLoaded, hasVapidKey]);
+
+	const isSubscribed = status === "subscribed";
+	const toggleDisabled = isSubscribed
+		? isBusy
+		: isBusy || status !== "ready" || !isKeyLoaded || !hasVapidKey;
 
 	const handleEnable = async () => {
 		if (!isKeyLoaded) {
@@ -370,81 +371,45 @@ export const PushNotifications = () => {
 		}
 	};
 
+	const content = (
+		<div className="space-y-2">
+			<Label htmlFor="push-notifications-toggle">Notifications</Label>
+			<div className="flex flex-wrap items-center gap-3">
+				<div className="flex items-center gap-2">
+					<Switch
+						id="push-notifications-toggle"
+						checked={isSubscribed}
+						disabled={toggleDisabled}
+						onCheckedChange={(checked) =>
+							checked ? handleEnable() : handleDisable()
+						}
+					/>
+					<span className="text-sm text-muted-foreground">
+						{isSubscribed ? "On" : "Off"}
+					</span>
+				</div>
+				<Button
+					type="button"
+					variant="outline"
+					onClick={handleTest}
+					disabled={isTesting || !isSubscribed}
+				>
+					{isTesting ? "Sending..." : "Send test"}
+				</Button>
+			</div>
+			{helperText ? (
+				<p className="text-xs text-muted-foreground">{helperText}</p>
+			) : null}
+		</div>
+	);
+
+	if (variant === "section") {
+		return <section className="space-y-3">{content}</section>;
+	}
+
 	return (
 		<Card>
-			<CardHeader className="space-y-1">
-				<CardTitle className="flex items-center justify-between text-xl">
-					Notifications
-					<Badge variant={status === "subscribed" ? "default" : "secondary"}>
-						{statusLabel}
-					</Badge>
-				</CardTitle>
-				<CardDescription>Alerts</CardDescription>
-			</CardHeader>
-			<CardContent className="flex flex-wrap items-center gap-3">
-				{status === "unsupported" ? (
-					<span className="text-sm text-muted-foreground">
-						Your browser does not support Web Push.
-					</span>
-				) : status === "blocked" ? (
-					<span className="text-sm text-muted-foreground">
-						Notifications are blocked in browser settings.
-					</span>
-				) : (
-					<span className="text-sm text-muted-foreground">
-						Install to the home screen on iOS for background alerts.
-					</span>
-				)}
-
-				<div className="flex items-center gap-2">
-					{status === "subscribed" ? (
-						<Button
-							type="button"
-							variant="outline"
-							onClick={handleDisable}
-							disabled={isBusy}
-						>
-							{isBusy ? (
-								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-							) : (
-								<BellOffIcon className="mr-2 h-4 w-4" />
-							)}
-							Turn off
-						</Button>
-					) : (
-						<Button
-							type="button"
-							onClick={handleEnable}
-							disabled={
-								isBusy || status !== "ready" || !hasVapidKey || !isKeyLoaded
-							}
-						>
-							{isBusy ? (
-								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-							) : (
-								<BellIcon className="mr-2 h-4 w-4" />
-							)}
-							Enable
-						</Button>
-					)}
-					<Button
-						type="button"
-						variant="outline"
-						onClick={handleTest}
-						disabled={isTesting || status !== "subscribed"}
-					>
-						{isTesting ? (
-							<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-						) : null}
-						Send test
-					</Button>
-				</div>
-				{isKeyLoaded && !hasVapidKey ? (
-					<span className="text-xs text-muted-foreground">
-						Missing VAPID_PUBLIC_KEY.
-					</span>
-				) : null}
-			</CardContent>
+			<CardContent className="pt-6">{content}</CardContent>
 		</Card>
 	);
 };

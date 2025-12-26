@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { subscribeToDashboardUpdates } from "@/lib/events";
+import { getActiveHouseholdMembership } from "@/lib/households";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,15 @@ export async function GET(req: Request) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
+	const active = await getActiveHouseholdMembership(
+		session.user.id,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return new Response("Household not found", { status: 403 });
+	}
+
+	const { householdId } = active;
 	const encoder = new TextEncoder();
 	let isClosed = false;
 	let cleanup: (() => void) | null = null;
@@ -30,6 +40,12 @@ export async function GET(req: Request) {
 			};
 
 			const unsubscribe = subscribeToDashboardUpdates((payload) => {
+				if (!payload.householdId) {
+					return;
+				}
+				if (payload.householdId !== householdId) {
+					return;
+				}
 				sendEvent("dashboard", payload);
 			});
 

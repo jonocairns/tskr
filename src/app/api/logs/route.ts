@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
+import { buildAuditEntries } from "@/lib/dashboard/audit-log";
+import { getActiveHouseholdMembership } from "@/lib/households";
 import {
 	DURATION_KEYS,
 	type DurationKey,
@@ -37,6 +39,57 @@ const timedSchema = z.object({
 });
 
 const payloadSchema = z.union([presetSchema, timedSchema]);
+const historyQuerySchema = z.object({
+	offset: z.coerce.number().int().min(0).default(0),
+	limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export async function GET(req: Request) {
+	const session = await getServerSession(authOptions);
+
+	if (!session?.user?.id) {
+		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	}
+
+	const active = await getActiveHouseholdMembership(
+		session.user.id,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return NextResponse.json({ error: "Household not found" }, { status: 403 });
+	}
+
+	const { searchParams } = new URL(req.url);
+	const parsed = historyQuerySchema.safeParse({
+		offset: searchParams.get("offset"),
+		limit: searchParams.get("limit"),
+	});
+	if (!parsed.success) {
+		return NextResponse.json(
+			{ error: "Invalid query", details: parsed.error.flatten() },
+			{ status: 400 },
+		);
+	}
+
+	const take = parsed.data.limit + 1;
+	const logs = await prisma.pointLog.findMany({
+		where: { householdId: active.householdId },
+		include: {
+			user: { select: { id: true, name: true, email: true } },
+		},
+		orderBy: { createdAt: "desc" },
+		skip: parsed.data.offset,
+		take,
+	});
+
+	const hasMore = logs.length > parsed.data.limit;
+	const trimmedLogs = hasMore ? logs.slice(0, parsed.data.limit) : logs;
+
+	return NextResponse.json({
+		entries: buildAuditEntries(trimmedLogs),
+		hasMore,
+	});
+}
 
 export async function POST(req: Request) {
 	const session = await getServerSession(authOptions);
@@ -57,6 +110,15 @@ export async function POST(req: Request) {
 
 	const userId = session.user.id;
 	const actorLabel = session.user.name ?? session.user.email ?? "Someone";
+	const active = await getActiveHouseholdMembership(
+		userId,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return NextResponse.json({ error: "Household not found" }, { status: 403 });
+	}
+
+	const { householdId, membership } = active;
 
 	const notifyTask = async (description: string, points: number) => {
 		if (!isPushConfigured()) {
@@ -67,16 +129,29 @@ export async function POST(req: Request) {
 			description.length > 96 ? `${description.slice(0, 93)}...` : description;
 
 		try {
-			await broadcastPush({
-				title: "New task logged",
-				body: `${actorLabel} logged ${points} pts: ${trimmed}`,
-				url: "/",
-				icon: "/icon-192.png",
-				badge: "/icon-192.png",
-			});
+			await broadcastPush(
+				{
+					title: "New task logged",
+					body: `${actorLabel} logged ${points} pts: ${trimmed}`,
+					url: "/",
+					icon: "/icon-192.png",
+					badge: "/icon-192.png",
+				},
+				{ householdId, excludeUserId: userId },
+			);
 		} catch (error) {
 			console.error("[push] notify failed", error);
 		}
+	};
+
+	const resolveRequiresApproval = (override?: string | null) => {
+		if (override === "REQUIRE") {
+			return true;
+		}
+		if (override === "SKIP") {
+			return false;
+		}
+		return membership.requiresApprovalDefault;
 	};
 
 	try {
@@ -86,9 +161,15 @@ export async function POST(req: Request) {
 				const preset = await prisma.presetTask.findFirst({
 					where: {
 						id: payload.presetId,
+						householdId,
 						OR: [{ isShared: true }, { createdById: userId }],
 					},
-					select: { id: true, label: true, bucket: true },
+					select: {
+						id: true,
+						label: true,
+						bucket: true,
+						approvalOverride: true,
+					},
 				});
 
 				if (!preset) {
@@ -109,20 +190,31 @@ export async function POST(req: Request) {
 					);
 				}
 
+				const requiresApproval = resolveRequiresApproval(
+					preset.approvalOverride,
+				);
+				const status = requiresApproval ? "PENDING" : "APPROVED";
 				const entry = await prisma.pointLog.create({
 					data: {
+						householdId,
 						userId,
 						kind: "PRESET",
 						duration: bucket,
 						points: getBucketPoints(bucket),
 						description: payload.description?.trim() || preset.label,
 						presetId: preset.id,
+						status,
 					},
 				});
 				await notifyTask(entry.description, entry.points);
 
 				const total = await prisma.pointLog.aggregate({
-					where: { userId, revertedAt: null },
+					where: {
+						userId,
+						householdId,
+						revertedAt: null,
+						status: "APPROVED",
+					},
 					_sum: { points: true },
 				});
 
@@ -140,20 +232,29 @@ export async function POST(req: Request) {
 				);
 			}
 
+			const requiresApproval = resolveRequiresApproval(null);
+			const status = requiresApproval ? "PENDING" : "APPROVED";
 			const entry = await prisma.pointLog.create({
 				data: {
+					householdId,
 					userId,
 					kind: "PRESET",
 					duration: preset.bucket,
 					points: getBucketPoints(preset.bucket),
 					description: payload.description?.trim() || preset.label,
 					presetKey: preset.key,
+					status,
 				},
 			});
 			await notifyTask(entry.description, entry.points);
 
 			const total = await prisma.pointLog.aggregate({
-				where: { userId, revertedAt: null },
+				where: {
+					userId,
+					householdId,
+					revertedAt: null,
+					status: "APPROVED",
+				},
 				_sum: { points: true },
 			});
 
@@ -163,20 +264,29 @@ export async function POST(req: Request) {
 			);
 		}
 
+		const requiresApproval = resolveRequiresApproval(null);
+		const status = requiresApproval ? "PENDING" : "APPROVED";
 		const entry = await prisma.pointLog.create({
 			data: {
+				householdId,
 				userId,
 				kind: "TIMED",
 				duration: payload.bucket,
 				durationMinutes: payload.durationMinutes,
 				points: getBucketPoints(payload.bucket),
 				description: payload.description.trim(),
+				status,
 			},
 		});
 		await notifyTask(entry.description, entry.points);
 
 		const total = await prisma.pointLog.aggregate({
-			where: { userId, revertedAt: null },
+			where: {
+				userId,
+				householdId,
+				revertedAt: null,
+				status: "APPROVED",
+			},
 			_sum: { points: true },
 		});
 

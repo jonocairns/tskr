@@ -2,7 +2,7 @@
 
 import { Undo2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -26,10 +26,12 @@ import type { LogKind } from "@/lib/points";
 
 export type AuditLogEntry = {
 	id: string;
+	userId: string;
 	userName: string;
 	description: string;
 	points: number;
 	kind: LogKind;
+	status?: "PENDING" | "APPROVED" | "REJECTED";
 	bucketLabel?: string | null;
 	createdAt: string;
 	revertedAt?: string | null;
@@ -37,12 +39,22 @@ export type AuditLogEntry = {
 
 type Props = {
 	entries: AuditLogEntry[];
+	currentUserId: string;
+	initialHasMore: boolean;
 };
 
-export const AuditLog = ({ entries }: Props) => {
+export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
+	const [items, setItems] = useState(entries);
+	const [hasMore, setHasMore] = useState(initialHasMore);
+	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
 	const { toast } = useToast();
+
+	useEffect(() => {
+		setItems(entries);
+		setHasMore(initialHasMore);
+	}, [entries, initialHasMore]);
 
 	const undo = (id: string) => {
 		startTransition(async () => {
@@ -66,8 +78,63 @@ export const AuditLog = ({ entries }: Props) => {
 		});
 	};
 
+	const resubmit = (id: string) => {
+		startTransition(async () => {
+			const res = await fetch(`/api/logs/${id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ action: "resubmit" }),
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({}));
+				toast({
+					title: "Unable to resubmit",
+					description: body?.error ?? "Try again shortly.",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			toast({
+				title: "Resubmitted for approval",
+				description: "Your task is waiting for approval.",
+			});
+			router.refresh();
+		});
+	};
+
+	const loadMore = async () => {
+		if (isLoadingMore || !hasMore) {
+			return;
+		}
+
+		setIsLoadingMore(true);
+		try {
+			const res = await fetch(`/api/logs?offset=${items.length}&limit=10`);
+			if (!res.ok) {
+				throw new Error("Failed to load more");
+			}
+			const data = await res.json().catch(() => ({}));
+			if (Array.isArray(data?.entries)) {
+				setItems((prev) => [...prev, ...data.entries]);
+				setHasMore(Boolean(data?.hasMore));
+			} else {
+				setHasMore(false);
+			}
+		} catch (error) {
+			toast({
+				title: "Unable to load more history",
+				description: "Please try again shortly.",
+				variant: "destructive",
+			});
+		} finally {
+			setIsLoadingMore(false);
+		}
+	};
+
 	return (
-		<Card className="mt-4">
+		<Card>
 			<CardHeader>
 				<CardTitle className="text-xl">History</CardTitle>
 				<CardDescription>
@@ -75,7 +142,7 @@ export const AuditLog = ({ entries }: Props) => {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
-				{entries.length === 0 ? (
+				{items.length === 0 ? (
 					<p className="text-sm text-muted-foreground">
 						No activity yet. Start logging tasks.
 					</p>
@@ -91,7 +158,7 @@ export const AuditLog = ({ entries }: Props) => {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{entries.map((log) => (
+							{items.map((log) => (
 								<TableRow
 									key={log.id}
 									className={log.revertedAt ? "opacity-50" : ""}
@@ -100,6 +167,9 @@ export const AuditLog = ({ entries }: Props) => {
 										<div className="font-semibold">{log.description}</div>
 										<div className="text-xs text-muted-foreground">
 											{log.userName} · {log.kind.toLowerCase()}
+											{log.status && log.status !== "APPROVED"
+												? ` · ${log.status.toLowerCase()}`
+												: ""}
 										</div>
 									</TableCell>
 									<TableCell>
@@ -116,6 +186,21 @@ export const AuditLog = ({ entries }: Props) => {
 										{log.revertedAt ? (
 											<span className="text-xs text-muted-foreground">
 												Reverted {new Date(log.revertedAt).toLocaleDateString()}
+											</span>
+										) : log.status === "REJECTED" &&
+											log.userId === currentUserId ? (
+											<Button
+												variant="ghost"
+												size="sm"
+												disabled={isPending}
+												onClick={() => resubmit(log.id)}
+												className="text-muted-foreground hover:text-foreground"
+											>
+												Resubmit
+											</Button>
+										) : log.status === "PENDING" ? (
+											<span className="text-xs text-muted-foreground">
+												Awaiting approval
 											</span>
 										) : (
 											<Button
@@ -135,6 +220,22 @@ export const AuditLog = ({ entries }: Props) => {
 						</TableBody>
 					</Table>
 				)}
+				{items.length > 0 ? (
+					<div className="flex justify-center pt-4">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={loadMore}
+							disabled={!hasMore || isLoadingMore}
+						>
+							{isLoadingMore
+								? "Loading..."
+								: hasMore
+									? "Load 10 more"
+									: "No more history"}
+						</Button>
+					</div>
+				) : null}
 			</CardContent>
 		</Card>
 	);

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { getActiveHouseholdMembership } from "@/lib/households";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
 
 export const runtime = "nodejs";
@@ -20,13 +21,24 @@ export async function POST() {
 		);
 	}
 
-	await broadcastPush({
-		title: "tskr test notification",
-		body: "This is a test push from tskr.",
-		url: "/",
-		icon: "/icon-192.png",
-		badge: "/icon-192.png",
-	});
+	const active = await getActiveHouseholdMembership(
+		session.user.id,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return NextResponse.json({ error: "Household not found" }, { status: 403 });
+	}
+
+	await broadcastPush(
+		{
+			title: "tskr test notification",
+			body: "This is a test push from tskr.",
+			url: "/",
+			icon: "/icon-192.png",
+			badge: "/icon-192.png",
+		},
+		{ householdId: active.householdId },
+	);
 
 	return NextResponse.json({ ok: true });
 }

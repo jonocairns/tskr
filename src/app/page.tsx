@@ -1,20 +1,22 @@
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 
+import { ApprovalQueue } from "@/components/ApprovalQueue";
+import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";
 import { AuditLog } from "@/components/AuditLog";
 import { AuthCta } from "@/components/AuthCta";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveRefresh } from "@/components/LiveRefresh";
-import { ModeToggle } from "@/components/ModeToggle";
+import { PageHeader } from "@/components/PageHeader";
 import { PointsSummary } from "@/components/PointsSummary";
-import { PushNotifications } from "@/components/PushNotifications";
 import { TaskActions } from "@/components/TaskActions";
-import { UserMenu } from "@/components/UserMenu";
 import { authOptions } from "@/lib/auth";
+import { buildApprovalEntries } from "@/lib/dashboard/approvals";
 import { buildAuditEntries } from "@/lib/dashboard/audit-log";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";
-import { rewardThreshold } from "@/lib/points";
+import { getActiveHouseholdMembership } from "@/lib/households";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,14 @@ export default async function Home() {
 	}
 
 	const userId = session.user.id;
-	const threshold = rewardThreshold();
+	const active = await getActiveHouseholdMembership(
+		userId,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		redirect("/landing");
+	}
+	const { householdId, membership } = active;
 
 	const {
 		pointSums,
@@ -39,19 +48,19 @@ export default async function Home() {
 		lastActivity,
 		users,
 		recentLogs,
+		hasMoreHistory,
+		pendingLogs,
 		presets,
+		assignedTasks,
 		weeklyTaskCount,
 		weeklyPoints,
+		rewardThreshold,
+		hasApprovalMembers,
 		lastTaskAt,
 		currentStreak,
-	} = await getDashboardData(userId);
+	} = await getDashboardData(userId, householdId);
 
-	const {
-		entries: leaderboardEntries,
-		myPoints,
-		myTasks,
-		myClaims,
-	} = buildLeaderboardSummary({
+	const { entries: leaderboardEntries, myPoints } = buildLeaderboardSummary({
 		userId,
 		users,
 		pointSums,
@@ -61,49 +70,53 @@ export default async function Home() {
 	});
 	const presetSummaries = mapPresetSummaries(presets);
 	const auditEntries = buildAuditEntries(recentLogs);
+	const approvalEntries = buildApprovalEntries(pendingLogs);
+	const showApprovals =
+		membership.role !== "DOER" &&
+		(hasApprovalMembers || approvalEntries.length > 0);
 
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
 			<div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10">
-				<header className="flex items-start justify-between">
-					<div>
-						<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-							tskr
-						</p>
-						<h1 className="text-3xl font-semibold tracking-tight">
-							Task points dashboard
-						</h1>
-						<p className="text-sm text-muted-foreground">
-							Log chores, keep an audit trail, and claim rewards when you hit
-							the threshold.
-						</p>
-					</div>
-					<div className="flex items-center gap-2">
-						<ModeToggle />
-						<UserMenu user={session.user} />
-					</div>
-				</header>
+				<PageHeader
+					eyebrow="tskr"
+					title="Task points dashboard"
+					description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
+					user={session.user}
+				/>
 
 				<PointsSummary
 					points={myPoints}
-					threshold={threshold}
-					tasksLogged={myTasks}
-					rewardsClaimed={myClaims}
+					threshold={rewardThreshold}
 					tasksLastWeek={weeklyTaskCount}
 					pointsLastWeek={weeklyPoints}
 					lastTaskAt={lastTaskAt?.toISOString() ?? null}
 					currentStreak={currentStreak}
 				/>
 
-				<TaskActions presets={presetSummaries} currentUserId={userId} />
+				{assignedTasks.length > 0 ? (
+					<AssignedTaskQueue entries={assignedTasks} />
+				) : null}
 
-				<AuditLog entries={auditEntries} />
+				<TaskActions
+					presets={presetSummaries}
+					currentUserId={userId}
+					currentUserRole={membership.role}
+				/>
+
+				{showApprovals ? (
+					<ApprovalQueue entries={approvalEntries} currentUserId={userId} />
+				) : null}
 
 				<Leaderboard entries={leaderboardEntries} />
 
-				<PushNotifications />
+				<AuditLog
+					entries={auditEntries}
+					currentUserId={userId}
+					initialHasMore={hasMoreHistory}
+				/>
 
-				<LiveRefresh />
+				<LiveRefresh key={householdId} />
 			</div>
 		</main>
 	);

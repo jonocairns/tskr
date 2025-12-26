@@ -26,6 +26,7 @@ export const PresetActionsCard = () => {
 		customPresets,
 		setCustomPresets,
 		currentUserId,
+		currentUserRole,
 		disabled,
 		defaultBucket,
 		isPending,
@@ -38,6 +39,8 @@ export const PresetActionsCard = () => {
 
 	const router = useRouter();
 	const { toast } = useToast();
+	const canSharePresets = currentUserRole !== "DOER";
+	const canEditApprovalOverride = currentUserRole !== "DOER";
 
 	const editablePresets = customPresets.filter(
 		(preset) => preset.isShared || preset.createdById === currentUserId,
@@ -61,7 +64,10 @@ export const PresetActionsCard = () => {
 		),
 	})).filter((group) => group.templates.length > 0);
 
-	const handleCreatePresetFromTemplate = async (template: PresetTemplate) => {
+	const handleCreatePresetFromTemplate = async (
+		template: PresetTemplate,
+		approvalOverride?: "REQUIRE" | "SKIP" | null,
+	) => {
 		const key = `${normalizeText(template.label)}|${template.bucket}`;
 		if (appliedTemplateKeys.has(key)) {
 			return false;
@@ -76,7 +82,8 @@ export const PresetActionsCard = () => {
 					body: JSON.stringify({
 						label: template.label,
 						bucket: template.bucket,
-						isShared: true,
+						isShared: canSharePresets,
+						approvalOverride,
 					}),
 				});
 
@@ -108,6 +115,7 @@ export const PresetActionsCard = () => {
 	const handleCreatePreset = async (
 		label: string,
 		bucket: DurationKey,
+		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	): Promise<boolean> => {
 		if (label.trim().length < 2) {
 			return false;
@@ -122,7 +130,8 @@ export const PresetActionsCard = () => {
 					body: JSON.stringify({
 						label: label.trim(),
 						bucket,
-						isShared: true,
+						isShared: canSharePresets,
+						approvalOverride,
 					}),
 				});
 
@@ -183,9 +192,13 @@ export const PresetActionsCard = () => {
 					return;
 				}
 
+				const body = await res.json().catch(() => ({}));
+				const isPending = body?.entry?.status === "PENDING";
 				toast({
-					title: "Task logged",
-					description: "Time-based task recorded and points added.",
+					title: isPending ? "Submitted for approval" : "Task logged",
+					description: isPending
+						? "Task logged and waiting for approval."
+						: "Time-based task recorded and points added.",
 				});
 				router.refresh();
 				success = true;
@@ -203,6 +216,7 @@ export const PresetActionsCard = () => {
 		presetId: string,
 		label: string,
 		bucket: DurationKey,
+		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	): Promise<boolean> => {
 		if (label.trim().length < 2) {
 			return false;
@@ -211,13 +225,22 @@ export const PresetActionsCard = () => {
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
+				const payload: {
+					label: string;
+					bucket: DurationKey;
+					approvalOverride?: "REQUIRE" | "SKIP" | null;
+				} = {
+					label: label.trim(),
+					bucket,
+				};
+				if (approvalOverride !== undefined) {
+					payload.approvalOverride = approvalOverride;
+				}
+
 				const res = await fetch(`/api/presets/${presetId}`, {
 					method: "PATCH",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						label: label.trim(),
-						bucket,
-					}),
+					body: JSON.stringify(payload),
 				});
 
 				if (!res.ok) {
@@ -279,9 +302,9 @@ export const PresetActionsCard = () => {
 				<CardHeader className="space-y-1">
 					<div className="flex items-start justify-between gap-2">
 						<div className="space-y-1">
-							<CardTitle className="text-xl">Chores</CardTitle>
+							<CardTitle className="text-xl">Tasks</CardTitle>
 							<CardDescription>
-								Tap a chore once you've completed it.
+								Tap a task once you've completed it.
 							</CardDescription>
 						</div>
 						<Button
@@ -298,7 +321,7 @@ export const PresetActionsCard = () => {
 					<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 						{presetOptions.length === 0 ? (
 							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">
-								No saved chores yet.
+								No saved tasks yet.
 							</p>
 						) : (
 							presetOptions.map((task) => {
@@ -344,6 +367,7 @@ export const PresetActionsCard = () => {
 				isPresetPending={isPresetPending}
 				sortedEditablePresets={sortedEditablePresets}
 				currentUserId={currentUserId}
+				canEditApprovalOverride={canEditApprovalOverride}
 			/>
 		</>
 	);

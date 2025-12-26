@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
-import { rewardThreshold } from "@/lib/points";
+import { getActiveHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
 
 export async function POST() {
@@ -12,11 +12,29 @@ export async function POST() {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
+	const active = await getActiveHouseholdMembership(
+		session.user.id,
+		session.user.householdId ?? null,
+	);
+	if (!active) {
+		return NextResponse.json({ error: "Household not found" }, { status: 403 });
+	}
+
 	const userId = session.user.id;
-	const threshold = rewardThreshold();
+	const { householdId } = active;
+	const household = await prisma.household.findUnique({
+		where: { id: householdId },
+		select: { rewardThreshold: true },
+	});
+	const threshold = household?.rewardThreshold ?? 50;
 
 	const total = await prisma.pointLog.aggregate({
-		where: { userId, revertedAt: null },
+		where: {
+			userId,
+			householdId,
+			revertedAt: null,
+			status: "APPROVED",
+		},
 		_sum: { points: true },
 	});
 	const available = total._sum.points ?? 0;
@@ -31,6 +49,7 @@ export async function POST() {
 	try {
 		const entry = await prisma.pointLog.create({
 			data: {
+				householdId,
 				userId,
 				kind: "REWARD",
 				points: -threshold,

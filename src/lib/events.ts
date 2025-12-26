@@ -3,6 +3,7 @@ import "server-only";
 type DashboardEvent = {
 	type: "dashboard:update";
 	at: string;
+	householdId?: string | null;
 };
 
 type DashboardHandler = (event: DashboardEvent) => void;
@@ -18,10 +19,11 @@ if (!globalThis.dashboardEventHandlers) {
 	globalThis.dashboardEventHandlers = handlers;
 }
 
-export const publishDashboardUpdate = () => {
+export const publishDashboardUpdate = (householdId?: string | null) => {
 	const event: DashboardEvent = {
 		type: "dashboard:update",
 		at: new Date().toISOString(),
+		householdId: householdId ?? null,
 	};
 
 	for (const handler of handlers) {

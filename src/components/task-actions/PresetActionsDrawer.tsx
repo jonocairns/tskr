@@ -42,12 +42,20 @@ type Props = {
 	onClose: () => void;
 	defaultBucket: DurationKey;
 	onLogTimed: (label: string, bucket: DurationKey) => Promise<boolean>;
-	onCreatePreset: (label: string, bucket: DurationKey) => Promise<boolean>;
-	onCreatePresetFromTemplate: (template: PresetTemplate) => Promise<boolean>;
+	onCreatePreset: (
+		label: string,
+		bucket: DurationKey,
+		approvalOverride?: "REQUIRE" | "SKIP" | null,
+	) => Promise<boolean>;
+	onCreatePresetFromTemplate: (
+		template: PresetTemplate,
+		approvalOverride?: "REQUIRE" | "SKIP" | null,
+	) => Promise<boolean>;
 	onUpdatePreset: (
 		presetId: string,
 		label: string,
 		bucket: DurationKey,
+		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	) => Promise<boolean>;
 	onDeletePreset: (presetId: string) => Promise<boolean>;
 	templatesByBucket: TemplatesByBucket;
@@ -56,6 +64,7 @@ type Props = {
 	isPresetPending: boolean;
 	sortedEditablePresets: PresetSummary[];
 	currentUserId: string;
+	canEditApprovalOverride: boolean;
 };
 
 export function PresetActionsDrawer({
@@ -73,20 +82,29 @@ export function PresetActionsDrawer({
 	isPresetPending,
 	sortedEditablePresets,
 	currentUserId,
+	canEditApprovalOverride,
 }: Props) {
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
+	const [customApprovalOverride, setCustomApprovalOverride] = useState<
+		"DEFAULT" | "REQUIRE" | "SKIP"
+	>("DEFAULT");
 	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
 	const [editLabel, setEditLabel] = useState("");
 	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
+	const [editApprovalOverride, setEditApprovalOverride] = useState<
+		"DEFAULT" | "REQUIRE" | "SKIP"
+	>("DEFAULT");
 
 	useEffect(() => {
 		if (!isOpen) {
 			setCustomLabel("");
 			setCustomBucket(defaultBucket);
+			setCustomApprovalOverride("DEFAULT");
 			setEditingPresetId(null);
 			setEditLabel("");
 			setEditBucket(defaultBucket);
+			setEditApprovalOverride("DEFAULT");
 		}
 	}, [isOpen, defaultBucket]);
 
@@ -98,18 +116,37 @@ export function PresetActionsDrawer({
 
 	const handleCreatePreset = async () => {
 		if (!canCreate) return;
-		const success = await onCreatePreset(customLabel, customBucket);
+		const approvalOverride = canEditApprovalOverride
+			? customApprovalOverride === "DEFAULT"
+				? null
+				: customApprovalOverride
+			: undefined;
+		const success = await onCreatePreset(
+			customLabel,
+			customBucket,
+			approvalOverride,
+		);
 		if (success) {
 			setCustomLabel("");
 			setCustomBucket(defaultBucket);
+			setCustomApprovalOverride("DEFAULT");
 		}
 	};
 
 	const handleCreatePresetFromTemplate = async (template: PresetTemplate) => {
-		const success = await onCreatePresetFromTemplate(template);
+		const approvalOverride = canEditApprovalOverride
+			? customApprovalOverride === "DEFAULT"
+				? null
+				: customApprovalOverride
+			: undefined;
+		const success = await onCreatePresetFromTemplate(
+			template,
+			approvalOverride,
+		);
 		if (success) {
 			setCustomLabel("");
 			setCustomBucket(defaultBucket);
+			setCustomApprovalOverride("DEFAULT");
 		}
 	};
 
@@ -127,12 +164,14 @@ export function PresetActionsDrawer({
 		setEditingPresetId(preset.id);
 		setEditLabel(preset.label);
 		setEditBucket(preset.bucket);
+		setEditApprovalOverride(preset.approvalOverride ?? "DEFAULT");
 	};
 
 	const cancelEdit = () => {
 		setEditingPresetId(null);
 		setEditLabel("");
 		setEditBucket(defaultBucket);
+		setEditApprovalOverride("DEFAULT");
 	};
 
 	const handleUpdatePreset = async (
@@ -141,7 +180,17 @@ export function PresetActionsDrawer({
 	) => {
 		event.preventDefault();
 		if (!canUpdate) return;
-		const success = await onUpdatePreset(presetId, editLabel, editBucket);
+		const approvalOverride = canEditApprovalOverride
+			? editApprovalOverride === "DEFAULT"
+				? null
+				: editApprovalOverride
+			: undefined;
+		const success = await onUpdatePreset(
+			presetId,
+			editLabel,
+			editBucket,
+			approvalOverride,
+		);
 		if (success) {
 			setEditingPresetId(null);
 		}
@@ -164,7 +213,7 @@ export function PresetActionsDrawer({
 				type="button"
 				className="absolute inset-0 bg-background/80 backdrop-blur-sm"
 				onClick={onClose}
-				aria-label="Close chores editor"
+				aria-label="Close tasks editor"
 			/>
 			<div
 				aria-modal="true"
@@ -173,8 +222,8 @@ export function PresetActionsDrawer({
 				<div className="flex h-full flex-col">
 					<div className="flex items-start justify-between gap-2 border-b px-6 py-5">
 						<div className="space-y-1">
-							<CardDescription>Manage chores</CardDescription>
-							<CardTitle className="text-lg">Add or edit chores</CardTitle>
+							<CardDescription>Manage tasks</CardDescription>
+							<CardTitle className="text-lg">Add or edit tasks</CardTitle>
 						</div>
 						<Button type="button" variant="ghost" size="sm" onClick={onClose}>
 							Close
@@ -229,6 +278,33 @@ export function PresetActionsDrawer({
 										))}
 									</div>
 								</div>
+								{canEditApprovalOverride ? (
+									<div className="space-y-2">
+										<p className="text-xs font-medium text-muted-foreground">
+											Approval override
+										</p>
+										<Select
+											value={customApprovalOverride}
+											onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") =>
+												setCustomApprovalOverride(value)
+											}
+											disabled={disabled}
+										>
+											<SelectTrigger>
+												<SelectValue placeholder="Use member default" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="DEFAULT">
+													Use member default
+												</SelectItem>
+												<SelectItem value="REQUIRE">
+													Require approval
+												</SelectItem>
+												<SelectItem value="SKIP">Skip approval</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+								) : null}
 								<div className="grid gap-2 sm:grid-cols-2">
 									<Button
 										type="button"
@@ -283,9 +359,7 @@ export function PresetActionsDrawer({
 							</div>
 							<div className="space-y-2">
 								{sortedEditablePresets.length === 0 ? (
-									<p className="text-xs text-muted-foreground">
-										No chores yet.
-									</p>
+									<p className="text-xs text-muted-foreground">No tasks yet.</p>
 								) : (
 									sortedEditablePresets.map((preset) => (
 										<PresetListItem
@@ -299,12 +373,15 @@ export function PresetActionsDrawer({
 											onEditLabelChange={setEditLabel}
 											editBucket={editBucket}
 											onEditBucketChange={setEditBucket}
+											editApprovalOverride={editApprovalOverride}
+											onEditApprovalOverrideChange={setEditApprovalOverride}
 											canUpdatePreset={canUpdate}
 											onUpdatePreset={handleUpdatePreset}
 											onCancelEdit={cancelEdit}
 											onStartEdit={startEdit}
 											onDeletePreset={handleDeletePreset}
 											canDelete={preset.createdById === currentUserId}
+											canEditApprovalOverride={canEditApprovalOverride}
 											disabled={disabled}
 										/>
 									))
