@@ -35,6 +35,17 @@ export async function POST(req: Request) {
 	const { endpoint, keys } = parsed.data;
 	const userAgent = req.headers.get("user-agent") ?? undefined;
 
+	const existing = await prisma.pushSubscription.findUnique({
+		where: { endpoint },
+		select: { userId: true },
+	});
+	if (existing && existing.userId !== session.user.id) {
+		return NextResponse.json(
+			{ error: "Subscription is registered to another user" },
+			{ status: 403 },
+		);
+	}
+
 	await prisma.pushSubscription.upsert({
 		where: { endpoint },
 		update: {

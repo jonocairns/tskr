@@ -41,7 +41,11 @@ export const isPushConfigured = () => pushConfigured;
 
 export async function broadcastPush(
 	payload: PushPayload,
-	options?: { householdId?: string | null; excludeUserId?: string | null },
+	options?: {
+		householdId?: string | null;
+		excludeUserId?: string | null;
+		userId?: string | null;
+	},
 ) {
 	if (!pushConfigured) {
 		return { sent: 0, removed: 0 };
@@ -49,8 +53,10 @@ export async function broadcastPush(
 
 	const householdId = options?.householdId ?? null;
 	const excludeUserId = options?.excludeUserId ?? null;
+	const userId = options?.userId ?? null;
 	const where = {
 		...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+		...(userId ? { userId } : {}),
 		...(householdId
 			? { user: { memberships: { some: { householdId } } } }
 			: {}),
