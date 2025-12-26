@@ -21,7 +21,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const HouseholdSettingsCard = ({
+export const SettingsCard = ({
 	canManage,
 	variant = "card",
 }: Props) => {

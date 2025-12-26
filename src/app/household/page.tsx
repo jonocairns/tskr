@@ -2,11 +2,11 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { AuthCta } from "@/components/AuthCta";
-import { HouseholdDangerZone } from "@/components/HouseholdDangerZone";
-import { HouseholdInvitesCard } from "@/components/HouseholdInvitesCard";
-import { HouseholdJoinCard } from "@/components/HouseholdJoinCard";
-import { HouseholdMembersCard } from "@/components/HouseholdMembersCard";
-import { HouseholdSettingsCard } from "@/components/HouseholdSettingsCard";
+import { DangerZone } from "@/components/household/DangerZone";
+import { InvitesCard } from "@/components/household/InvitesCard";
+import { JoinCard } from "@/components/household/JoinCard";
+import { MembersCard } from "@/components/household/MembersCard";
+import { SettingsCard } from "@/components/household/SettingsCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PushNotifications } from "@/components/PushNotifications";
 import {
@@ -63,7 +63,7 @@ export default async function HouseholdPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-8">
-						<HouseholdSettingsCard
+						<SettingsCard
 							householdId={householdId}
 							canManage={membership.role === "DICTATOR"}
 							variant="section"
@@ -71,7 +71,7 @@ export default async function HouseholdPage() {
 
 						<PushNotifications variant="section" />
 
-						<HouseholdDangerZone
+						<DangerZone
 							canDelete={membership.role === "DICTATOR"}
 							variant="section"
 						/>
@@ -79,19 +79,19 @@ export default async function HouseholdPage() {
 				</Card>
 
 				{membership.role !== "DOER" ? (
-					<HouseholdMembersCard
+					<MembersCard
 						householdId={householdId}
 						currentUserId={userId}
 						canManageMembers={membership.role === "DICTATOR"}
 					/>
 				) : null}
 
-				<HouseholdInvitesCard
+				<InvitesCard
 					householdId={householdId}
 					canInvite={membership.role === "DICTATOR"}
 				/>
 
-				<HouseholdJoinCard />
+				<JoinCard />
 			</div>
 		</main>
 	);

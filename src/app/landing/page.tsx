@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { AuthCta } from "@/components/AuthCta";
-import { HouseholdCreateCard } from "@/components/HouseholdCreateCard";
-import { HouseholdJoinCard } from "@/components/HouseholdJoinCard";
+import { CreateCard } from "@/components/household/CreateCard";
+import { JoinCard } from "@/components/household/JoinCard";
 import { PageHeader } from "@/components/PageHeader";
 import { authOptions } from "@/lib/auth";
 import { getActiveHouseholdMembership } from "@/lib/households";
@@ -39,8 +39,8 @@ export default async function LandingPage() {
 					user={session.user}
 				/>
 
-				<HouseholdJoinCard redirectTo="/" />
-				<HouseholdCreateCard redirectTo="/" />
+				<JoinCard redirectTo="/" />
+				<CreateCard redirectTo="/" />
 			</div>
 		</main>
 	);

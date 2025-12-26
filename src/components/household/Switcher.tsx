@@ -26,7 +26,7 @@ type Household = {
 	role: "DICTATOR" | "APPROVER" | "DOER";
 };
 
-export const HouseholdSwitcher = () => {
+export const Switcher = () => {
 	const [households, setHouseholds] = useState<Household[]>([]);
 	const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(
 		null,

@@ -1,7 +1,7 @@
 import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 
-import { HouseholdSwitcher } from "@/components/HouseholdSwitcher";
+import { Switcher } from "@/components/household/Switcher";
 import { ModeToggle } from "@/components/ModeToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { Button } from "@/components/ui/Button";
@@ -50,7 +50,7 @@ export const PageHeader = ({
 		</div>
 		<div className="flex items-center gap-2">
 			<ModeToggle />
-			<HouseholdSwitcher />
+			<Switcher />
 			<UserMenu user={user} />
 		</div>
 	</header>
