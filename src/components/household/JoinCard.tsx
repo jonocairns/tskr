@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/use-toast";
+import { requestJson } from "@/lib/request-json";
 
 type Props = {
 	variant?: "card" | "section";
@@ -38,17 +39,18 @@ export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 		}
 
 		startTransition(async () => {
-			const res = await fetch("/api/households/join", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ code: trimmed }),
-			});
+			const { res, data } = await requestJson<{ error?: string }>(
+				"/api/households/join",
+				{
+					method: "POST",
+					body: { code: trimmed },
+				},
+			);
 
 			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
 				toast({
 					title: "Unable to join household",
-					description: body?.error ?? "Please try again.",
+					description: data?.error ?? "Please try again.",
 					variant: "destructive",
 				});
 				return;

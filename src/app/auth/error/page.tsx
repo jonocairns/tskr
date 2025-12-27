@@ -11,7 +11,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/Card";
-import { getAuthErrorMessage } from "@/lib/auth-error";
+import { getAuthErrorMessage } from "@/lib/authError";
 
 export const dynamic = "force-dynamic";
 

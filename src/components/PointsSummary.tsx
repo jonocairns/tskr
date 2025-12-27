@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/Card";
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/use-toast";
+import { requestJson } from "@/lib/request-json";
 
 type Props = {
 	points: number;
@@ -51,15 +52,19 @@ export const PointsSummary = ({
 	const handleClaim = () => {
 		setSubmitting(true);
 		startTransition(async () => {
-			const res = await fetch("/api/claim", { method: "POST" });
+			const { res, data } = await requestJson<{ error?: string }>(
+				"/api/claim",
+				{
+					method: "POST",
+				},
+			);
 			setSubmitting(false);
 
 			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
 				toast({
 					title: "Not quite there",
 					description:
-						body?.error ??
+						data?.error ??
 						`You need ${threshold - points} more points to claim a reward.`,
 					variant: "destructive",
 				});

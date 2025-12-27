@@ -41,20 +41,15 @@ import {
 	TableRow,
 } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
+import {
+	CADENCE_NONE_VALUE,
+	CADENCE_OPTIONS,
+	DEFAULT_CADENCE_INTERVAL_MINUTES,
+	DEFAULT_CADENCE_TARGET,
+} from "@/lib/assignedTasksCadence";
+import { requestJson } from "@/lib/request-json";
 
-const CADENCE_NONE_VALUE = "none";
 const ASSIGNEE_ALL_VALUE = "all";
-const CADENCE_OPTIONS = [
-	{ value: CADENCE_NONE_VALUE, label: "None" },
-	{ value: "1440", label: "Daily" },
-	{ value: "10080", label: "Weekly" },
-	{ value: "20160", label: "Fortnightly" },
-	{ value: "43200", label: "Monthly" },
-	{ value: "129600", label: "Quarterly" },
-	{ value: "525600", label: "Yearly" },
-];
-const DEFAULT_CADENCE_INTERVAL_MINUTES = 10080;
-const DEFAULT_CADENCE_TARGET = 1;
 
 type AssignedTaskRow = {
 	id: string;
@@ -171,32 +166,36 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
 		startTransition(async () => {
-			const res = await fetch(`/api/assigned-tasks/${taskId}`, {
+			const { res, data } = await requestJson<{
+				assignedTask?: {
+					cadenceTarget: number;
+					cadenceIntervalMinutes: number;
+					isRecurring: boolean;
+				};
+				error?: string;
+			}>(`/api/assigned-tasks/${taskId}`, {
 				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
+				body: {
 					cadenceTarget,
 					cadenceIntervalMinutes,
 					isRecurring: task.isRecurring,
-				}),
+				},
 			});
 
 			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
 				toast({
 					title: "Unable to update task",
-					description: body?.error ?? "Please try again.",
+					description: data?.error ?? "Please try again.",
 					variant: "destructive",
 				});
 				return;
 			}
 
-			const body = await res.json().catch(() => ({}));
-			if (body?.assignedTask) {
+			if (data?.assignedTask) {
 				updateTask(taskId, {
-					cadenceTarget: body.assignedTask.cadenceTarget,
-					cadenceIntervalMinutes: body.assignedTask.cadenceIntervalMinutes,
-					isRecurring: body.assignedTask.isRecurring,
+					cadenceTarget: data.assignedTask.cadenceTarget,
+					cadenceIntervalMinutes: data.assignedTask.cadenceIntervalMinutes,
+					isRecurring: data.assignedTask.isRecurring,
 				});
 			}
 
@@ -207,15 +206,15 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 
 	const handleDelete = (taskId: string) => {
 		startTransition(async () => {
-			const res = await fetch(`/api/assigned-tasks/${taskId}`, {
-				method: "DELETE",
-			});
+			const { res, data } = await requestJson<{ error?: string }>(
+				`/api/assigned-tasks/${taskId}`,
+				{ method: "DELETE" },
+			);
 
 			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
 				toast({
 					title: "Unable to delete task",
-					description: body?.error ?? "Please try again.",
+					description: data?.error ?? "Please try again.",
 					variant: "destructive",
 				});
 				return;

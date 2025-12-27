@@ -29,20 +29,13 @@ import {
 } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/use-toast";
-
-const CADENCE_NONE_VALUE = "none";
-const CADENCE_OPTIONS = [
-	{ value: CADENCE_NONE_VALUE, label: "None" },
-	{ value: "1440", label: "Daily" },
-	{ value: "10080", label: "Weekly" },
-	{ value: "20160", label: "Fortnightly" },
-	{ value: "43200", label: "Monthly" },
-	{ value: "129600", label: "Quarterly" },
-	{ value: "525600", label: "Yearly" },
-];
-
-const DEFAULT_CADENCE_INTERVAL = "10080";
-const DEFAULT_CADENCE_TARGET = 1;
+import {
+	CADENCE_NONE_VALUE,
+	CADENCE_OPTIONS,
+	DEFAULT_CADENCE_INTERVAL_MINUTES,
+	DEFAULT_CADENCE_TARGET,
+} from "@/lib/assignedTasksCadence";
+import { requestJson } from "@/lib/request-json";
 
 type MemberOption = {
 	id: string;
@@ -81,7 +74,7 @@ export const AssignTaskCard = ({
 	const [presetId, setPresetId] = useState(sortedPresets[0]?.id ?? "");
 	const [cadenceTarget, setCadenceTarget] = useState(DEFAULT_CADENCE_TARGET);
 	const [cadenceInterval, setCadenceInterval] = useState(
-		DEFAULT_CADENCE_INTERVAL,
+		String(DEFAULT_CADENCE_INTERVAL_MINUTES),
 	);
 	const [isRecurring, setIsRecurring] = useState(true);
 
@@ -113,26 +106,27 @@ export const AssignTaskCard = ({
 			: DEFAULT_CADENCE_TARGET;
 		const cadenceIntervalMinutes = isRecurring
 			? Math.max(1, Number.parseInt(cadenceInterval, 10) || 1)
-			: Math.max(1, Number.parseInt(DEFAULT_CADENCE_INTERVAL, 10) || 1);
+			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
 		startTransition(async () => {
-			const res = await fetch("/api/assigned-tasks", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					presetId,
-					assigneeId,
-					cadenceTarget: cadenceTargetValue,
-					cadenceIntervalMinutes,
-					isRecurring,
-				}),
-			});
+			const { res, data } = await requestJson<{ error?: string }>(
+				"/api/assigned-tasks",
+				{
+					method: "POST",
+					body: {
+						presetId,
+						assigneeId,
+						cadenceTarget: cadenceTargetValue,
+						cadenceIntervalMinutes,
+						isRecurring,
+					},
+				},
+			);
 
 			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
 				toast({
 					title: "Unable to assign task",
-					description: body?.error ?? "Please try again.",
+					description: data?.error ?? "Please try again.",
 					variant: "destructive",
 				});
 				return;
@@ -219,7 +213,9 @@ export const AssignTaskCard = ({
 										setIsRecurring(value);
 										if (!value) {
 											setCadenceTarget(DEFAULT_CADENCE_TARGET);
-											setCadenceInterval(DEFAULT_CADENCE_INTERVAL);
+											setCadenceInterval(
+												String(DEFAULT_CADENCE_INTERVAL_MINUTES),
+											);
 										}
 									}}
 									disabled={disabled}
@@ -235,7 +231,9 @@ export const AssignTaskCard = ({
 												if (value === CADENCE_NONE_VALUE) {
 													setIsRecurring(false);
 													setCadenceTarget(DEFAULT_CADENCE_TARGET);
-													setCadenceInterval(DEFAULT_CADENCE_INTERVAL);
+													setCadenceInterval(
+														String(DEFAULT_CADENCE_INTERVAL_MINUTES),
+													);
 													return;
 												}
 												setCadenceInterval(value);

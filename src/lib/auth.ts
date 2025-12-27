@@ -5,8 +5,9 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
 import { ensureDefaultSuperAdmin } from "@/lib/admin";
-import { getAppSettings } from "@/lib/app-settings";
-import { createPasswordResetToken } from "@/lib/password-reset";
+import { getAppSettings } from "@/lib/appSettings";
+import { getActiveHouseholdMembership } from "@/lib/households";
+import { createPasswordResetToken } from "@/lib/passwordReset";
 import { verifyPassword } from "@/lib/passwords";
 import { config } from "@/server-config";
 import { prisma } from "./prisma";
@@ -239,36 +240,12 @@ export const authOptions: NextAuthOptions = {
 					return session;
 				}
 
-				let resolvedHouseholdId: string | null = null;
-				let membershipRole: "DICTATOR" | "APPROVER" | "DOER" | null = null;
-
-				if (dbUser.lastHouseholdId) {
-					const membership = await prisma.householdMember.findFirst({
-						where: {
-							userId: token.sub,
-							householdId: dbUser.lastHouseholdId,
-						},
-						select: { role: true },
-					});
-
-					if (membership) {
-						resolvedHouseholdId = dbUser.lastHouseholdId;
-						membershipRole = membership.role;
-					}
-				}
-
-				if (!resolvedHouseholdId) {
-					const fallback = await prisma.householdMember.findFirst({
-						where: { userId: token.sub },
-						select: { householdId: true, role: true },
-						orderBy: { joinedAt: "asc" },
-					});
-
-					if (fallback) {
-						resolvedHouseholdId = fallback.householdId;
-						membershipRole = fallback.role;
-					}
-				}
+				const active = await getActiveHouseholdMembership(
+					token.sub,
+					dbUser.lastHouseholdId,
+				);
+				const resolvedHouseholdId = active?.householdId ?? null;
+				const membershipRole = active?.membership.role ?? null;
 
 				session.user.id = token.sub;
 				session.user.name = dbUser.name;

@@ -4,7 +4,7 @@ import {
 	type HouseholdStore,
 	getActiveHouseholdMembership as getActiveHouseholdMembershipCore,
 	resolveActiveHouseholdId as resolveActiveHouseholdIdCore,
-} from "@/lib/households-core";
+} from "@/lib/householdsCore";
 import { prisma } from "@/lib/prisma";
 
 export type { HouseholdMembership, HouseholdRole };
