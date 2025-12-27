@@ -1,29 +1,25 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
-
 import {
 	publishDashboardUpdate,
 	subscribeToDashboardUpdates,
-} from "../src/lib/events-core.ts";
+} from "../src/lib/events-core";
 
 test("publishes dashboard updates to subscribers", () => {
 	let calls = 0;
 	const unsubscribe = subscribeToDashboardUpdates((event) => {
 		calls += 1;
-		assert.equal(event.type, "dashboard:update");
-		assert.equal(event.householdId, "house-1");
+		expect(event.type).toBe("dashboard:update");
+		expect(event.householdId).toBe("house-1");
 	});
 
 	publishDashboardUpdate("house-1");
 	unsubscribe();
 	publishDashboardUpdate("house-1");
 
-	assert.equal(calls, 1);
+	expect(calls).toBe(1);
 });
 
 test("removes handlers that throw", () => {
-	const originalError = console.error;
-	console.error = () => {};
+	const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 	try {
 		let calls = 0;
 		const handler = () => {
@@ -35,8 +31,8 @@ test("removes handlers that throw", () => {
 		publishDashboardUpdate("house-1");
 		publishDashboardUpdate("house-1");
 
-		assert.equal(calls, 1);
+		expect(calls).toBe(1);
 	} finally {
-		console.error = originalError;
+		errorSpy.mockRestore();
 	}
 });

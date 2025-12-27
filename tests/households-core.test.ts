@@ -1,12 +1,9 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
-
 import {
 	getActiveHouseholdMembership,
 	type HouseholdMembership,
 	type HouseholdStore,
 	resolveActiveHouseholdId,
-} from "../src/lib/households-core.ts";
+} from "../src/lib/households-core";
 
 const makeStore = (memberships: HouseholdMembership[]) => {
 	const membershipMap = new Map(
@@ -34,7 +31,7 @@ test("keeps last household when membership exists", async () => {
 
 	const resolved = await resolveActiveHouseholdId(store, "user-1", "house-1");
 
-	assert.equal(resolved, "house-1");
+	expect(resolved).toBe("house-1");
 });
 
 test("falls back to first membership when last household is invalid", async () => {
@@ -48,7 +45,7 @@ test("falls back to first membership when last household is invalid", async () =
 
 	const resolved = await resolveActiveHouseholdId(store, "user-1", "missing");
 
-	assert.equal(resolved, "house-2");
+	expect(resolved).toBe("house-2");
 });
 
 test("returns null when no memberships exist", async () => {
@@ -56,7 +53,7 @@ test("returns null when no memberships exist", async () => {
 
 	const resolved = await resolveActiveHouseholdId(store, "user-1", null);
 
-	assert.equal(resolved, null);
+	expect(resolved).toBeNull();
 });
 
 test("returns active membership details when available", async () => {
@@ -70,8 +67,8 @@ test("returns active membership details when available", async () => {
 
 	const result = await getActiveHouseholdMembership(store, "user-1", "house-1");
 
-	assert.equal(result?.householdId, "house-1");
-	assert.equal(result?.membership.role, "DICTATOR");
+	expect(result?.householdId).toBe("house-1");
+	expect(result?.membership.role).toBe("DICTATOR");
 });
 
 test("returns null when resolved membership is missing", async () => {
@@ -82,5 +79,5 @@ test("returns null when resolved membership is missing", async () => {
 
 	const result = await getActiveHouseholdMembership(store, "user-1", null);
 
-	assert.equal(result, null);
+	expect(result).toBeNull();
 });
