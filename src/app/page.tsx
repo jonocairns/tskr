@@ -54,6 +54,7 @@ export default async function Home({ searchParams }: Props) {
 
 	const {
 		pointSums,
+		earnedPointSums,
 		taskCounts,
 		rewardCounts,
 		lastActivity,
@@ -76,6 +77,7 @@ export default async function Home({ searchParams }: Props) {
 		userId,
 		users,
 		pointSums,
+		earnedPointSums,
 		taskCounts,
 		rewardCounts,
 		lastActivity,

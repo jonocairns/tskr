@@ -17,6 +17,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 
 	const [
 		pointSums,
+		earnedPointSums,
 		taskCounts,
 		rewardCounts,
 		lastActivity,
@@ -34,6 +35,14 @@ export async function getDashboardData(userId: string, householdId: string) {
 		prisma.pointLog.groupBy({
 			by: ["userId"],
 			where: approvedWhere,
+			_sum: { points: true },
+		}),
+		prisma.pointLog.groupBy({
+			by: ["userId"],
+			where: {
+				...approvedWhere,
+				kind: { in: ["PRESET", "TIMED"] },
+			},
 			_sum: { points: true },
 		}),
 		prisma.pointLog.groupBy({
@@ -157,6 +166,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 
 	return {
 		pointSums,
+		earnedPointSums,
 		taskCounts,
 		rewardCounts,
 		lastActivity,
