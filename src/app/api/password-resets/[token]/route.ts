@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { hashPasswordResetToken } from "@/lib/passwordReset";
 import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
 
@@ -20,6 +21,7 @@ export async function POST(req: Request, { params }: Params) {
 	if (!token) {
 		return NextResponse.json({ error: "Invalid token" }, { status: 400 });
 	}
+	const tokenHash = hashPasswordResetToken(token);
 
 	const json = await req.json().catch(() => null);
 	const parsed = requestSchema.safeParse(json);
@@ -31,7 +33,7 @@ export async function POST(req: Request, { params }: Params) {
 	}
 
 	const resetToken = await prisma.passwordResetToken.findUnique({
-		where: { token },
+		where: { tokenHash },
 		select: {
 			userId: true,
 			expiresAt: true,

@@ -1,11 +1,6 @@
 import { baseConfig } from "./config";
-import { buildCsp } from "./csp";
-
 export const buildSecurityHeaders = () => {
-	const csp = buildCsp();
-
 	return [
-		{ key: "Content-Security-Policy", value: csp },
 		{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 		{ key: "X-Content-Type-Options", value: "nosniff" },
 		{ key: "X-Frame-Options", value: "DENY" },
