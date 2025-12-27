@@ -5,6 +5,7 @@ import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AuthCta } from "@/components/AuthCta";
 import { PageHeader } from "@/components/PageHeader";
+import { PageShell } from "@/components/PageShell";
 import { authOptions } from "@/lib/auth";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getActiveHouseholdMembership } from "@/lib/households";
@@ -17,9 +18,9 @@ export default async function AssignmentsPage() {
 
 	if (!session?.user?.id) {
 		return (
-			<main className="flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-12">
+			<PageShell layout="centered" size="lg">
 				<AuthCta />
-			</main>
+			</PageShell>
 		);
 	}
 
@@ -89,25 +90,23 @@ export default async function AssignmentsPage() {
 		}));
 
 	return (
-		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
-			<div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10">
-				<PageHeader
-					eyebrow="tskr"
-					title="Assignments"
-					description="Assign tasks and adjust cadence or recurrence."
-					backHref="/"
-					backLabel="Back to dashboard"
-					user={session.user}
-				/>
+		<PageShell size="md">
+			<PageHeader
+				eyebrow="tskr"
+				title="Assignments"
+				description="Assign tasks and adjust cadence or recurrence."
+				backHref="/"
+				backLabel="Back to dashboard"
+				user={session.user}
+			/>
 
-				<AssignTaskCard
-					members={members}
-					presets={presetSummaries}
-					currentUserId={userId}
-				/>
+			<AssignTaskCard
+				members={members}
+				presets={presetSummaries}
+				currentUserId={userId}
+			/>
 
-				<AssignedTasksManager initialTasks={assignedTaskEntries} />
-			</div>
-		</main>
+			<AssignedTasksManager initialTasks={assignedTaskEntries} />
+		</PageShell>
 	);
 }

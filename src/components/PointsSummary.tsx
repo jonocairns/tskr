@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 type Props = {
 	points: number;
 	threshold: number;
+	progressBarColor?: string | null;
 	tasksLastWeek: number;
 	pointsLastWeek: number;
 	lastTaskAt: string | null;
@@ -27,6 +28,7 @@ type Props = {
 export const PointsSummary = ({
 	points,
 	threshold,
+	progressBarColor,
 	tasksLastWeek,
 	pointsLastWeek,
 	lastTaskAt,
@@ -41,6 +43,9 @@ export const PointsSummary = ({
 		100,
 		Math.max(0, Math.round((points / threshold) * 100)),
 	);
+	const progressIndicatorStyle = progressBarColor
+		? { backgroundColor: progressBarColor }
+		: undefined;
 	const canClaim = points >= threshold;
 
 	const handleClaim = () => {
@@ -100,9 +105,13 @@ export const PointsSummary = ({
 							{Math.max(threshold - points, 0).toLocaleString()} pts to go
 						</span>
 					</div>
-					<Progress value={progress} className="h-2" />
+					<Progress
+						value={progress}
+						className="h-2"
+						indicatorStyle={progressIndicatorStyle}
+					/>
 				</div>
-				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-3">
+				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-2">
 					<Stat label="Tasks (7 days)" value={tasksLastWeek.toLocaleString()} />
 					<Stat
 						label="Points (7 days)"

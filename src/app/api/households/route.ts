@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { ensureActiveHouseholdId } from "@/lib/households";
+import { resolveActiveHouseholdId } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ export async function GET() {
 	}
 
 	const userId = session.user.id;
-	const activeHouseholdId = await ensureActiveHouseholdId(
+	const activeHouseholdId = await resolveActiveHouseholdId(
 		userId,
 		session.user.householdId ?? null,
 	);

@@ -6,6 +6,7 @@ import {
 	HomeIcon,
 	Loader2Icon,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
@@ -14,8 +15,6 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { useToast } from "@/hooks/use-toast";
@@ -35,11 +34,20 @@ export const Switcher = () => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
+	const { status, update } = useSession();
 
 	useEffect(() => {
+		if (status !== "authenticated") {
+			return;
+		}
+
 		let isActive = true;
 
 		const load = async () => {
+			if (isActive) {
+				setIsLoading(true);
+			}
+
 			try {
 				const res = await fetch("/api/households");
 				if (!res.ok) {
@@ -75,7 +83,7 @@ export const Switcher = () => {
 		return () => {
 			isActive = false;
 		};
-	}, [toast]);
+	}, [status, toast]);
 
 	const activeHousehold = useMemo(
 		() =>
@@ -108,6 +116,7 @@ export const Switcher = () => {
 			}
 
 			setActiveHouseholdId(householdId);
+			await update();
 			router.refresh();
 		});
 	};
@@ -140,8 +149,8 @@ export const Switcher = () => {
 				<Button
 					type="button"
 					variant="outline"
-					size="sm"
-					className="gap-2 p-2"
+					size="icon"
+					className="w-auto gap-2 px-2"
 					disabled={isLoading}
 				>
 					{buttonContent}

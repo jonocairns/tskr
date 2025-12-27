@@ -42,6 +42,10 @@ model User {
   email             String?   @unique
   emailVerified     DateTime?
   image             String?
+  passwordHash      String?
+  passwordResetRequired Boolean @default(false)
+  passwordLoginDisabled Boolean @default(false)
+  isSuperAdmin      Boolean   @default(false)
   lastHouseholdId   String?
   lastHousehold     Household? @relation("UserLastHousehold", fields: [lastHouseholdId], references: [id])
   householdsCreated Household[] @relation("HouseholdCreator")
@@ -49,6 +53,7 @@ model User {
   memberships       HouseholdMember[]
   accounts          Account[]
   sessions          Session[]
+  passwordResetTokens PasswordResetToken[]
   pointLogs         PointLog[]
   revertedLogs      PointLog[] @relation("RevertedBy")
   approvedLogs      PointLog[] @relation("ApprovedBy")
@@ -61,10 +66,18 @@ model User {
   updatedAt         DateTime  @updatedAt
 }
 
+model AppSettings {
+  id                        String  @id
+  allowGoogleAccountCreation Boolean @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
 model Household {
   id                String            @id @default(cuid())
   name              String
   rewardThreshold   Int               @default(50)
+  progressBarColor  String?
   createdById       String
   createdBy         User              @relation("HouseholdCreator", fields: [createdById], references: [id], onDelete: Cascade)
   members           HouseholdMember[]
@@ -145,6 +158,19 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model PointLog {

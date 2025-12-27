@@ -8,6 +8,7 @@ import { AuthCta } from "@/components/AuthCta";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { PageHeader } from "@/components/PageHeader";
+import { PageShell } from "@/components/PageShell";
 import { PointsSummary } from "@/components/PointsSummary";
 import { TaskActions } from "@/components/TaskActions";
 import { authOptions } from "@/lib/auth";
@@ -25,9 +26,9 @@ export default async function Home() {
 
 	if (!session?.user?.id) {
 		return (
-			<main className="flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-12">
+			<PageShell layout="centered" size="lg">
 				<AuthCta />
-			</main>
+			</PageShell>
 		);
 	}
 
@@ -55,6 +56,7 @@ export default async function Home() {
 		weeklyTaskCount,
 		weeklyPoints,
 		rewardThreshold,
+		progressBarColor,
 		hasApprovalMembers,
 		lastTaskAt,
 		currentStreak,
@@ -76,48 +78,47 @@ export default async function Home() {
 		(hasApprovalMembers || approvalEntries.length > 0);
 
 	return (
-		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
-			<div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10">
-				<PageHeader
-					eyebrow="tskr"
-					title="Task points dashboard"
-					description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
-					user={session.user}
-				/>
+		<PageShell>
+			<PageHeader
+				eyebrow="tskr"
+				title="Task points dashboard"
+				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
+				user={session.user}
+			/>
 
-				<PointsSummary
-					points={myPoints}
-					threshold={rewardThreshold}
-					tasksLastWeek={weeklyTaskCount}
-					pointsLastWeek={weeklyPoints}
-					lastTaskAt={lastTaskAt?.toISOString() ?? null}
-					currentStreak={currentStreak}
-				/>
+			<PointsSummary
+				points={myPoints}
+				threshold={rewardThreshold}
+				progressBarColor={progressBarColor}
+				tasksLastWeek={weeklyTaskCount}
+				pointsLastWeek={weeklyPoints}
+				lastTaskAt={lastTaskAt?.toISOString() ?? null}
+				currentStreak={currentStreak}
+			/>
 
-				{assignedTasks.length > 0 ? (
-					<AssignedTaskQueue entries={assignedTasks} />
-				) : null}
+			{assignedTasks.length > 0 ? (
+				<AssignedTaskQueue entries={assignedTasks} />
+			) : null}
 
-				<TaskActions
-					presets={presetSummaries}
-					currentUserId={userId}
-					currentUserRole={membership.role}
-				/>
+			<TaskActions
+				presets={presetSummaries}
+				currentUserId={userId}
+				currentUserRole={membership.role}
+			/>
 
-				{showApprovals ? (
-					<ApprovalQueue entries={approvalEntries} currentUserId={userId} />
-				) : null}
+			{showApprovals ? (
+				<ApprovalQueue entries={approvalEntries} currentUserId={userId} />
+			) : null}
 
-				<Leaderboard entries={leaderboardEntries} />
+			<Leaderboard entries={leaderboardEntries} />
 
-				<AuditLog
-					entries={auditEntries}
-					currentUserId={userId}
-					initialHasMore={hasMoreHistory}
-				/>
+			<AuditLog
+				entries={auditEntries}
+				currentUserId={userId}
+				initialHasMore={hasMoreHistory}
+			/>
 
-				<LiveRefresh key={householdId} />
-			</div>
-		</main>
+			<LiveRefresh key={householdId} />
+		</PageShell>
 	);
 }

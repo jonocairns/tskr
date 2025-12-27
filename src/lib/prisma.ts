@@ -55,7 +55,7 @@ const createPrismaClient = () => {
 	});
 };
 
-const hasHouseholdRewardThreshold = (
+const hasHouseholdDashboardFields = (
 	client: ReturnType<typeof createPrismaClient>,
 ) => {
 	const runtime = (client as { _runtimeDataModel?: unknown })
@@ -65,9 +65,12 @@ const hasHouseholdRewardThreshold = (
 		  }
 		| undefined;
 	const fields = runtime?.models?.Household?.fields ?? [];
-	return Array.isArray(fields)
-		? fields.some((field) => field.name === "rewardThreshold")
-		: false;
+	if (!Array.isArray(fields)) {
+		return false;
+	}
+	return ["rewardThreshold", "progressBarColor"].every((requiredField) =>
+		fields.some((field) => field.name === requiredField),
+	);
 };
 
 const hasAssignedTaskModel = (
@@ -86,7 +89,7 @@ const existingClient = globalForPrisma.prisma;
 const prisma =
 	existingClient &&
 	"householdMember" in existingClient &&
-	hasHouseholdRewardThreshold(existingClient) &&
+	hasHouseholdDashboardFields(existingClient) &&
 	hasAssignedTaskModel(existingClient)
 		? existingClient
 		: createPrismaClient();

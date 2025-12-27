@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AuthCta } from "@/components/AuthCta";
 import { PageHeader } from "@/components/PageHeader";
+import { PageShell } from "@/components/PageShell";
 import { PushNotifications } from "@/components/PushNotifications";
 import { DangerZone } from "@/components/household/DangerZone";
 import { InvitesCard } from "@/components/household/InvitesCard";
@@ -26,9 +27,9 @@ export default async function HouseholdPage() {
 
 	if (!session?.user?.id) {
 		return (
-			<main className="flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-12">
+			<PageShell layout="centered" size="lg">
 				<AuthCta />
-			</main>
+			</PageShell>
 		);
 	}
 
@@ -44,55 +45,53 @@ export default async function HouseholdPage() {
 	const { householdId, membership } = active;
 
 	return (
-		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
-			<div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-10">
-				<PageHeader
-					eyebrow="tskr"
-					title="Household management"
-					description="Manage settings, members, and invite codes."
-					backHref="/"
-					backLabel="Back to dashboard"
-					user={session.user}
-				/>
+		<PageShell size="md">
+			<PageHeader
+				eyebrow="tskr"
+				title="Household management"
+				description="Manage settings, members, and invite codes."
+				backHref="/"
+				backLabel="Back to dashboard"
+				user={session.user}
+			/>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-xl">General</CardTitle>
-						<CardDescription>
-							Update household settings, notifications, and manage deletion.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-8">
-						<SettingsCard
-							householdId={householdId}
-							canManage={membership.role === "DICTATOR"}
-							variant="section"
-						/>
-
-						<PushNotifications variant="section" />
-
-						<DangerZone
-							canDelete={membership.role === "DICTATOR"}
-							variant="section"
-						/>
-					</CardContent>
-				</Card>
-
-				{membership.role !== "DOER" ? (
-					<MembersCard
+			<Card>
+				<CardHeader>
+					<CardTitle className="text-xl">General</CardTitle>
+					<CardDescription>
+						Update household settings, notifications, and manage deletion.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-8">
+					<SettingsCard
 						householdId={householdId}
-						currentUserId={userId}
-						canManageMembers={membership.role === "DICTATOR"}
+						canManage={membership.role === "DICTATOR"}
+						variant="section"
 					/>
-				) : null}
 
-				<InvitesCard
+					<PushNotifications variant="section" />
+
+					<DangerZone
+						canDelete={membership.role === "DICTATOR"}
+						variant="section"
+					/>
+				</CardContent>
+			</Card>
+
+			{membership.role !== "DOER" ? (
+				<MembersCard
 					householdId={householdId}
-					canInvite={membership.role === "DICTATOR"}
+					currentUserId={userId}
+					canManageMembers={membership.role === "DICTATOR"}
 				/>
+			) : null}
 
-				<JoinCard />
-			</div>
-		</main>
+			<InvitesCard
+				householdId={householdId}
+				canInvite={membership.role === "DICTATOR"}
+			/>
+
+			<JoinCard />
+		</PageShell>
 	);
 }

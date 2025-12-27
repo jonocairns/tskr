@@ -16,6 +16,8 @@ type Props = {
 		name?: string | null;
 		email?: string | null;
 		image?: string | null;
+		isSuperAdmin?: boolean;
+		hasGoogleAccount?: boolean;
 	};
 };
 

@@ -56,7 +56,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		}),
 		prisma.household.findUnique({
 			where: { id: householdId },
-			select: { rewardThreshold: true },
+			select: { rewardThreshold: true, progressBarColor: true },
 		}),
 		prisma.user.findMany({
 			where: { memberships: { some: { householdId } } },
@@ -161,6 +161,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		rewardCounts,
 		lastActivity,
 		rewardThreshold: household?.rewardThreshold ?? 50,
+		progressBarColor: household?.progressBarColor ?? null,
 		users,
 		recentLogs: trimmedLogs,
 		hasMoreHistory,

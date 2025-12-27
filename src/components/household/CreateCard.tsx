@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -24,6 +25,7 @@ export const CreateCard = ({ redirectTo }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
+	const { update } = useSession();
 
 	const trimmed = name.trim();
 	const canSubmit = trimmed.length === 0 || trimmed.length >= 2;
@@ -54,6 +56,7 @@ export const CreateCard = ({ redirectTo }: Props) => {
 
 			setName("");
 			toast({ title: "Household created" });
+			await update();
 			if (redirectTo) {
 				router.push(redirectTo);
 			} else {
