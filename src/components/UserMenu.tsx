@@ -88,7 +88,7 @@ export const UserMenu = ({ user }: Props) => {
 						<DropdownMenuItem asChild className="cursor-pointer">
 							<Link href="/household">
 								<HomeIcon className="mr-2 h-4 w-4" />
-								Settings
+								Household
 							</Link>
 						</DropdownMenuItem>
 						{resolvedUser?.householdRole !== "DOER" ? (
