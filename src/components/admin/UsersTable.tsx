@@ -58,9 +58,15 @@ type Props = {
 	rows: RowState[];
 	setRows: Dispatch<SetStateAction<RowState[]>>;
 	currentUserId?: string;
+	googleEnabled: boolean;
 };
 
-export const UsersTable = ({ rows, setRows, currentUserId }: Props) => {
+export const UsersTable = ({
+	rows,
+	setRows,
+	currentUserId,
+	googleEnabled,
+}: Props) => {
 	const { toast } = useToast();
 	const [isPending, startTransition] = useTransition();
 	const [draft, setDraft] = useState<Draft | null>(null);
@@ -335,12 +341,14 @@ export const UsersTable = ({ rows, setRows, currentUserId }: Props) => {
 		(activeRow?.isClearingReset ?? false) ||
 		isPending;
 	const allowPassword = draft ? !draft.passwordLoginDisabled : true;
-	const canDisablePassword = activeRow?.hasGoogleAccount ?? false;
+	const canDisablePassword =
+		googleEnabled && (activeRow?.hasGoogleAccount ?? false);
 	const passwordToggleDisabled =
 		isBusy || (!canDisablePassword && allowPassword);
 	const canSave = Boolean(
 		draft && hasChanges && draftEmail.length > 0 && !isBusy,
 	);
+	const columnCount = googleEnabled ? 8 : 7;
 
 	if (rows.length === 0) {
 		return (
@@ -352,14 +360,16 @@ export const UsersTable = ({ rows, setRows, currentUserId }: Props) => {
 						<TableHead>Role</TableHead>
 						<TableHead>Reset required</TableHead>
 						<TableHead>Created</TableHead>
-						<TableHead className="text-center">Google linked</TableHead>
+						{googleEnabled ? (
+							<TableHead className="text-center">Google linked</TableHead>
+						) : null}
 						<TableHead>Password login</TableHead>
 						<TableHead>Actions</TableHead>
 					</TableRow>
 				</TableHeader>
 				<TableBody>
 					<TableRow>
-						<TableCell colSpan={8} className="text-center">
+						<TableCell colSpan={columnCount} className="text-center">
 							No users yet.
 						</TableCell>
 					</TableRow>
@@ -378,7 +388,9 @@ export const UsersTable = ({ rows, setRows, currentUserId }: Props) => {
 						<TableHead>Role</TableHead>
 						<TableHead>Reset required</TableHead>
 						<TableHead>Created</TableHead>
-						<TableHead className="text-center">Google linked</TableHead>
+						{googleEnabled ? (
+							<TableHead className="text-center">Google linked</TableHead>
+						) : null}
 						<TableHead>Password login</TableHead>
 						<TableHead>Actions</TableHead>
 					</TableRow>
@@ -399,19 +411,21 @@ export const UsersTable = ({ rows, setRows, currentUserId }: Props) => {
 									{row.passwordResetRequired ? "Yes" : "No"}
 								</TableCell>
 								<TableCell>{createdLabel}</TableCell>
-								<TableCell className="text-center">
-									{row.hasGoogleAccount ? (
-										<>
-											<ChromeIcon className="inline h-4 w-4 text-emerald-500" />
-											<span className="sr-only">Google linked</span>
-										</>
-									) : (
-										<>
-											<XIcon className="inline h-4 w-4 text-muted-foreground" />
-											<span className="sr-only">Not linked</span>
-										</>
-									)}
-								</TableCell>
+								{googleEnabled ? (
+									<TableCell className="text-center">
+										{row.hasGoogleAccount ? (
+											<>
+												<ChromeIcon className="inline h-4 w-4 text-emerald-500" />
+												<span className="sr-only">Google linked</span>
+											</>
+										) : (
+											<>
+												<XIcon className="inline h-4 w-4 text-muted-foreground" />
+												<span className="sr-only">Not linked</span>
+											</>
+										)}
+									</TableCell>
+								) : null}
 								<TableCell>
 									{row.passwordLoginDisabled ? "Disabled" : "Allowed"}
 								</TableCell>
@@ -440,7 +454,7 @@ export const UsersTable = ({ rows, setRows, currentUserId }: Props) => {
 					<AlertDialogHeader>
 						<div className="flex items-center justify-between gap-4">
 							<AlertDialogTitle>Edit user</AlertDialogTitle>
-							{activeRow?.hasGoogleAccount ? (
+							{googleEnabled && activeRow?.hasGoogleAccount ? (
 								<ChromeIcon className="h-5 w-5 text-emerald-500" />
 							) : null}
 						</div>

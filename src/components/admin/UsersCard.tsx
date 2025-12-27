@@ -19,6 +19,7 @@ import {
 type Props = {
 	users: UserRow[];
 	currentUserId?: string;
+	googleEnabled: boolean;
 };
 
 const toRowState = (user: UserRow): RowState => ({
@@ -31,7 +32,7 @@ const toRowState = (user: UserRow): RowState => ({
 	resetExpiresAt: "",
 });
 
-export const UsersCard = ({ users, currentUserId }: Props) => {
+export const UsersCard = ({ users, currentUserId, googleEnabled }: Props) => {
 	const [rows, setRows] = useState<RowState[]>(() =>
 		users.map((user) => toRowState(user)),
 	);
@@ -61,6 +62,7 @@ export const UsersCard = ({ users, currentUserId }: Props) => {
 					rows={rows}
 					setRows={setRows}
 					currentUserId={currentUserId}
+					googleEnabled={googleEnabled}
 				/>
 			</CardContent>
 		</Card>

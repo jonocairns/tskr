@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
+import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -74,6 +75,13 @@ export async function PATCH(req: Request, { params }: Params) {
 	}
 
 	if (data.passwordLoginDisabled === true) {
+		if (!isGoogleAuthEnabled) {
+			return NextResponse.json(
+				{ error: "Google OAuth is disabled" },
+				{ status: 400 },
+			);
+		}
+
 		const hasGoogleAccount = await prisma.account.findFirst({
 			where: { userId: id, provider: "google" },
 			select: { id: true },

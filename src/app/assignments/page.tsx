@@ -7,6 +7,7 @@ import { AuthCta } from "@/components/AuthCta";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { authOptions } from "@/lib/auth";
+import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
@@ -14,12 +15,13 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function AssignmentsPage() {
+	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
 
 	if (!session?.user?.id) {
 		return (
 			<PageShell layout="centered" size="lg">
-				<AuthCta />
+				<AuthCta googleEnabled={googleEnabled} />
 			</PageShell>
 		);
 	}
@@ -98,6 +100,7 @@ export default async function AssignmentsPage() {
 				backHref="/"
 				backLabel="Back to dashboard"
 				user={session.user}
+				googleEnabled={googleEnabled}
 			/>
 
 			<AssignTaskCard

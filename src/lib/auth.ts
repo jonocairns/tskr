@@ -9,14 +9,15 @@ import { getAppSettings } from "@/lib/appSettings";
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { createPasswordResetToken } from "@/lib/passwordReset";
 import { verifyPassword } from "@/lib/passwords";
+import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { config } from "@/server-config";
 import { prisma } from "./prisma";
 
 const { googleClientId, googleClientSecret } = config;
 
-if (!googleClientId || !googleClientSecret) {
+if (!isGoogleAuthEnabled) {
 	console.warn(
-		"GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing. Sign-in will fail until these are set.",
+		"Google OAuth is disabled. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it.",
 	);
 }
 
@@ -101,10 +102,14 @@ export const authOptions: NextAuthOptions = {
 				};
 			},
 		}),
-		GoogleProvider({
-			clientId: googleClientId ?? "",
-			clientSecret: googleClientSecret ?? "",
-		}),
+		...(isGoogleAuthEnabled
+			? [
+					GoogleProvider({
+						clientId: googleClientId ?? "",
+						clientSecret: googleClientSecret ?? "",
+					}),
+				]
+			: []),
 	],
 	session: {
 		strategy: "jwt",
@@ -254,7 +259,8 @@ export const authOptions: NextAuthOptions = {
 				session.user.householdId = resolvedHouseholdId;
 				session.user.householdRole = membershipRole;
 				session.user.isSuperAdmin = dbUser.isSuperAdmin ?? false;
-				session.user.hasGoogleAccount = dbUser.accounts.length > 0;
+				session.user.hasGoogleAccount =
+					isGoogleAuthEnabled && dbUser.accounts.length > 0;
 				session.user.hasHouseholdMembership = dbUser.memberships.length > 0;
 			}
 			return session;

@@ -8,17 +8,19 @@ import { AuthSettingsCard } from "@/components/admin/AuthSettingsCard";
 import { UsersCard } from "@/components/admin/UsersCard";
 import { getAppSettings } from "@/lib/appSettings";
 import { authOptions } from "@/lib/auth";
+import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
+	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
 
 	if (!session?.user?.id) {
 		return (
 			<PageShell layout="centered" size="lg">
-				<AuthCta />
+				<AuthCta googleEnabled={googleEnabled} />
 			</PageShell>
 		);
 	}
@@ -47,9 +49,9 @@ export default async function AdminPage() {
 	const userRows = users.map(({ accounts, ...user }) => ({
 		...user,
 		createdAt: user.createdAt.toISOString(),
-		hasGoogleAccount: accounts.length > 0,
+		hasGoogleAccount: googleEnabled && accounts.length > 0,
 	}));
-	const settings = await getAppSettings();
+	const settings = googleEnabled ? await getAppSettings() : null;
 
 	return (
 		<PageShell size="lg">
@@ -60,11 +62,20 @@ export default async function AdminPage() {
 				backHref="/"
 				backLabel="Back to dashboard"
 				user={session.user}
+				googleEnabled={googleEnabled}
 			/>
-			<AuthSettingsCard
-				initialAllowGoogleAccountCreation={settings.allowGoogleAccountCreation}
+			{googleEnabled && settings ? (
+				<AuthSettingsCard
+					initialAllowGoogleAccountCreation={
+						settings.allowGoogleAccountCreation
+					}
+				/>
+			) : null}
+			<UsersCard
+				users={userRows}
+				currentUserId={session.user.id}
+				googleEnabled={googleEnabled}
 			/>
-			<UsersCard users={userRows} currentUserId={session.user.id} />
 		</PageShell>
 	);
 }

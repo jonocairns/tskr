@@ -7,17 +7,19 @@ import { PageShell } from "@/components/PageShell";
 import { CreateCard } from "@/components/household/CreateCard";
 import { JoinCard } from "@/components/household/JoinCard";
 import { authOptions } from "@/lib/auth";
+import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getActiveHouseholdMembership } from "@/lib/households";
 
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
+	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
 
 	if (!session?.user?.id) {
 		return (
 			<PageShell layout="centered" size="lg">
-				<AuthCta />
+				<AuthCta googleEnabled={googleEnabled} />
 			</PageShell>
 		);
 	}
@@ -37,6 +39,7 @@ export default async function LandingPage() {
 				title="Welcome"
 				description="Join an existing household or create a new one."
 				user={session.user}
+				googleEnabled={googleEnabled}
 			/>
 
 			<JoinCard redirectTo="/" />

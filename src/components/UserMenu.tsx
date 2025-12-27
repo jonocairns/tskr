@@ -34,9 +34,10 @@ type Props = {
 		hasGoogleAccount?: boolean;
 		hasHouseholdMembership?: boolean;
 	};
+	googleEnabled: boolean;
 };
 
-export const UserMenu = ({ user }: Props) => {
+export const UserMenu = ({ user, googleEnabled }: Props) => {
 	const { data: session } = useSession();
 	const { toast } = useToast();
 	const sessionUser = session?.user;
@@ -47,6 +48,9 @@ export const UserMenu = ({ user }: Props) => {
 		"U";
 
 	useEffect(() => {
+		if (!googleEnabled) {
+			return;
+		}
 		if (typeof window === "undefined") {
 			return;
 		}
@@ -59,7 +63,7 @@ export const UserMenu = ({ user }: Props) => {
 			title: "Google account linked",
 			description: "Your profile has been updated.",
 		});
-	}, [toast]);
+	}, [googleEnabled, toast]);
 
 	return (
 		<DropdownMenu>
@@ -109,7 +113,7 @@ export const UserMenu = ({ user }: Props) => {
 						</Link>
 					</DropdownMenuItem>
 				) : null}
-				{resolvedUser?.hasGoogleAccount ? null : (
+				{googleEnabled && !resolvedUser?.hasGoogleAccount ? (
 					<DropdownMenuItem
 						className="cursor-pointer"
 						onSelect={() => {
@@ -127,7 +131,7 @@ export const UserMenu = ({ user }: Props) => {
 						<LinkIcon className="mr-2 h-4 w-4" />
 						Link Google
 					</DropdownMenuItem>
-				)}
+				) : null}
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					className="cursor-pointer text-red-600 font-semibold opacity-100 hover:text-red-600 focus:text-red-600"

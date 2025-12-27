@@ -14,9 +14,10 @@ import type { AuthErrorInfo } from "@/lib/authError";
 
 type AuthCtaProps = {
 	authError?: AuthErrorInfo | null;
+	googleEnabled: boolean;
 };
 
-export const AuthCta = ({ authError }: AuthCtaProps) => {
+export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isPending, startTransition] = useTransition();
@@ -96,19 +97,28 @@ export const AuthCta = ({ authError }: AuthCtaProps) => {
 					Track tasks, claim rewards.
 				</h1>
 				<p className="text-muted-foreground">
-					Sign in with Google or email to log tasks, watch your points climb,
-					and keep an audit trail you can always undo.
+					{googleEnabled
+						? "Sign in with Google or email to log tasks, watch your points climb, and keep an audit trail you can always undo."
+						: "Sign in with email to log tasks, watch your points climb, and keep an audit trail you can always undo."}
 				</p>
 			</div>
 			<div className="flex w-full flex-col gap-4">
-				<Button size="lg" onClick={() => signIn("google")} disabled={isPending}>
-					Sign in with Google
-				</Button>
-				<div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-					<Separator className="flex-1" />
-					<span>or use email</span>
-					<Separator className="flex-1" />
-				</div>
+				{googleEnabled ? (
+					<>
+						<Button
+							size="lg"
+							onClick={() => signIn("google")}
+							disabled={isPending}
+						>
+							Sign in with Google
+						</Button>
+						<div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+							<Separator className="flex-1" />
+							<span>or use email</span>
+							<Separator className="flex-1" />
+						</div>
+					</>
+				) : null}
 				<form className="space-y-3" onSubmit={handleEmailSignIn}>
 					<div className="space-y-2 text-left">
 						<Label htmlFor="email-login">Email</Label>

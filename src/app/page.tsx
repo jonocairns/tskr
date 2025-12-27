@@ -13,6 +13,7 @@ import { PointsSummary } from "@/components/PointsSummary";
 import { TaskActions } from "@/components/TaskActions";
 import { authOptions } from "@/lib/auth";
 import { getAuthErrorMessage } from "@/lib/authError";
+import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { buildApprovalEntries } from "@/lib/dashboard/approvals";
 import { buildAuditEntries } from "@/lib/dashboard/audit-log";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export default async function Home({ searchParams }: Props) {
+	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
 
 	if (!session?.user?.id) {
@@ -37,7 +39,7 @@ export default async function Home({ searchParams }: Props) {
 
 		return (
 			<PageShell layout="centered" size="lg">
-				<AuthCta authError={authError} />
+				<AuthCta authError={authError} googleEnabled={googleEnabled} />
 			</PageShell>
 		);
 	}
@@ -96,6 +98,7 @@ export default async function Home({ searchParams }: Props) {
 				title="Dashboard"
 				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
 				user={session.user}
+				googleEnabled={googleEnabled}
 			/>
 
 			<PointsSummary

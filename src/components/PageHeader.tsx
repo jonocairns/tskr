@@ -19,6 +19,7 @@ type Props = {
 		isSuperAdmin?: boolean;
 		hasGoogleAccount?: boolean;
 	};
+	googleEnabled: boolean;
 };
 
 export const PageHeader = ({
@@ -28,6 +29,7 @@ export const PageHeader = ({
 	backHref,
 	backLabel = "Back",
 	user,
+	googleEnabled,
 }: Props) => (
 	<header className="flex items-start justify-between">
 		<div className="flex items-center gap-3 flex-1">
@@ -48,7 +50,7 @@ export const PageHeader = ({
 		<div className="flex items-center gap-2">
 			<ModeToggle />
 			<Switcher />
-			<UserMenu user={user} />
+			<UserMenu user={user} googleEnabled={googleEnabled} />
 		</div>
 	</header>
 );
