@@ -3,7 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
-import { ChromeIcon, XIcon } from "lucide-react";
 import {
 	AlertDialog,
 	AlertDialogContent,
@@ -25,6 +24,7 @@ import {
 	TableRow,
 } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
+import { ChromeIcon, XIcon } from "lucide-react";
 
 export type UserRow = {
 	id: string;

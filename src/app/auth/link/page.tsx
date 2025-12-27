@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
 
 import { Loader2Icon } from "lucide-react";
 
@@ -69,7 +69,9 @@ export default function AuthLinkPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Linking account</CardTitle>
-					<CardDescription>Syncing your Google profile details.</CardDescription>
+					<CardDescription>
+						Syncing your Google profile details.
+					</CardDescription>
 				</CardHeader>
 				<CardContent className="flex items-center gap-3 text-sm text-muted-foreground">
 					<Loader2Icon className="h-4 w-4 animate-spin" />

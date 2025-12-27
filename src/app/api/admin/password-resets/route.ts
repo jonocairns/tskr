@@ -56,7 +56,10 @@ export async function POST(req: Request) {
 
 	const { token, expiresAt } = await createPasswordResetToken(user.id);
 
-	const resetUrl = new URL(`/reset-password/${token}`, config.appUrl).toString();
+	const resetUrl = new URL(
+		`/reset-password/${token}`,
+		config.appUrl,
+	).toString();
 
 	return NextResponse.json({
 		resetUrl,

@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/PageShell";
+import { ResetPasswordForm } from "@/components/ResetPasswordForm";
 import {
 	Card,
 	CardContent,
@@ -5,8 +7,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/Card";
-import { PageShell } from "@/components/PageShell";
-import { ResetPasswordForm } from "@/components/ResetPasswordForm";
 
 export const dynamic = "force-dynamic";
 

@@ -47,7 +47,7 @@ const normalizeError = (value?: string | string[]) => {
 	if (!value) {
 		return "Default";
 	}
-	return Array.isArray(value) ? value[0] ?? "Default" : value;
+	return Array.isArray(value) ? (value[0] ?? "Default") : value;
 };
 
 export default async function AuthErrorPage({ searchParams }: Props) {

@@ -1,7 +1,7 @@
 import "server-only";
 
-import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/passwords";
+import { prisma } from "@/lib/prisma";
 import { config } from "@/server-config";
 
 let hasEnsuredDefaultAdmin = false;

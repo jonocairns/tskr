@@ -3,7 +3,7 @@
 import { RocketIcon } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
+import { type FormEvent, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";

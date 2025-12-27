@@ -3,7 +3,11 @@
 import { useState } from "react";
 
 import { CreateUserDialog } from "@/components/admin/CreateUserCard";
-import { UsersTable, type RowState, type UserRow } from "@/components/admin/UsersTable";
+import {
+	type RowState,
+	type UserRow,
+	UsersTable,
+} from "@/components/admin/UsersTable";
 import {
 	Card,
 	CardContent,

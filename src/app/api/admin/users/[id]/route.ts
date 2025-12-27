@@ -108,7 +108,10 @@ export async function PATCH(req: Request, { params }: Params) {
 			);
 		}
 
-		return NextResponse.json({ error: "Unable to update user" }, { status: 500 });
+		return NextResponse.json(
+			{ error: "Unable to update user" },
+			{ status: 500 },
+		);
 	}
 }
 

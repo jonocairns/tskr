@@ -4,8 +4,8 @@ import { type NextAuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
-import { getAppSettings } from "@/lib/app-settings";
 import { ensureDefaultSuperAdmin } from "@/lib/admin";
+import { getAppSettings } from "@/lib/app-settings";
 import { createPasswordResetToken } from "@/lib/password-reset";
 import { verifyPassword } from "@/lib/passwords";
 import { config } from "@/server-config";
@@ -63,9 +63,7 @@ export const authOptions: NextAuthOptions = {
 						? credentials.email.trim().toLowerCase()
 						: "";
 				const password =
-					typeof credentials?.password === "string"
-						? credentials.password
-						: "";
+					typeof credentials?.password === "string" ? credentials.password : "";
 
 				if (!email || !password) {
 					return null;
