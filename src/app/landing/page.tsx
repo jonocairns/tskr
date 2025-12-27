@@ -34,7 +34,7 @@ export default async function LandingPage() {
 		<PageShell size="sm">
 			<PageHeader
 				eyebrow="tskr"
-				title="Welcome to tskr"
+				title="Welcome"
 				description="Join an existing household or create a new one."
 				user={session.user}
 			/>

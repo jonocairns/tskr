@@ -48,7 +48,7 @@ export default async function HouseholdPage() {
 		<PageShell size="lg">
 			<PageHeader
 				eyebrow="tskr"
-				title="Household management"
+				title="Household"
 				description="Manage settings, members, and invite codes."
 				backHref="/"
 				backLabel="Back to dashboard"

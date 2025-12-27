@@ -93,7 +93,7 @@ export default async function Home({ searchParams }: Props) {
 		<PageShell>
 			<PageHeader
 				eyebrow="tskr"
-				title="Task points dashboard"
+				title="Dashboard"
 				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
 				user={session.user}
 			/>

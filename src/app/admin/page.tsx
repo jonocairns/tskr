@@ -54,8 +54,8 @@ export default async function AdminPage() {
 	return (
 		<PageShell size="lg">
 			<PageHeader
-				eyebrow="Admin"
-				title="Super admin tools"
+				eyebrow="tskr"
+				title="Admin"
 				description="Generate reset links for user passwords."
 				backHref="/"
 				backLabel="Back to dashboard"

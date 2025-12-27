@@ -132,8 +132,8 @@ export async function POST(req: Request) {
 		try {
 			await broadcastPush(
 				{
-					title: "New task logged",
-					body: `${actorLabel} logged ${points} pts: ${trimmed}`,
+					title: "Task logged",
+					body: `${actorLabel} logged ${points} points for "${trimmed}"`,
 					url: "/",
 					icon: "/icon-192.png",
 					badge: "/icon-192.png",
