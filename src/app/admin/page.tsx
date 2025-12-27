@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { AuthSettingsCard } from "@/components/admin/AuthSettingsCard";
 import { UsersCard } from "@/components/admin/UsersCard";
-import { getAppSettings } from "@/lib/app-settings";
+import { getAppSettings } from "@/lib/appSettings";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -52,7 +52,7 @@ export default async function AdminPage() {
 	const settings = await getAppSettings();
 
 	return (
-		<PageShell size="xl">
+		<PageShell size="lg">
 			<PageHeader
 				eyebrow="Admin"
 				title="Super admin tools"

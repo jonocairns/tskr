@@ -23,7 +23,9 @@ import {
 	TableRow,
 } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
+import { formatCadenceInterval } from "@/lib/assignedTasksCadence";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
+import { requestJson } from "@/lib/request-json";
 
 export type AssignedTaskEntry = {
 	id: string;
@@ -38,29 +40,9 @@ export type AssignedTaskEntry = {
 	progress: number;
 };
 
-const CADENCE_LABELS: Record<number, string> = {
-	1440: "Daily",
-	10080: "Weekly",
-	20160: "Fortnightly",
-	43200: "Monthly",
-	129600: "Quarterly",
-	525600: "Yearly",
-};
-
 const BUCKET_LABELS = Object.fromEntries(
 	DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]),
 );
-
-const formatCadenceInterval = (minutes: number) => {
-	if (CADENCE_LABELS[minutes]) {
-		return CADENCE_LABELS[minutes];
-	}
-	if (minutes % 60 === 0) {
-		const hours = Math.round(minutes / 60);
-		return `Every ${hours}h`;
-	}
-	return `Every ${minutes}m`;
-};
 
 type Props = {
 	entries: AssignedTaskEntry[];
@@ -73,22 +55,21 @@ export const AssignedTaskQueue = ({ entries }: Props) => {
 
 	const handleComplete = (taskId: string) => {
 		startTransition(async () => {
-			const res = await fetch(`/api/assigned-tasks/${taskId}/complete`, {
-				method: "POST",
-			});
+			const { res, data } = await requestJson<{
+				entry?: { status?: string };
+				error?: string;
+			}>(`/api/assigned-tasks/${taskId}/complete`, { method: "POST" });
 
 			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
 				toast({
 					title: "Unable to complete task",
-					description: body?.error ?? "Please try again.",
+					description: data?.error ?? "Please try again.",
 					variant: "destructive",
 				});
 				return;
 			}
 
-			const body = await res.json().catch(() => ({}));
-			const isPendingApproval = body?.entry?.status === "PENDING";
+			const isPendingApproval = data?.entry?.status === "PENDING";
 			toast({
 				title: isPendingApproval ? "Submitted for approval" : "Task completed",
 				description: isPendingApproval

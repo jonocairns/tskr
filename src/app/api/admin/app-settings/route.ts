@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
 	getAppSettings,
 	setAllowGoogleAccountCreation,
-} from "@/lib/app-settings";
+} from "@/lib/appSettings";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";

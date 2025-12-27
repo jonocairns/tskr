@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { createPasswordResetToken } from "@/lib/password-reset";
+import { createPasswordResetToken } from "@/lib/passwordReset";
 import { prisma } from "@/lib/prisma";
 import { config } from "@/server-config";
 

@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -154,6 +155,27 @@ export async function POST(req: Request) {
 		return membership.requiresApprovalDefault;
 	};
 
+	const getTotalPoints = async () => {
+		const total = await prisma.pointLog.aggregate({
+			where: {
+				userId,
+				householdId,
+				revertedAt: null,
+				status: "APPROVED",
+			},
+			_sum: { points: true },
+		});
+		return total._sum.points ?? 0;
+	};
+
+	const createEntry = async (data: Prisma.PointLogUncheckedCreateInput) => {
+		const entry = await prisma.pointLog.create({ data });
+		await notifyTask(entry.description, entry.points);
+		const totalPoints = await getTotalPoints();
+
+		return NextResponse.json({ entry, totalPoints }, { status: 201 });
+	};
+
 	try {
 		const payload = parsed.data;
 		if (payload.type === "preset") {
@@ -194,34 +216,16 @@ export async function POST(req: Request) {
 					preset.approvalOverride,
 				);
 				const status = requiresApproval ? "PENDING" : "APPROVED";
-				const entry = await prisma.pointLog.create({
-					data: {
-						householdId,
-						userId,
-						kind: "PRESET",
-						duration: bucket,
-						points: getBucketPoints(bucket),
-						description: payload.description?.trim() || preset.label,
-						presetId: preset.id,
-						status,
-					},
+				return createEntry({
+					householdId,
+					userId,
+					kind: "PRESET",
+					duration: bucket,
+					points: getBucketPoints(bucket),
+					description: payload.description?.trim() || preset.label,
+					presetId: preset.id,
+					status,
 				});
-				await notifyTask(entry.description, entry.points);
-
-				const total = await prisma.pointLog.aggregate({
-					where: {
-						userId,
-						householdId,
-						revertedAt: null,
-						status: "APPROVED",
-					},
-					_sum: { points: true },
-				});
-
-				return NextResponse.json(
-					{ entry, totalPoints: total._sum.points ?? 0 },
-					{ status: 201 },
-				);
 			}
 
 			const preset = findPreset(payload.presetKey ?? "");
@@ -234,66 +238,30 @@ export async function POST(req: Request) {
 
 			const requiresApproval = resolveRequiresApproval(null);
 			const status = requiresApproval ? "PENDING" : "APPROVED";
-			const entry = await prisma.pointLog.create({
-				data: {
-					householdId,
-					userId,
-					kind: "PRESET",
-					duration: preset.bucket,
-					points: getBucketPoints(preset.bucket),
-					description: payload.description?.trim() || preset.label,
-					presetKey: preset.key,
-					status,
-				},
+			return createEntry({
+				householdId,
+				userId,
+				kind: "PRESET",
+				duration: preset.bucket,
+				points: getBucketPoints(preset.bucket),
+				description: payload.description?.trim() || preset.label,
+				presetKey: preset.key,
+				status,
 			});
-			await notifyTask(entry.description, entry.points);
-
-			const total = await prisma.pointLog.aggregate({
-				where: {
-					userId,
-					householdId,
-					revertedAt: null,
-					status: "APPROVED",
-				},
-				_sum: { points: true },
-			});
-
-			return NextResponse.json(
-				{ entry, totalPoints: total._sum.points ?? 0 },
-				{ status: 201 },
-			);
 		}
 
 		const requiresApproval = resolveRequiresApproval(null);
 		const status = requiresApproval ? "PENDING" : "APPROVED";
-		const entry = await prisma.pointLog.create({
-			data: {
-				householdId,
-				userId,
-				kind: "TIMED",
-				duration: payload.bucket,
-				durationMinutes: payload.durationMinutes,
-				points: getBucketPoints(payload.bucket),
-				description: payload.description.trim(),
-				status,
-			},
+		return createEntry({
+			householdId,
+			userId,
+			kind: "TIMED",
+			duration: payload.bucket,
+			durationMinutes: payload.durationMinutes,
+			points: getBucketPoints(payload.bucket),
+			description: payload.description.trim(),
+			status,
 		});
-		await notifyTask(entry.description, entry.points);
-
-		const total = await prisma.pointLog.aggregate({
-			where: {
-				userId,
-				householdId,
-				revertedAt: null,
-				status: "APPROVED",
-			},
-			_sum: { points: true },
-		});
-
-		return NextResponse.json(
-			{ entry, totalPoints: total._sum.points ?? 0 },
-			{ status: 201 },
-		);
 	} catch (error) {
 		console.error("[logs:POST]", error);
 		return NextResponse.json({ error: "Failed to log task" }, { status: 500 });

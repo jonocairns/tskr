@@ -45,7 +45,7 @@ export default async function HouseholdPage() {
 	const { householdId, membership } = active;
 
 	return (
-		<PageShell size="md">
+		<PageShell size="lg">
 			<PageHeader
 				eyebrow="tskr"
 				title="Household management"

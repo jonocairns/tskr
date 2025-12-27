@@ -3,7 +3,7 @@ import {
 	type HouseholdStore,
 	getActiveHouseholdMembership,
 	resolveActiveHouseholdId,
-} from "../src/lib/households-core";
+} from "../src/lib/householdsCore";
 
 const makeStore = (memberships: HouseholdMembership[]) => {
 	const membershipMap = new Map(

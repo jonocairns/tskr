@@ -30,25 +30,15 @@ export const PageHeader = ({
 	user,
 }: Props) => (
 	<header className="flex items-start justify-between">
-		<div className="flex items-start gap-3">
+		<div className="flex items-center gap-3 flex-1">
 			{backHref ? (
-				<Button asChild variant="ghost" size="icon">
+				<Button asChild variant="outline" size="icon" className=" h-16 w-12">
 					<Link href={backHref} aria-label={backLabel}>
 						<ChevronLeftIcon className="h-5 w-5" />
 					</Link>
 				</Button>
 			) : null}
-			<div>
-				{eyebrow ? (
-					<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-						{eyebrow}
-					</p>
-				) : null}
-				<h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-				{description ? (
-					<p className="text-sm text-muted-foreground">{description}</p>
-				) : null}
-			</div>
+			<TitleBlock eyebrow={eyebrow} title={title} description={description} />
 		</div>
 		<div className="flex items-center gap-2">
 			<ModeToggle />
@@ -56,4 +46,20 @@ export const PageHeader = ({
 			<UserMenu user={user} />
 		</div>
 	</header>
+);
+
+type TitleBlockProps = Pick<Props, "title" | "description" | "eyebrow">;
+
+const TitleBlock = ({ title, description, eyebrow }: TitleBlockProps) => (
+	<div>
+		{eyebrow ? (
+			<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+				{eyebrow}
+			</p>
+		) : null}
+		<h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+		{description ? (
+			<p className="text-sm text-muted-foreground">{description}</p>
+		) : null}
+	</div>
 );

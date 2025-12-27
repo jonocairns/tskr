@@ -12,7 +12,7 @@ import { PageShell } from "@/components/PageShell";
 import { PointsSummary } from "@/components/PointsSummary";
 import { TaskActions } from "@/components/TaskActions";
 import { authOptions } from "@/lib/auth";
-import { getAuthErrorMessage } from "@/lib/auth-error";
+import { getAuthErrorMessage } from "@/lib/authError";
 import { buildApprovalEntries } from "@/lib/dashboard/approvals";
 import { buildAuditEntries } from "@/lib/dashboard/audit-log";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
@@ -54,6 +54,7 @@ export default async function Home({ searchParams }: Props) {
 
 	const {
 		pointSums,
+		earnedPointSums,
 		taskCounts,
 		rewardCounts,
 		lastActivity,
@@ -76,6 +77,7 @@ export default async function Home({ searchParams }: Props) {
 		userId,
 		users,
 		pointSums,
+		earnedPointSums,
 		taskCounts,
 		rewardCounts,
 		lastActivity,

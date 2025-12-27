@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Separator } from "@/components/ui/Separator";
 import { useToast } from "@/hooks/use-toast";
-import type { AuthErrorInfo } from "@/lib/auth-error";
+import type { AuthErrorInfo } from "@/lib/authError";
 
 type AuthCtaProps = {
 	authError?: AuthErrorInfo | null;
