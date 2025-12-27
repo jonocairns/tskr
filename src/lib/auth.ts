@@ -238,11 +238,43 @@ export const authOptions: NextAuthOptions = {
 					return session;
 				}
 
+				let resolvedHouseholdId: string | null = null;
+				let membershipRole: "DICTATOR" | "APPROVER" | "DOER" | null = null;
+
+				if (dbUser.lastHouseholdId) {
+					const membership = await prisma.householdMember.findFirst({
+						where: {
+							userId: token.sub,
+							householdId: dbUser.lastHouseholdId,
+						},
+						select: { role: true },
+					});
+
+					if (membership) {
+						resolvedHouseholdId = dbUser.lastHouseholdId;
+						membershipRole = membership.role;
+					}
+				}
+
+				if (!resolvedHouseholdId) {
+					const fallback = await prisma.householdMember.findFirst({
+						where: { userId: token.sub },
+						select: { householdId: true, role: true },
+						orderBy: { joinedAt: "asc" },
+					});
+
+					if (fallback) {
+						resolvedHouseholdId = fallback.householdId;
+						membershipRole = fallback.role;
+					}
+				}
+
 				session.user.id = token.sub;
 				session.user.name = dbUser.name;
 				session.user.email = dbUser.email;
 				session.user.image = dbUser.image;
-				session.user.householdId = dbUser.lastHouseholdId ?? null;
+				session.user.householdId = resolvedHouseholdId;
+				session.user.householdRole = membershipRole;
 				session.user.isSuperAdmin = dbUser.isSuperAdmin ?? false;
 				session.user.hasGoogleAccount = dbUser.accounts.length > 0;
 				session.user.hasHouseholdMembership = dbUser.memberships.length > 0;

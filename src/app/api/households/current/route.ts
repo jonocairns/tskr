@@ -19,6 +19,10 @@ const updateSchema = z.object({
 		.int()
 		.min(1, "Threshold must be at least 1")
 		.max(10000, "Threshold is too high"),
+	progressBarColor: z
+		.string()
+		.regex(/^#([0-9a-fA-F]{6})$/, "Color must be a 6-digit hex value")
+		.nullable(),
 });
 
 export async function GET() {
@@ -38,7 +42,13 @@ export async function GET() {
 
 	const household = await prisma.household.findUnique({
 		where: { id: active.householdId },
-		select: { id: true, name: true, createdById: true, rewardThreshold: true },
+		select: {
+			id: true,
+			name: true,
+			createdById: true,
+			rewardThreshold: true,
+			progressBarColor: true,
+		},
 	});
 
 	if (!household) {
@@ -75,7 +85,11 @@ export async function PATCH(req: Request) {
 			{ status: 400 },
 		);
 	}
-	if (!parsed.data.name && parsed.data.rewardThreshold === undefined) {
+	if (
+		!parsed.data.name &&
+		parsed.data.rewardThreshold === undefined &&
+		parsed.data.progressBarColor === undefined
+	) {
 		return NextResponse.json({ error: "No updates provided" }, { status: 400 });
 	}
 
@@ -86,8 +100,11 @@ export async function PATCH(req: Request) {
 			...(parsed.data.rewardThreshold !== undefined
 				? { rewardThreshold: parsed.data.rewardThreshold }
 				: {}),
+			...(parsed.data.progressBarColor !== undefined
+				? { progressBarColor: parsed.data.progressBarColor }
+				: {}),
 		},
-		select: { id: true, name: true, rewardThreshold: true },
+		select: { id: true, name: true, rewardThreshold: true, progressBarColor: true },
 	});
 
 	return NextResponse.json({ household });

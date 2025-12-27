@@ -11,6 +11,16 @@ import {
 	CardTitle,
 } from "@/components/ui/Card";
 import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/AlertDialog";
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -50,8 +60,15 @@ export const MembersCard = ({
 	const [members, setMembers] = useState<Member[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isPending, startTransition] = useTransition();
+	const [pendingRoleChange, setPendingRoleChange] = useState<{
+		memberId: string;
+		role: Member["role"];
+	} | null>(null);
 	const { toast } = useToast();
 	const isSection = variant === "section";
+	const dictatorCount = members.filter(
+		(member) => member.role === "DICTATOR",
+	).length;
 
 	useEffect(() => {
 		let isActive = true;
@@ -125,6 +142,16 @@ export const MembersCard = ({
 		});
 	};
 
+	const handleConfirmRoleChange = () => {
+		if (!pendingRoleChange) {
+			return;
+		}
+		updateMember(pendingRoleChange.memberId, {
+			role: pendingRoleChange.role,
+		});
+		setPendingRoleChange(null);
+	};
+
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
 			<CardTitle className={isSection ? "text-base" : "text-xl"}>
@@ -153,6 +180,9 @@ export const MembersCard = ({
 					<TableBody>
 						{members.map((member) => {
 							const isSelf = member.userId === currentUserId;
+							const isOnlyDictator =
+								member.role === "DICTATOR" && dictatorCount === 1;
+							const roleSelectDisabled = isPending;
 							return (
 								<TableRow key={member.id}>
 									<TableCell>
@@ -166,21 +196,46 @@ export const MembersCard = ({
 										</div>
 									</TableCell>
 									<TableCell>
-										{canManageMembers && !isSelf ? (
+										{canManageMembers ? (
 											<Select
 												value={member.role}
 												onValueChange={(
 													value: "DICTATOR" | "APPROVER" | "DOER",
-												) => updateMember(member.id, { role: value })}
-												disabled={isPending}
+												) => {
+													if (value === member.role) {
+														return;
+													}
+													if (isOnlyDictator && value !== "DICTATOR") {
+														toast({
+															title: "Keep at least one dictator",
+															description:
+																"Promote another member to dictator first.",
+															variant: "destructive",
+														});
+														return;
+													}
+													if (isSelf && value !== "DICTATOR") {
+														setPendingRoleChange({
+															memberId: member.id,
+															role: value,
+														});
+														return;
+													}
+													updateMember(member.id, { role: value });
+												}}
+												disabled={roleSelectDisabled}
 											>
 												<SelectTrigger>
 													<SelectValue placeholder="Select role" />
 												</SelectTrigger>
 												<SelectContent>
 													<SelectItem value="DICTATOR">Dictator</SelectItem>
-													<SelectItem value="APPROVER">Approver</SelectItem>
-													<SelectItem value="DOER">Doer</SelectItem>
+													<SelectItem value="APPROVER" disabled={isOnlyDictator}>
+														Approver
+													</SelectItem>
+													<SelectItem value="DOER" disabled={isOnlyDictator}>
+														Doer
+													</SelectItem>
 												</SelectContent>
 											</Select>
 										) : (
@@ -229,6 +284,35 @@ export const MembersCard = ({
 					</TableBody>
 				</Table>
 			)}
+			<AlertDialog
+				open={Boolean(pendingRoleChange)}
+				onOpenChange={(open) => {
+					if (!open) {
+						setPendingRoleChange(null);
+					}
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Change your role?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will remove your dictator access. You will no longer be able
+							to manage settings, members, or invites.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							type="button"
+							onClick={handleConfirmRoleChange}
+							disabled={isPending}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Confirm change
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 

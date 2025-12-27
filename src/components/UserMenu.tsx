@@ -29,6 +29,7 @@ type Props = {
 		name?: string | null;
 		email?: string | null;
 		image?: string | null;
+		householdRole?: "DICTATOR" | "APPROVER" | "DOER" | null;
 		isSuperAdmin?: boolean;
 		hasGoogleAccount?: boolean;
 		hasHouseholdMembership?: boolean;
@@ -82,12 +83,6 @@ export const UserMenu = ({ user }: Props) => {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="w-56" align="end">
-				<DropdownMenuLabel>Signed in</DropdownMenuLabel>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem disabled>
-					<UserRoundIcon className="mr-2 h-4 w-4" />
-					{resolvedUser?.email ?? "Google account"}
-				</DropdownMenuItem>
 				{resolvedUser?.hasHouseholdMembership ? (
 					<>
 						<DropdownMenuItem asChild className="cursor-pointer">
@@ -96,12 +91,14 @@ export const UserMenu = ({ user }: Props) => {
 								Settings
 							</Link>
 						</DropdownMenuItem>
-						<DropdownMenuItem asChild className="cursor-pointer">
-							<Link href="/assignments">
-								<ClipboardListIcon className="mr-2 h-4 w-4" />
-								Assignments
-							</Link>
-						</DropdownMenuItem>
+						{resolvedUser?.householdRole !== "DOER" ? (
+							<DropdownMenuItem asChild className="cursor-pointer">
+								<Link href="/assignments">
+									<ClipboardListIcon className="mr-2 h-4 w-4" />
+									Assignments
+								</Link>
+							</DropdownMenuItem>
+						) : null}
 					</>
 				) : null}
 				{resolvedUser?.isSuperAdmin ? (

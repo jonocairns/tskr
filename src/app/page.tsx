@@ -56,6 +56,7 @@ export default async function Home() {
 		weeklyTaskCount,
 		weeklyPoints,
 		rewardThreshold,
+		progressBarColor,
 		hasApprovalMembers,
 		lastTaskAt,
 		currentStreak,
@@ -88,6 +89,7 @@ export default async function Home() {
 			<PointsSummary
 				points={myPoints}
 				threshold={rewardThreshold}
+				progressBarColor={progressBarColor}
 				tasksLastWeek={weeklyTaskCount}
 				pointsLastWeek={weeklyPoints}
 				lastTaskAt={lastTaskAt?.toISOString() ?? null}

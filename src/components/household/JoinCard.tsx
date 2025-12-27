@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useSession } from "next-auth/react";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -25,6 +26,7 @@ export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
+	const { update } = useSession();
 	const isSection = variant === "section";
 
 	const trimmed = code.trim().toUpperCase();
@@ -54,6 +56,7 @@ export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 
 			setCode("");
 			toast({ title: "Joined household" });
+			await update();
 			if (redirectTo) {
 				router.push(redirectTo);
 			} else {

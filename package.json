@@ -15,7 +15,8 @@
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
-		"compile": "tsc"
+		"compile": "tsc",
+		"test": "node --test --experimental-strip-types \"tests/**/*.test.ts\""
 	},
 	"dependencies": {
 		"@next-auth/prisma-adapter": "^1.0.7",
