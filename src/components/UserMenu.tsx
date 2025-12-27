@@ -4,9 +4,11 @@ import {
 	ClipboardListIcon,
 	HomeIcon,
 	LogOutIcon,
+	LinkIcon,
+	ShieldIcon,
 	UserRoundIcon,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
@@ -25,6 +27,8 @@ type Props = {
 		name?: string | null;
 		email?: string | null;
 		image?: string | null;
+		isSuperAdmin?: boolean;
+		hasGoogleAccount?: boolean;
 	};
 };
 
@@ -72,6 +76,23 @@ export const UserMenu = ({ user }: Props) => {
 						Assignments
 					</Link>
 				</DropdownMenuItem>
+				{user?.isSuperAdmin ? (
+					<DropdownMenuItem asChild className="cursor-pointer">
+						<Link href="/admin">
+							<ShieldIcon className="mr-2 h-4 w-4" />
+							Admin
+						</Link>
+					</DropdownMenuItem>
+				) : null}
+				{user?.hasGoogleAccount ? null : (
+					<DropdownMenuItem
+						className="cursor-pointer"
+						onSelect={() => signIn("google")}
+					>
+						<LinkIcon className="mr-2 h-4 w-4" />
+						Link Google
+					</DropdownMenuItem>
+				)}
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					className="cursor-pointer text-red-600 font-semibold opacity-100 hover:text-red-600 focus:text-red-600"

@@ -11,6 +11,7 @@
 		"db:sync": "prisma migrate deploy",
 		"db:push": "prisma db push",
 		"db:reset": "prisma migrate reset",
+		"db:generate": "prisma generate",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
