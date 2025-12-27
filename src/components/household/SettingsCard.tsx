@@ -243,9 +243,7 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 						type="color"
 						value={progressBarColor}
 						onChange={(event) => setProgressBarColor(event.target.value)}
-						disabled={
-							isLoading || isPending || !useCustomProgressBarColor
-						}
+						disabled={isLoading || isPending || !useCustomProgressBarColor}
 						className="h-10 w-16 p-1"
 					/>
 					<p className="text-sm text-muted-foreground">

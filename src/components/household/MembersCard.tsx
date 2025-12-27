@@ -2,14 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react";
 
-import { Badge } from "@/components/ui/Badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -20,6 +12,14 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/AlertDialog";
+import { Badge } from "@/components/ui/Badge";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/Card";
 import {
 	Select,
 	SelectContent,
@@ -230,7 +230,10 @@ export const MembersCard = ({
 												</SelectTrigger>
 												<SelectContent>
 													<SelectItem value="DICTATOR">Dictator</SelectItem>
-													<SelectItem value="APPROVER" disabled={isOnlyDictator}>
+													<SelectItem
+														value="APPROVER"
+														disabled={isOnlyDictator}
+													>
 														Approver
 													</SelectItem>
 													<SelectItem value="DOER" disabled={isOnlyDictator}>

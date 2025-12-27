@@ -104,7 +104,12 @@ export async function PATCH(req: Request) {
 				? { progressBarColor: parsed.data.progressBarColor }
 				: {}),
 		},
-		select: { id: true, name: true, rewardThreshold: true, progressBarColor: true },
+		select: {
+			id: true,
+			name: true,
+			rewardThreshold: true,
+			progressBarColor: true,
+		},
 	});
 
 	return NextResponse.json({ household });
