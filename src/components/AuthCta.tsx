@@ -10,8 +10,13 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Separator } from "@/components/ui/Separator";
 import { useToast } from "@/hooks/use-toast";
+import type { AuthErrorInfo } from "@/lib/auth-error";
 
-export const AuthCta = () => {
+type AuthCtaProps = {
+	authError?: AuthErrorInfo | null;
+};
+
+export const AuthCta = ({ authError }: AuthCtaProps) => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isPending, startTransition] = useTransition();
@@ -131,6 +136,24 @@ export const AuthCta = () => {
 						Sign in with email
 					</Button>
 				</form>
+				{authError ? (
+					<>
+						<Separator />
+						<div className="w-full rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center">
+							<p className="text-sm font-medium text-destructive">
+								{authError.title}
+							</p>
+							<p className="text-xs text-muted-foreground">
+								{authError.description}
+							</p>
+							{authError.key !== "Default" ? (
+								<p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+									Error code: {authError.key}
+								</p>
+							) : null}
+						</div>
+					</>
+				) : null}
 			</div>
 		</div>
 	);

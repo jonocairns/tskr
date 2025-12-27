@@ -11,49 +11,17 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/Card";
+import { getAuthErrorMessage } from "@/lib/auth-error";
 
 export const dynamic = "force-dynamic";
-
-const errorCopy: Record<string, { title: string; description: string }> = {
-	AccessDenied: {
-		title: "Access denied",
-		description:
-			"This sign-in method is currently blocked. Ask a super admin to enable Google sign-ins or link your account.",
-	},
-	OAuthAccountNotLinked: {
-		title: "Account not linked",
-		description:
-			"Sign in with the provider you used before, or ask a super admin to link your account.",
-	},
-	CredentialsSignin: {
-		title: "Sign in failed",
-		description: "Check your email and password, then try again.",
-	},
-	Configuration: {
-		title: "Auth misconfigured",
-		description: "Sign-in is not fully configured yet. Please try again later.",
-	},
-	Default: {
-		title: "Sign-in error",
-		description: "Something went wrong during sign-in. Please try again.",
-	},
-};
 
 type Props = {
 	searchParams: Promise<{ error?: string | string[] }>;
 };
 
-const normalizeError = (value?: string | string[]) => {
-	if (!value) {
-		return "Default";
-	}
-	return Array.isArray(value) ? (value[0] ?? "Default") : value;
-};
-
 export default async function AuthErrorPage({ searchParams }: Props) {
 	const { error } = await searchParams;
-	const errorKey = normalizeError(error);
-	const message = errorCopy[errorKey] ?? errorCopy.Default;
+	const { key, title, description } = getAuthErrorMessage(error);
 
 	return (
 		<PageShell layout="centered" size="md">
@@ -63,17 +31,17 @@ export default async function AuthErrorPage({ searchParams }: Props) {
 						<XIcon className="h-6 w-6" />
 					</div>
 					<div className="space-y-1">
-						<CardTitle>{message.title}</CardTitle>
-						<CardDescription>{message.description}</CardDescription>
+						<CardTitle>{title}</CardTitle>
+						<CardDescription>{description}</CardDescription>
 					</div>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4">
 					<Button asChild size="lg">
 						<Link href="/">Back to sign in</Link>
 					</Button>
-					{errorKey !== "Default" ? (
+					{key !== "Default" ? (
 						<p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">
-							Error code: {errorKey}
+							Error code: {key}
 						</p>
 					) : null}
 				</CardContent>

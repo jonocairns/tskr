@@ -12,6 +12,7 @@ import { PageShell } from "@/components/PageShell";
 import { PointsSummary } from "@/components/PointsSummary";
 import { TaskActions } from "@/components/TaskActions";
 import { authOptions } from "@/lib/auth";
+import { getAuthErrorMessage } from "@/lib/auth-error";
 import { buildApprovalEntries } from "@/lib/dashboard/approvals";
 import { buildAuditEntries } from "@/lib/dashboard/audit-log";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
@@ -21,13 +22,22 @@ import { getActiveHouseholdMembership } from "@/lib/households";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+type Props = {
+	searchParams?: Promise<{ error?: string | string[] }>;
+};
+
+export default async function Home({ searchParams }: Props) {
 	const session = await getServerSession(authOptions);
 
 	if (!session?.user?.id) {
+		const resolvedSearchParams = searchParams ? await searchParams : {};
+		const authError = resolvedSearchParams.error
+			? getAuthErrorMessage(resolvedSearchParams.error)
+			: null;
+
 		return (
 			<PageShell layout="centered" size="lg">
-				<AuthCta />
+				<AuthCta authError={authError} />
 			</PageShell>
 		);
 	}
