@@ -168,7 +168,7 @@ export async function POST(req: Request) {
 		return total._sum.points ?? 0;
 	};
 
-	const createEntry = async (data: Prisma.PointLogCreateInput) => {
+	const createEntry = async (data: Prisma.PointLogUncheckedCreateInput) => {
 		const entry = await prisma.pointLog.create({ data });
 		await notifyTask(entry.description, entry.points);
 		const totalPoints = await getTotalPoints();
