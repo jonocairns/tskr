@@ -6,10 +6,10 @@ import GoogleProvider from "next-auth/providers/google";
 
 import { ensureDefaultSuperAdmin } from "@/lib/admin";
 import { getAppSettings } from "@/lib/appSettings";
+import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { createPasswordResetToken } from "@/lib/passwordReset";
 import { verifyPassword } from "@/lib/passwords";
-import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { config } from "@/server-config";
 import { prisma } from "./prisma";
 
