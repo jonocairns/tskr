@@ -15,26 +15,10 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/Card";
+import { resolveReturnTo } from "@/lib/returnTo";
 
 type Props = {
 	googleEnabled: boolean;
-};
-
-const resolveReturnTo = (value: string | null) => {
-	if (!value) {
-		return "/";
-	}
-
-	try {
-		const decoded = decodeURIComponent(value);
-		if (decoded.startsWith("/")) {
-			return decoded;
-		}
-	} catch {
-		return "/";
-	}
-
-	return "/";
 };
 
 export const AuthLinkClient = ({ googleEnabled }: Props) => {
