@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-
 import { buildSecurityHeaders } from "./headers";
 
 const nextConfig: NextConfig = {
