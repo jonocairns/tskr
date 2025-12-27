@@ -90,7 +90,7 @@ export default async function AssignmentsPage() {
 		}));
 
 	return (
-		<PageShell size="md">
+		<PageShell size="lg">
 			<PageHeader
 				eyebrow="tskr"
 				title="Assignments"

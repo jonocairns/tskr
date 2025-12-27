@@ -27,9 +27,14 @@ import { useToast } from "@/hooks/use-toast";
 type Props = {
 	canDelete: boolean;
 	variant?: "card" | "section";
+	showTitle?: boolean;
 };
 
-export const DangerZone = ({ canDelete, variant = "card" }: Props) => {
+export const DangerZone = ({
+	canDelete,
+	variant = "card",
+	showTitle = false,
+}: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
@@ -114,7 +119,7 @@ export const DangerZone = ({ canDelete, variant = "card" }: Props) => {
 	if (isSection) {
 		return (
 			<section className="space-y-3">
-				{header}
+				{showTitle ? header : null}
 				{content}
 			</section>
 		);
@@ -122,7 +127,7 @@ export const DangerZone = ({ canDelete, variant = "card" }: Props) => {
 
 	return (
 		<Card>
-			<CardHeader>{header}</CardHeader>
+			{showTitle ? <CardHeader>{header}</CardHeader> : null}
 			<CardContent>{content}</CardContent>
 		</Card>
 	);

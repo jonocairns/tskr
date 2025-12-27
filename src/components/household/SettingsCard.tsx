@@ -22,7 +22,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-const DEFAULT_PROGRESS_BAR_COLOR = "#22c55e";
+const DEFAULT_PROGRESS_BAR_COLOR = "#FFFFFF";
 const PROGRESS_BAR_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
 
 const isValidProgressBarColor = (value: string) =>
@@ -244,7 +244,7 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 						value={progressBarColor}
 						onChange={(event) => setProgressBarColor(event.target.value)}
 						disabled={isLoading || isPending || !useCustomProgressBarColor}
-						className="h-10 w-16 p-1"
+						className="h-10 w-16 p-2"
 					/>
 					<p className="text-sm text-muted-foreground">
 						Theme the overview progress bar.

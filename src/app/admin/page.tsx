@@ -52,7 +52,7 @@ export default async function AdminPage() {
 	const settings = await getAppSettings();
 
 	return (
-		<PageShell size="xl">
+		<PageShell size="lg">
 			<PageHeader
 				eyebrow="Admin"
 				title="Super admin tools"
