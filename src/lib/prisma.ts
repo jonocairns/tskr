@@ -2,14 +2,14 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@prisma/client";
 
 import { publishDashboardUpdate } from "@/lib/events";
+import { config } from "@/server-config";
 
 const globalForPrisma = globalThis as unknown as {
 	prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
 
-const databaseUrl = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
 const adapter = new PrismaBetterSqlite3({
-	url: databaseUrl,
+	url: config.databaseUrl,
 });
 
 const DASHBOARD_MODELS = new Set(["AssignedTask", "PointLog", "PresetTask"]);
@@ -93,6 +93,6 @@ const prisma =
 
 export { prisma };
 
-if (process.env.NODE_ENV !== "production") {
+if (config.isDev) {
 	globalForPrisma.prisma = prisma;
 }

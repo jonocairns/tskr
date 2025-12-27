@@ -1,4 +1,4 @@
-const isDev = process.env.NODE_ENV !== "production";
+import { baseConfig } from "./config";
 
 export const buildCsp = () =>
 	[
@@ -7,12 +7,10 @@ export const buildCsp = () =>
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"form-action 'self'",
-		`script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+		`script-src 'self' 'unsafe-inline'${baseConfig.isDev ? " 'unsafe-eval'" : ""}`,
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: blob: https://*.googleusercontent.com",
 		"font-src 'self' data:",
 		"connect-src 'self' https: wss:",
 		"worker-src 'self' blob:",
 	].join("; ");
-
-export { isDev };

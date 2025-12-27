@@ -4,20 +4,14 @@ import { buildSecurityHeaders } from "./headers";
 const nextConfig: NextConfig = {
 	output: "standalone",
 	async headers() {
+		const headers = buildSecurityHeaders();
+
 		return [
 			{
-				source: "/:path*",
-				headers: buildSecurityHeaders(),
+				source: "/(.*)",
+				headers,
 			},
 		];
-	},
-	images: {
-		remotePatterns: [
-			{
-				protocol: "https",
-				hostname: "*.googleusercontent.com",
-			},
-		],
 	},
 };
 

@@ -37,18 +37,16 @@ export async function PATCH(_req: Request, { params }: Params) {
 	}
 
 	const json = await _req.json().catch(() => null);
-	let action: "approve" | "reject" | "resubmit" | "revert" = "revert";
-	if (json !== null) {
-		const parsed = actionSchema.safeParse(json);
-		if (!parsed.success) {
-			return NextResponse.json(
-				{ error: "Invalid payload", details: parsed.error.flatten() },
-				{ status: 400 },
-			);
-		}
-		if (parsed.data.action) {
-			action = parsed.data.action;
-		}
+	const parsed = actionSchema.safeParse(json);
+	if (!parsed.success) {
+		return NextResponse.json(
+			{ error: "Invalid payload", details: parsed.error.flatten() },
+			{ status: 400 },
+		);
+	}
+	const action = parsed.data.action;
+	if (!action) {
+		return NextResponse.json({ error: "Missing action" }, { status: 400 });
 	}
 
 	const log = await prisma.pointLog.findFirst({
@@ -75,6 +73,9 @@ export async function PATCH(_req: Request, { params }: Params) {
 	}
 
 	if (action === "revert") {
+		if (log.userId !== session.user.id && membership.role === "DOER") {
+			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+		}
 		if (log.revertedAt) {
 			return NextResponse.json({ error: "Already reverted" }, { status: 400 });
 		}

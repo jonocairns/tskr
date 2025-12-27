@@ -37,7 +37,7 @@ export async function POST() {
 			icon: "/icon-192.png",
 			badge: "/icon-192.png",
 		},
-		{ householdId: active.householdId },
+		{ userId: session.user.id },
 	);
 
 	return NextResponse.json({ ok: true });

@@ -86,12 +86,3 @@ export function getBucketPoints(bucket: DurationKey) {
 
 export const LOG_KINDS = ["PRESET", "TIMED", "REWARD"] as const;
 export type LogKind = (typeof LOG_KINDS)[number];
-
-export function rewardThreshold() {
-	const fallback = 50;
-	const parsed = Number(process.env.REWARD_THRESHOLD_POINTS ?? fallback);
-	if (Number.isFinite(parsed) && parsed > 0) {
-		return Math.floor(parsed);
-	}
-	return fallback;
-}

@@ -14,7 +14,7 @@ const addExpiry = () => {
 	return expiresAt;
 };
 
-const generateCode = () => randomBytes(4).toString("hex").toUpperCase();
+const generateCode = () => randomBytes(8).toString("hex").toUpperCase();
 
 export const runtime = "nodejs";
 

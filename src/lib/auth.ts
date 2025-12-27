@@ -3,10 +3,10 @@ import type { PrismaClient } from "@prisma/client";
 import { type NextAuthOptions, getServerSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
+import { config } from "@/server-config";
 import { prisma } from "./prisma";
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const { googleClientId, googleClientSecret } = config;
 
 if (!googleClientId || !googleClientSecret) {
 	console.warn(

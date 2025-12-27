@@ -1,4 +1,5 @@
-import { buildCsp, isDev } from "./csp";
+import { baseConfig } from "./config";
+import { buildCsp } from "./csp";
 
 export const buildSecurityHeaders = () => {
 	const csp = buildCsp();
@@ -21,13 +22,13 @@ export const buildSecurityHeaders = () => {
 			key: "Cross-Origin-Resource-Policy",
 			value: "same-origin",
 		},
-		...(isDev
+		...(baseConfig.isDev
 			? []
 			: [
 					{
 						key: "Strict-Transport-Security",
 						value: "max-age=31536000; includeSubDomains",
 					},
-			  ]),
+				]),
 	];
 };

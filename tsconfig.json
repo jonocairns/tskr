@@ -19,7 +19,9 @@
 			}
 		],
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./src/*"],
+			"@/config": ["./config.ts"],
+			"@/server-config": ["./server-config.ts"]
 		}
 	},
 	"include": [
