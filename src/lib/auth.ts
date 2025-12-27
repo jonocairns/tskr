@@ -7,7 +7,13 @@ import GoogleProvider from "next-auth/providers/google";
 import { ensureDefaultSuperAdmin } from "@/lib/admin";
 import { getAppSettings } from "@/lib/appSettings";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
+import {
+	getProfileEmail,
+	getProfileImage,
+	getProfileName,
+} from "@/lib/authProfile";
 import { getActiveHouseholdMembership } from "@/lib/households";
+import { isLoginRateLimited } from "@/lib/loginRateLimit";
 import { createPasswordResetToken } from "@/lib/passwordReset";
 import { verifyPassword } from "@/lib/passwords";
 import { config } from "@/server-config";
@@ -23,33 +29,6 @@ if (!isGoogleAuthEnabled) {
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-const getProfileEmail = (profile: unknown) => {
-	if (!profile || typeof profile !== "object") {
-		return null;
-	}
-
-	const maybeEmail = (profile as { email?: unknown }).email;
-	return typeof maybeEmail === "string" ? maybeEmail : null;
-};
-
-const getProfileName = (profile: unknown) => {
-	if (!profile || typeof profile !== "object") {
-		return null;
-	}
-
-	const maybeName = (profile as { name?: unknown }).name;
-	return typeof maybeName === "string" ? maybeName : null;
-};
-
-const getProfileImage = (profile: unknown) => {
-	if (!profile || typeof profile !== "object") {
-		return null;
-	}
-
-	const maybeImage = (profile as { picture?: unknown }).picture;
-	return typeof maybeImage === "string" ? maybeImage : null;
-};
-
 export const authOptions: NextAuthOptions = {
 	adapter: PrismaAdapter(prisma as PrismaClient),
 	providers: [
@@ -59,7 +38,7 @@ export const authOptions: NextAuthOptions = {
 				email: { label: "Email", type: "email" },
 				password: { label: "Password", type: "password" },
 			},
-			authorize: async (credentials) => {
+			authorize: async (credentials, req) => {
 				const email =
 					typeof credentials?.email === "string"
 						? credentials.email.trim().toLowerCase()
@@ -68,6 +47,10 @@ export const authOptions: NextAuthOptions = {
 					typeof credentials?.password === "string" ? credentials.password : "";
 
 				if (!email || !password) {
+					return null;
+				}
+
+				if (isLoginRateLimited(email, req)) {
 					return null;
 				}
 
