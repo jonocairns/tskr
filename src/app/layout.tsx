@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Providers } from "@/components/Providers";
 import { authOptions } from "@/lib/auth";
+import { getCspNonce } from "@/lib/cspNonce";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -47,13 +49,20 @@ export default async function RootLayout({
 	children: React.ReactNode;
 }>) {
 	const session = await getServerSession(authOptions);
+	const headerList = await headers();
+	const cspHeader =
+		headerList.get("content-security-policy") ??
+		headerList.get("content-security-policy-report-only");
+	const nonce = getCspNonce(cspHeader);
 
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}
 			>
-				<Providers session={session}>{children}</Providers>
+				<Providers session={session} nonce={nonce}>
+					{children}
+				</Providers>
 			</body>
 		</html>
 	);

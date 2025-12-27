@@ -10,9 +10,11 @@ import { Toaster } from "@/components/ui/Toaster";
 
 export const Providers = ({
 	session,
+	nonce,
 	children,
 }: {
 	session: Session | null;
+	nonce?: string;
 	children: React.ReactNode;
 }) => {
 	return (
@@ -22,6 +24,7 @@ export const Providers = ({
 				defaultTheme="system"
 				enableSystem
 				disableTransitionOnChange
+				nonce={nonce}
 			>
 				<PullToRefresh />
 				<PageTransition>{children}</PageTransition>
