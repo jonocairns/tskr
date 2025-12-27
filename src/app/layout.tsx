@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 
 import { Providers } from "@/components/Providers";
 import { authOptions } from "@/lib/auth";

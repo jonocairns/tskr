@@ -51,9 +51,11 @@ const getHeaderValue = (req: unknown, key: string) => {
 	}
 
 	if (typeof headers === "object" && headers) {
-		const value = (headers as Record<string, string | string[] | undefined>)[
-			key
-		] ?? (headers as Record<string, string | string[] | undefined>)[key.toLowerCase()];
+		const value =
+			(headers as Record<string, string | string[] | undefined>)[key] ??
+			(headers as Record<string, string | string[] | undefined>)[
+				key.toLowerCase()
+			];
 		if (Array.isArray(value)) {
 			return value.join(",");
 		}

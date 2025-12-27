@@ -7,9 +7,7 @@ export const buildCsp = (nonce: string) => {
 		...(baseConfig.isDev ? ["'unsafe-eval'"] : []),
 	].join(" ");
 
-	const connectSrc = ["'self'", ...(baseConfig.isDev ? ["ws:"] : [])].join(
-		" ",
-	);
+	const connectSrc = ["'self'", ...(baseConfig.isDev ? ["ws:"] : [])].join(" ");
 
 	return [
 		"default-src 'self'",

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { hashPassword } from "@/lib/passwords";
 import { hashPasswordResetToken } from "@/lib/passwordReset";
+import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
