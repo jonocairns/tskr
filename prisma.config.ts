@@ -1,4 +1,4 @@
-import { baseConfig } from "./config";
+const databaseUrl = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
 
 export default {
 	schema: "prisma/schema.prisma",
@@ -6,6 +6,6 @@ export default {
 		path: "prisma/migrations",
 	},
 	datasource: {
-		url: baseConfig.databaseUrl,
+		url: databaseUrl,
 	},
 };
