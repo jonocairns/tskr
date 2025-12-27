@@ -2,13 +2,22 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/passwords";
+import { config } from "@/server-config";
 
 let hasEnsuredDefaultAdmin = false;
 
-const DEFAULT_SUPER_ADMIN_EMAIL = "admin@example.com";
-const DEFAULT_SUPER_ADMIN_PASSWORD = "admin";
-
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+const getBootstrapSuperAdmin = () => {
+	const email = config.superAdminEmail?.trim();
+	const password = config.superAdminPassword;
+
+	if (!email || !password) {
+		return null;
+	}
+
+	return { email: normalizeEmail(email), password };
+};
 
 export const ensureDefaultSuperAdmin = async () => {
 	if (hasEnsuredDefaultAdmin) {
@@ -26,7 +35,16 @@ export const ensureDefaultSuperAdmin = async () => {
 			return;
 		}
 
-		const normalizedEmail = normalizeEmail(DEFAULT_SUPER_ADMIN_EMAIL);
+		const bootstrap = getBootstrapSuperAdmin();
+		if (!bootstrap) {
+			console.warn(
+				"No super admin found and SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD are not set. Skipping bootstrap.",
+			);
+			hasEnsuredDefaultAdmin = true;
+			return;
+		}
+
+		const normalizedEmail = bootstrap.email;
 		const existing = await prisma.user.findUnique({
 			where: { email: normalizedEmail },
 			select: {
@@ -38,7 +56,7 @@ export const ensureDefaultSuperAdmin = async () => {
 		});
 
 		if (!existing) {
-			const passwordHash = await hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD);
+			const passwordHash = await hashPassword(bootstrap.password);
 			await prisma.user.create({
 				data: {
 					email: normalizedEmail,
@@ -61,7 +79,7 @@ export const ensureDefaultSuperAdmin = async () => {
 			updates.isSuperAdmin = true;
 		}
 		if (!existing.passwordHash) {
-			updates.passwordHash = await hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD);
+			updates.passwordHash = await hashPassword(bootstrap.password);
 			updates.passwordResetRequired = true;
 		}
 

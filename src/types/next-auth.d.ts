@@ -7,6 +7,7 @@ declare module "next-auth" {
 			householdId?: string | null;
 			isSuperAdmin?: boolean;
 			hasGoogleAccount?: boolean;
+			hasHouseholdMembership?: boolean;
 		} & DefaultSession["user"];
 	}
 

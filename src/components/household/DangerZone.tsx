@@ -66,18 +66,28 @@ export const DangerZone = ({ canDelete, variant = "card" }: Props) => {
 				Danger zone
 			</CardTitle>
 			<CardDescription>
-				Deleting a household removes all members, tasks, and history.
+				Manage irreversible actions for this household.
 			</CardDescription>
 		</div>
 	);
 
 	const content = (
 		<AlertDialog>
-			<AlertDialogTrigger asChild>
-				<Button type="button" variant="destructive" disabled={isPending}>
-					Delete household
-				</Button>
-			</AlertDialogTrigger>
+			<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+				<div>
+					<p className="text-sm font-medium text-destructive">
+						Delete household
+					</p>
+					<p className="text-xs text-muted-foreground">
+						This removes all members, tasks, and history.
+					</p>
+				</div>
+				<AlertDialogTrigger asChild>
+					<Button type="button" variant="destructive" disabled={isPending}>
+						{isPending ? "Deleting..." : "Delete"}
+					</Button>
+				</AlertDialogTrigger>
+			</div>
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Delete household?</AlertDialogTitle>
@@ -91,9 +101,10 @@ export const DangerZone = ({ canDelete, variant = "card" }: Props) => {
 					<AlertDialogAction
 						type="button"
 						onClick={handleDelete}
+						disabled={isPending}
 						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 					>
-						Delete
+						{isPending ? "Deleting..." : "Delete"}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

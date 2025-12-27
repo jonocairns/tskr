@@ -102,7 +102,7 @@ export const PointsSummary = ({
 					</div>
 					<Progress value={progress} className="h-2" />
 				</div>
-				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-3">
+				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-2">
 					<Stat label="Tasks (7 days)" value={tasksLastWeek.toLocaleString()} />
 					<Stat
 						label="Points (7 days)"

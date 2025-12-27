@@ -37,7 +37,7 @@ export const Leaderboard = ({ entries }: Props) => {
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
 					<CardTitle className="text-xl">Leaderboard</CardTitle>
-					<CardDescription>Totals for every player.</CardDescription>
+					<CardDescription>Totals for every user.</CardDescription>
 				</div>
 				<div className="rounded-full bg-primary/10 p-2 text-primary">
 					<UsersIcon className="h-5 w-5" />
@@ -47,7 +47,7 @@ export const Leaderboard = ({ entries }: Props) => {
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Player</TableHead>
+							<TableHead>User</TableHead>
 							<TableHead className="text-right">Points</TableHead>
 							<TableHead className="text-right">Tasks</TableHead>
 							<TableHead className="text-right">Rewards</TableHead>

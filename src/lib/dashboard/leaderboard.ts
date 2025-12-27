@@ -62,7 +62,7 @@ export function buildLeaderboardSummary({
 	const entries = users
 		.map((user) => ({
 			userId: user.id,
-			name: user.name ?? user.email ?? "Unknown player",
+			name: user.name ?? user.email ?? "Unknown user",
 			email: user.email,
 			points: pointSumMap.get(user.id) ?? 0,
 			tasks: taskCountMap.get(user.id) ?? 0,

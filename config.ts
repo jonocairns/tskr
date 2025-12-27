@@ -15,4 +15,8 @@ export const baseConfig = {
 	googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
 	appUrl: process.env.NEXTAUTH_URL ?? "http://localhost:3000",
 	passwordResetTtlHours: 24,
+
+	// ADMIN
+	superAdminEmail: process.env.SUPER_ADMIN_EMAIL,
+	superAdminPassword: process.env.SUPER_ADMIN_PASSWORD,
 };

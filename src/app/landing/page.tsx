@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AuthCta } from "@/components/AuthCta";
 import { PageHeader } from "@/components/PageHeader";
+import { PageShell } from "@/components/PageShell";
 import { CreateCard } from "@/components/household/CreateCard";
 import { JoinCard } from "@/components/household/JoinCard";
 import { authOptions } from "@/lib/auth";
@@ -15,9 +16,9 @@ export default async function LandingPage() {
 
 	if (!session?.user?.id) {
 		return (
-			<main className="flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-12">
+			<PageShell layout="centered" size="lg">
 				<AuthCta />
-			</main>
+			</PageShell>
 		);
 	}
 
@@ -30,18 +31,16 @@ export default async function LandingPage() {
 	}
 
 	return (
-		<main className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
-			<div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10">
-				<PageHeader
-					eyebrow="tskr"
-					title="Welcome to tskr"
-					description="Join an existing household or create a new one."
-					user={session.user}
-				/>
+		<PageShell size="sm">
+			<PageHeader
+				eyebrow="tskr"
+				title="Welcome to tskr"
+				description="Join an existing household or create a new one."
+				user={session.user}
+			/>
 
-				<JoinCard redirectTo="/" />
-				<CreateCard redirectTo="/" />
-			</div>
-		</main>
+			<JoinCard redirectTo="/" />
+			<CreateCard redirectTo="/" />
+		</PageShell>
 	);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import { ChromeIcon, XIcon } from "lucide-react";
 import {
@@ -25,7 +26,7 @@ import {
 } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 
-type UserRow = {
+export type UserRow = {
 	id: string;
 	name: string | null;
 	email: string | null;
@@ -36,7 +37,7 @@ type UserRow = {
 	hasGoogleAccount: boolean;
 };
 
-type RowState = UserRow & {
+export type RowState = UserRow & {
 	isSaving: boolean;
 	isDeleting: boolean;
 	isResetting: boolean;
@@ -54,24 +55,14 @@ type Draft = {
 };
 
 type Props = {
-	users: UserRow[];
+	rows: RowState[];
+	setRows: Dispatch<SetStateAction<RowState[]>>;
 	currentUserId?: string;
 };
 
-export const UsersTable = ({ users, currentUserId }: Props) => {
+export const UsersTable = ({ rows, setRows, currentUserId }: Props) => {
 	const { toast } = useToast();
 	const [isPending, startTransition] = useTransition();
-	const [rows, setRows] = useState<RowState[]>(
-		users.map((user) => ({
-			...user,
-			isSaving: false,
-			isDeleting: false,
-			isResetting: false,
-			isClearingReset: false,
-			resetUrl: "",
-			resetExpiresAt: "",
-		})),
-	);
 	const [draft, setDraft] = useState<Draft | null>(null);
 
 	const rowsById = useMemo(() => {
