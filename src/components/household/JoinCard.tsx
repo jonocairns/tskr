@@ -68,7 +68,7 @@ export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
 			<CardTitle className={isSection ? "text-base" : "text-xl"}>
-				Join a household
+				Join another household
 			</CardTitle>
 			<CardDescription>Enter a shareable invite code.</CardDescription>
 		</div>
