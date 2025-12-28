@@ -4,13 +4,7 @@ import { XIcon } from "lucide-react";
 
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { getAuthErrorMessage } from "@/lib/authError";
 
 export const dynamic = "force-dynamic";
@@ -40,9 +34,7 @@ export default async function AuthErrorPage({ searchParams }: Props) {
 						<Link href="/">Back to sign in</Link>
 					</Button>
 					{key !== "Default" ? (
-						<p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">
-							Error code: {key}
-						</p>
+						<p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">Error code: {key}</p>
 					) : null}
 				</CardContent>
 			</Card>

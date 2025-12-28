@@ -3,18 +3,8 @@
 import { useState } from "react";
 
 import { CreateUserDialog } from "@/components/admin/CreateUserCard";
-import {
-	type RowState,
-	type UserRow,
-	UsersTable,
-} from "@/components/admin/UsersTable";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { type RowState, type UserRow, UsersTable } from "@/components/admin/UsersTable";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 
 type Props = {
 	users: UserRow[];
@@ -33,9 +23,7 @@ const toRowState = (user: UserRow): RowState => ({
 });
 
 export const UsersCard = ({ users, currentUserId, googleEnabled }: Props) => {
-	const [rows, setRows] = useState<RowState[]>(() =>
-		users.map((user) => toRowState(user)),
-	);
+	const [rows, setRows] = useState<RowState[]>(() => users.map((user) => toRowState(user)));
 
 	const handleUserCreated = (user: UserRow) => {
 		setRows((current) => {
@@ -51,19 +39,12 @@ export const UsersCard = ({ users, currentUserId, googleEnabled }: Props) => {
 			<CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
 				<div className="space-y-1.5">
 					<CardTitle>Users</CardTitle>
-					<CardDescription>
-						Manage users and generate password reset links.
-					</CardDescription>
+					<CardDescription>Manage users and generate password reset links.</CardDescription>
 				</div>
 				<CreateUserDialog onCreated={handleUserCreated} />
 			</CardHeader>
 			<CardContent>
-				<UsersTable
-					rows={rows}
-					setRows={setRows}
-					currentUserId={currentUserId}
-					googleEnabled={googleEnabled}
-				/>
+				<UsersTable rows={rows} setRows={setRows} currentUserId={currentUserId} googleEnabled={googleEnabled} />
 			</CardContent>
 		</Card>
 	);

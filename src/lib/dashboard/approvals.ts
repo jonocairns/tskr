@@ -9,9 +9,7 @@ type PendingLog = {
 	user?: { name: string | null; email: string | null } | null;
 };
 
-export function buildApprovalEntries(
-	pendingLogs: PendingLog[],
-): ApprovalEntry[] {
+export function buildApprovalEntries(pendingLogs: PendingLog[]): ApprovalEntry[] {
 	return pendingLogs.map((log) => ({
 		id: log.id,
 		userId: log.userId,

@@ -14,8 +14,7 @@ type Params = {
 	params: { id: string } | Promise<{ id: string }>;
 };
 
-const isDurationKey = (bucket: string): bucket is DurationKey =>
-	DURATION_KEYS.includes(bucket as DurationKey);
+const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
 export async function POST(_req: Request, { params }: Params) {
 	const session = await getServerSession(authOptions);
@@ -24,20 +23,14 @@ export async function POST(_req: Request, { params }: Params) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
 
 	const { id } = await Promise.resolve(params);
 	if (!id) {
-		return NextResponse.json(
-			{ error: "Missing assigned task id" },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Missing assigned task id" }, { status: 400 });
 	}
 
 	const task = await prisma.assignedTask.findFirst({
@@ -56,10 +49,7 @@ export async function POST(_req: Request, { params }: Params) {
 	});
 
 	if (!task || !task.preset) {
-		return NextResponse.json(
-			{ error: "Assigned task not found" },
-			{ status: 404 },
-		);
+		return NextResponse.json({ error: "Assigned task not found" }, { status: 404 });
 	}
 
 	if (task.assignedToId !== session.user.id) {
@@ -91,10 +81,7 @@ export async function POST(_req: Request, { params }: Params) {
 	);
 
 	if (!state.isActive) {
-		return NextResponse.json(
-			{ error: "Task already completed for this cadence" },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Task already completed for this cadence" }, { status: 400 });
 	}
 
 	const resolveRequiresApproval = (override?: string | null) => {
@@ -107,12 +94,8 @@ export async function POST(_req: Request, { params }: Params) {
 		return active.membership.requiresApprovalDefault;
 	};
 
-	const bucket = isDurationKey(task.preset.bucket)
-		? task.preset.bucket
-		: "QUICK";
-	const requiresApproval = resolveRequiresApproval(
-		task.preset.approvalOverride,
-	);
+	const bucket = isDurationKey(task.preset.bucket) ? task.preset.bucket : "QUICK";
+	const requiresApproval = resolveRequiresApproval(task.preset.approvalOverride);
 	const status = requiresApproval ? "PENDING" : "APPROVED";
 
 	try {
@@ -150,9 +133,6 @@ export async function POST(_req: Request, { params }: Params) {
 		return NextResponse.json({ entry }, { status: 201 });
 	} catch (error) {
 		console.error("[assigned-tasks:complete]", error);
-		return NextResponse.json(
-			{ error: "Failed to complete task" },
-			{ status: 500 },
-		);
+		return NextResponse.json({ error: "Failed to complete task" }, { status: 500 });
 	}
 }

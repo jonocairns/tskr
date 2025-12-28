@@ -8,13 +8,7 @@ import { useEffect, useMemo } from "react";
 
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { resolveReturnTo } from "@/lib/returnTo";
 
 type Props = {
@@ -25,10 +19,7 @@ export const AuthLinkClient = ({ googleEnabled }: Props) => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { update } = useSession();
-	const returnTo = useMemo(
-		() => resolveReturnTo(searchParams.get("returnTo")),
-		[searchParams],
-	);
+	const returnTo = useMemo(() => resolveReturnTo(searchParams.get("returnTo")), [searchParams]);
 
 	useEffect(() => {
 		if (!googleEnabled) {
@@ -62,9 +53,7 @@ export const AuthLinkClient = ({ googleEnabled }: Props) => {
 				<Card>
 					<CardHeader>
 						<CardTitle>Google OAuth disabled</CardTitle>
-						<CardDescription>
-							This instance is not configured for Google account linking.
-						</CardDescription>
+						<CardDescription>This instance is not configured for Google account linking.</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<Button asChild variant="secondary">
@@ -81,9 +70,7 @@ export const AuthLinkClient = ({ googleEnabled }: Props) => {
 			<Card>
 				<CardHeader>
 					<CardTitle>Linking account</CardTitle>
-					<CardDescription>
-						Syncing your Google profile details.
-					</CardDescription>
+					<CardDescription>Syncing your Google profile details.</CardDescription>
 				</CardHeader>
 				<CardContent className="flex items-center gap-3 text-sm text-muted-foreground">
 					<Loader2Icon className="h-4 w-4 animate-spin" />

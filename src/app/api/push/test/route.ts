@@ -15,16 +15,10 @@ export async function POST() {
 	}
 
 	if (!isPushConfigured()) {
-		return NextResponse.json(
-			{ error: "Push is not configured" },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Push is not configured" }, { status: 400 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}

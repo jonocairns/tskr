@@ -22,13 +22,7 @@ const centeredSizeClasses: Record<NonNullable<Props["size"]>, string> = {
 	xl: "max-w-3xl",
 };
 
-export const PageShell = ({
-	children,
-	size = "lg",
-	layout = "default",
-	className,
-	containerClassName,
-}: Props) => {
+export const PageShell = ({ children, size = "lg", layout = "default", className, containerClassName }: Props) => {
 	const mainClass =
 		layout === "centered"
 			? "flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-4"

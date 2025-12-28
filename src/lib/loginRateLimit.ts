@@ -12,8 +12,7 @@ declare global {
 	var loginRateLimit: Map<string, RateLimitEntry> | undefined;
 }
 
-const loginRateLimitStore =
-	globalThis.loginRateLimit ?? new Map<string, RateLimitEntry>();
+const loginRateLimitStore = globalThis.loginRateLimit ?? new Map<string, RateLimitEntry>();
 
 if (!globalThis.loginRateLimit) {
 	globalThis.loginRateLimit = loginRateLimitStore;
@@ -53,9 +52,7 @@ const getHeaderValue = (req: unknown, key: string) => {
 	if (typeof headers === "object" && headers) {
 		const value =
 			(headers as Record<string, string | string[] | undefined>)[key] ??
-			(headers as Record<string, string | string[] | undefined>)[
-				key.toLowerCase()
-			];
+			(headers as Record<string, string | string[] | undefined>)[key.toLowerCase()];
 		if (Array.isArray(value)) {
 			return value.join(",");
 		}
@@ -78,9 +75,6 @@ const getClientIp = (req: unknown) => {
 
 export const isLoginRateLimited = (email: string, req: unknown) => {
 	const ip = getClientIp(req);
-	const rateKeys = [
-		`login:email:${email}`,
-		...(ip ? [`login:ip:${ip}`, `login:ip:${ip}:email:${email}`] : []),
-	];
+	const rateKeys = [`login:email:${email}`, ...(ip ? [`login:ip:${ip}`, `login:ip:${ip}:email:${email}`] : [])];
 	return rateKeys.some((key) => !checkRateLimit(key).ok);
 };

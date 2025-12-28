@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/use-toast";
@@ -82,11 +76,7 @@ export const CreateCard = ({ redirectTo }: Props) => {
 						disabled={isPending}
 					/>
 				</div>
-				<Button
-					type="button"
-					onClick={handleCreate}
-					disabled={!canSubmit || isPending}
-				>
+				<Button type="button" onClick={handleCreate} disabled={!canSubmit || isPending}>
 					Create household
 				</Button>
 			</CardContent>

@@ -4,29 +4,10 @@ import { useEffect, useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/Select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/Table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 
 type Invite = {
@@ -168,11 +149,7 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 			const body = await res.json().catch(() => ({}));
 			if (body?.invite) {
 				setInvites((prev) =>
-					prev.map((invite) =>
-						invite.id === body.invite.id
-							? { ...invite, ...body.invite }
-							: invite,
-					),
+					prev.map((invite) => (invite.id === body.invite.id ? { ...invite, ...body.invite } : invite)),
 				);
 			}
 			toast({ title: "Invite regenerated" });
@@ -194,9 +171,7 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
-			<CardTitle className={isSection ? "text-base" : "text-xl"}>
-				Invites
-			</CardTitle>
+			<CardTitle className={isSection ? "text-base" : "text-xl"}>Invites</CardTitle>
 			<CardDescription>Generate shareable invite codes.</CardDescription>
 		</div>
 	);
@@ -206,11 +181,7 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 			<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
 				<div className="space-y-2">
 					<Label>Role</Label>
-					<Select
-						value={role}
-						onValueChange={(value: Invite["role"]) => setRole(value)}
-						disabled={isPending}
-					>
+					<Select value={role} onValueChange={(value: Invite["role"]) => setRole(value)} disabled={isPending}>
 						<SelectTrigger>
 							<SelectValue placeholder="Select role" />
 						</SelectTrigger>
@@ -248,10 +219,7 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 									<div className="flex flex-col">
 										<span className="font-medium">{invite.code}</span>
 										<span className="text-xs text-muted-foreground">
-											Invited by{" "}
-											{invite.invitedBy?.name ??
-												invite.invitedBy?.email ??
-												"Unknown"}
+											Invited by {invite.invitedBy?.name ?? invite.invitedBy?.email ?? "Unknown"}
 										</span>
 									</div>
 								</TableCell>

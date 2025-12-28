@@ -39,10 +39,7 @@ export async function PATCH(req: Request, { params }: Params) {
 	const json = await req.json().catch(() => null);
 	const parsed = actionSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const invite = await prisma.householdInvite.findUnique({
@@ -61,10 +58,7 @@ export async function PATCH(req: Request, { params }: Params) {
 	}
 
 	if (parsed.data.action === "resend") {
-		const active = await getActiveHouseholdMembership(
-			session.user.id,
-			session.user.householdId ?? null,
-		);
+		const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 		if (!active || active.membership.role !== "DICTATOR") {
 			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 		}
@@ -72,10 +66,7 @@ export async function PATCH(req: Request, { params }: Params) {
 			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 		}
 		if (!["PENDING", "EXPIRED"].includes(invite.status)) {
-			return NextResponse.json(
-				{ error: "Invite cannot be resent" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "Invite cannot be resent" }, { status: 400 });
 		}
 
 		let updated = null;
@@ -111,20 +102,14 @@ export async function PATCH(req: Request, { params }: Params) {
 		}
 
 		if (!updated) {
-			return NextResponse.json(
-				{ error: "Unable to regenerate invite code" },
-				{ status: 500 },
-			);
+			return NextResponse.json({ error: "Unable to regenerate invite code" }, { status: 500 });
 		}
 
 		return NextResponse.json({ invite: updated });
 	}
 
 	if (parsed.data.action === "revoke") {
-		const active = await getActiveHouseholdMembership(
-			session.user.id,
-			session.user.householdId ?? null,
-		);
+		const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 		if (!active || active.membership.role !== "DICTATOR") {
 			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 		}
@@ -133,10 +118,7 @@ export async function PATCH(req: Request, { params }: Params) {
 		}
 
 		if (!["PENDING", "EXPIRED"].includes(invite.status)) {
-			return NextResponse.json(
-				{ error: "Invite cannot be revoked" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "Invite cannot be revoked" }, { status: 400 });
 		}
 
 		await prisma.householdInvite.update({

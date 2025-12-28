@@ -21,10 +21,7 @@ export async function PATCH(_req: Request, { params }: Params) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -39,10 +36,7 @@ export async function PATCH(_req: Request, { params }: Params) {
 	const json = await _req.json().catch(() => null);
 	const parsed = actionSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 	const action = parsed.data.action;
 	if (!action) {
@@ -66,10 +60,7 @@ export async function PATCH(_req: Request, { params }: Params) {
 	}
 
 	if (action !== "revert" && log.kind === "REWARD") {
-		return NextResponse.json(
-			{ error: "Rewards cannot be approved" },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Rewards cannot be approved" }, { status: 400 });
 	}
 
 	if (action === "revert") {
@@ -92,10 +83,7 @@ export async function PATCH(_req: Request, { params }: Params) {
 	}
 
 	if (log.revertedAt) {
-		return NextResponse.json(
-			{ error: "Log already reverted" },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Log already reverted" }, { status: 400 });
 	}
 
 	if (action === "approve" || action === "reject") {
@@ -103,16 +91,10 @@ export async function PATCH(_req: Request, { params }: Params) {
 			return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 		}
 		if (action === "approve" && log.userId === session.user.id) {
-			return NextResponse.json(
-				{ error: "You cannot approve your own tasks" },
-				{ status: 403 },
-			);
+			return NextResponse.json({ error: "You cannot approve your own tasks" }, { status: 403 });
 		}
 		if (log.status !== "PENDING") {
-			return NextResponse.json(
-				{ error: "Only pending logs can be updated" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "Only pending logs can be updated" }, { status: 400 });
 		}
 
 		await prisma.pointLog.update({
@@ -168,17 +150,11 @@ export async function PATCH(_req: Request, { params }: Params) {
 
 	if (action === "resubmit") {
 		if (log.status !== "REJECTED") {
-			return NextResponse.json(
-				{ error: "Only rejected logs can be resubmitted" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "Only rejected logs can be resubmitted" }, { status: 400 });
 		}
 
 		if (log.userId !== session.user.id) {
-			return NextResponse.json(
-				{ error: "Only the log owner can resubmit" },
-				{ status: 403 },
-			);
+			return NextResponse.json({ error: "Only the log owner can resubmit" }, { status: 403 });
 		}
 
 		await prisma.pointLog.update({

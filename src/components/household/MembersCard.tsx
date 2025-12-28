@@ -13,28 +13,9 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/AlertDialog";
 import { Badge } from "@/components/ui/Badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/Select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/Table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 
 type Member = {
@@ -52,11 +33,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const MembersCard = ({
-	currentUserId,
-	canManageMembers,
-	variant = "card",
-}: Props) => {
+export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" }: Props) => {
 	const [members, setMembers] = useState<Member[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isPending, startTransition] = useTransition();
@@ -66,9 +43,7 @@ export const MembersCard = ({
 	} | null>(null);
 	const { toast } = useToast();
 	const isSection = variant === "section";
-	const dictatorCount = members.filter(
-		(member) => member.role === "DICTATOR",
-	).length;
+	const dictatorCount = members.filter((member) => member.role === "DICTATOR").length;
 
 	useEffect(() => {
 		let isActive = true;
@@ -107,10 +82,7 @@ export const MembersCard = ({
 		};
 	}, [toast]);
 
-	const updateMember = (
-		memberId: string,
-		payload: Partial<Pick<Member, "role" | "requiresApprovalDefault">>,
-	) => {
+	const updateMember = (memberId: string, payload: Partial<Pick<Member, "role" | "requiresApprovalDefault">>) => {
 		startTransition(async () => {
 			const res = await fetch(`/api/households/members/${memberId}`, {
 				method: "PATCH",
@@ -131,11 +103,7 @@ export const MembersCard = ({
 			const body = await res.json().catch(() => ({}));
 			if (body?.member) {
 				setMembers((prev) =>
-					prev.map((member) =>
-						member.id === body.member.id
-							? { ...member, ...body.member }
-							: member,
-					),
+					prev.map((member) => (member.id === body.member.id ? { ...member, ...body.member } : member)),
 				);
 			}
 			toast({ title: "Member updated" });
@@ -154,9 +122,7 @@ export const MembersCard = ({
 
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
-			<CardTitle className={isSection ? "text-base" : "text-xl"}>
-				Members
-			</CardTitle>
+			<CardTitle className={isSection ? "text-base" : "text-xl"}>Members</CardTitle>
 			<CardDescription>Roles and approval defaults.</CardDescription>
 		</div>
 	);
@@ -180,36 +146,28 @@ export const MembersCard = ({
 					<TableBody>
 						{members.map((member) => {
 							const isSelf = member.userId === currentUserId;
-							const isOnlyDictator =
-								member.role === "DICTATOR" && dictatorCount === 1;
+							const isOnlyDictator = member.role === "DICTATOR" && dictatorCount === 1;
 							const roleSelectDisabled = isPending;
 							return (
 								<TableRow key={member.id}>
 									<TableCell>
 										<div className="flex flex-col">
-											<span className="font-semibold">
-												{member.user.name ?? member.user.email ?? "Unknown"}
-											</span>
-											<span className="text-xs text-muted-foreground">
-												{member.user.email ?? "—"}
-											</span>
+											<span className="font-semibold">{member.user.name ?? member.user.email ?? "Unknown"}</span>
+											<span className="text-xs text-muted-foreground">{member.user.email ?? "—"}</span>
 										</div>
 									</TableCell>
 									<TableCell>
 										{canManageMembers ? (
 											<Select
 												value={member.role}
-												onValueChange={(
-													value: "DICTATOR" | "APPROVER" | "DOER",
-												) => {
+												onValueChange={(value: "DICTATOR" | "APPROVER" | "DOER") => {
 													if (value === member.role) {
 														return;
 													}
 													if (isOnlyDictator && value !== "DICTATOR") {
 														toast({
 															title: "Keep at least one dictator",
-															description:
-																"Promote another member to dictator first.",
+															description: "Promote another member to dictator first.",
 															variant: "destructive",
 														});
 														return;
@@ -230,10 +188,7 @@ export const MembersCard = ({
 												</SelectTrigger>
 												<SelectContent>
 													<SelectItem value="DICTATOR">Dictator</SelectItem>
-													<SelectItem
-														value="APPROVER"
-														disabled={isOnlyDictator}
-													>
+													<SelectItem value="APPROVER" disabled={isOnlyDictator}>
 														Approver
 													</SelectItem>
 													<SelectItem value="DOER" disabled={isOnlyDictator}>
@@ -242,17 +197,13 @@ export const MembersCard = ({
 												</SelectContent>
 											</Select>
 										) : (
-											<span className="text-sm text-muted-foreground">
-												{member.role.toLowerCase()}
-											</span>
+											<span className="text-sm text-muted-foreground">{member.role.toLowerCase()}</span>
 										)}
 									</TableCell>
 									<TableCell>
 										{canManageMembers ? (
 											<Select
-												value={
-													member.requiresApprovalDefault ? "require" : "allow"
-												}
+												value={member.requiresApprovalDefault ? "require" : "allow"}
 												onValueChange={(value: "require" | "allow") =>
 													updateMember(member.id, {
 														requiresApprovalDefault: value === "require",
@@ -265,22 +216,16 @@ export const MembersCard = ({
 												</SelectTrigger>
 												<SelectContent>
 													<SelectItem value="allow">No approval</SelectItem>
-													<SelectItem value="require">
-														Requires approval
-													</SelectItem>
+													<SelectItem value="require">Requires approval</SelectItem>
 												</SelectContent>
 											</Select>
 										) : (
 											<span className="text-sm text-muted-foreground">
-												{member.requiresApprovalDefault
-													? "requires approval"
-													: "no approval"}
+												{member.requiresApprovalDefault ? "requires approval" : "no approval"}
 											</span>
 										)}
 									</TableCell>
-									<TableCell className="text-right">
-										{isSelf ? <Badge variant="secondary">You</Badge> : null}
-									</TableCell>
+									<TableCell className="text-right">{isSelf ? <Badge variant="secondary">You</Badge> : null}</TableCell>
 								</TableRow>
 							);
 						})}
@@ -299,8 +244,7 @@ export const MembersCard = ({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Change your role?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will remove your dictator access. You will no longer be able
-							to manage settings, members, or invites.
+							This will remove your dictator access. You will no longer be able to manage settings, members, or invites.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

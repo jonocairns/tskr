@@ -13,8 +13,7 @@ const getTtlHours = () => {
 	return 24;
 };
 
-export const hashPasswordResetToken = (token: string) =>
-	createHash("sha256").update(token).digest("hex");
+export const hashPasswordResetToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export const createPasswordResetToken = async (userId: string) => {
 	const token = randomBytes(32).toString("base64url");

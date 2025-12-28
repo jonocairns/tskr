@@ -9,13 +9,7 @@ import type { PresetTemplate } from "@/components/task-actions/types";
 import { normalizeText } from "@/components/task-actions/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useToast } from "@/hooks/use-toast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
 
@@ -42,25 +36,17 @@ export const PresetActionsCard = () => {
 	const canSharePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = currentUserRole !== "DOER";
 
-	const editablePresets = customPresets.filter(
-		(preset) => preset.isShared || preset.createdById === currentUserId,
-	);
+	const editablePresets = customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId);
 	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
 		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 	});
-	const appliedTemplateKeys = new Set(
-		presetOptions.map(
-			(preset) => `${normalizeText(preset.label)}|${preset.bucket}`,
-		),
-	);
+	const appliedTemplateKeys = new Set(presetOptions.map((preset) => `${normalizeText(preset.label)}|${preset.bucket}`));
 	const templatesByBucket = DURATION_BUCKETS.map((bucket) => ({
 		bucket,
 		templates: presetTemplates.filter(
 			(template) =>
 				template.bucket === bucket.key &&
-				!appliedTemplateKeys.has(
-					`${normalizeText(template.label)}|${template.bucket}`,
-				),
+				!appliedTemplateKeys.has(`${normalizeText(template.label)}|${template.bucket}`),
 		),
 	})).filter((group) => group.templates.length > 0);
 
@@ -161,10 +147,7 @@ export const PresetActionsCard = () => {
 		return success;
 	};
 
-	const handleLogTimed = async (
-		label: string,
-		bucket: DurationKey,
-	): Promise<boolean> => {
+	const handleLogTimed = async (label: string, bucket: DurationKey): Promise<boolean> => {
 		if (label.trim().length < 2) {
 			return false;
 		}
@@ -255,11 +238,7 @@ export const PresetActionsCard = () => {
 
 				const body = await res.json().catch(() => ({}));
 				if (body?.preset) {
-					setCustomPresets((prev) =>
-						prev.map((preset) =>
-							preset.id === presetId ? body.preset : preset,
-						),
-					);
+					setCustomPresets((prev) => prev.map((preset) => (preset.id === presetId ? body.preset : preset)));
 				}
 				toast({ title: "Preset updated" });
 				success = true;
@@ -303,16 +282,9 @@ export const PresetActionsCard = () => {
 					<div className="flex items-start justify-between gap-2">
 						<div className="space-y-1">
 							<CardTitle className="text-xl">Tasks</CardTitle>
-							<CardDescription>
-								Tap a task once you've completed it.
-							</CardDescription>
+							<CardDescription>Tap a task once you've completed it.</CardDescription>
 						</div>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => setEditDrawerOpen(true)}
-						>
+						<Button type="button" variant="ghost" size="sm" onClick={() => setEditDrawerOpen(true)}>
 							Change
 						</Button>
 					</div>
@@ -320,14 +292,10 @@ export const PresetActionsCard = () => {
 				<CardContent>
 					<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 						{presetOptions.length === 0 ? (
-							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">
-								No saved tasks yet.
-							</p>
+							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">No saved tasks yet.</p>
 						) : (
 							presetOptions.map((task) => {
-								const bucket = DURATION_BUCKETS.find(
-									(b) => b.key === task.bucket,
-								);
+								const bucket = DURATION_BUCKETS.find((b) => b.key === task.bucket);
 								return (
 									<Button
 										key={task.id}

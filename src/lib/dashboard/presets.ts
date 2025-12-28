@@ -25,10 +25,7 @@ export function mapPresetSummaries(presets: PresetRecord[]): PresetSummary[] {
 		...preset,
 		bucket: preset.bucket as DurationKey,
 		approvalOverride:
-			preset.approvalOverride === "REQUIRE" ||
-			preset.approvalOverride === "SKIP"
-				? preset.approvalOverride
-				: null,
+			preset.approvalOverride === "REQUIRE" || preset.approvalOverride === "SKIP" ? preset.approvalOverride : null,
 		createdAt: preset.createdAt.toISOString(),
 	}));
 }

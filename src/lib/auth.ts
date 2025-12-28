@@ -7,11 +7,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { ensureDefaultSuperAdmin } from "@/lib/admin";
 import { getAppSettings } from "@/lib/appSettings";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
-import {
-	getProfileEmail,
-	getProfileImage,
-	getProfileName,
-} from "@/lib/authProfile";
+import { getProfileEmail, getProfileImage, getProfileName } from "@/lib/authProfile";
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { isLoginRateLimited } from "@/lib/loginRateLimit";
 import { createPasswordResetToken } from "@/lib/passwordReset";
@@ -22,9 +18,7 @@ import { prisma } from "./prisma";
 const { googleClientId, googleClientSecret } = config;
 
 if (!isGoogleAuthEnabled) {
-	console.warn(
-		"Google OAuth is disabled. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it.",
-	);
+	console.warn("Google OAuth is disabled. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it.");
 }
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
@@ -39,12 +33,8 @@ export const authOptions: NextAuthOptions = {
 				password: { label: "Password", type: "password" },
 			},
 			authorize: async (credentials, req) => {
-				const email =
-					typeof credentials?.email === "string"
-						? credentials.email.trim().toLowerCase()
-						: "";
-				const password =
-					typeof credentials?.password === "string" ? credentials.password : "";
+				const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
+				const password = typeof credentials?.password === "string" ? credentials.password : "";
 
 				if (!email || !password) {
 					return null;
@@ -114,8 +104,7 @@ export const authOptions: NextAuthOptions = {
 				return;
 			}
 
-			const updates: { email?: string; name?: string | null; image?: string } =
-				{};
+			const updates: { email?: string; name?: string | null; image?: string } = {};
 
 			if (profileEmail) {
 				const normalizedEmail = normalizeEmail(profileEmail);
@@ -126,9 +115,7 @@ export const authOptions: NextAuthOptions = {
 					});
 
 					if (existing && existing.id !== user.id) {
-						console.warn(
-							"Skipping Google email sync because the email is already in use.",
-						);
+						console.warn("Skipping Google email sync because the email is already in use.");
 					} else {
 						updates.email = normalizedEmail;
 					}
@@ -228,10 +215,7 @@ export const authOptions: NextAuthOptions = {
 					return session;
 				}
 
-				const active = await getActiveHouseholdMembership(
-					token.sub,
-					dbUser.lastHouseholdId,
-				);
+				const active = await getActiveHouseholdMembership(token.sub, dbUser.lastHouseholdId);
 				const resolvedHouseholdId = active?.householdId ?? null;
 				const membershipRole = active?.membership.role ?? null;
 
@@ -242,8 +226,7 @@ export const authOptions: NextAuthOptions = {
 				session.user.householdId = resolvedHouseholdId;
 				session.user.householdRole = membershipRole;
 				session.user.isSuperAdmin = dbUser.isSuperAdmin ?? false;
-				session.user.hasGoogleAccount =
-					isGoogleAuthEnabled && dbUser.accounts.length > 0;
+				session.user.hasGoogleAccount = isGoogleAuthEnabled && dbUser.accounts.length > 0;
 				session.user.hasHouseholdMembership = dbUser.memberships.length > 0;
 			}
 			return session;

@@ -1,32 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-	type FormEvent,
-	useEffect,
-	useMemo,
-	useState,
-	useTransition,
-} from "react";
+import { type FormEvent, useEffect, useMemo, useState, useTransition } from "react";
 
 import type { PresetSummary } from "@/components/task-actions/types";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -49,33 +31,21 @@ type AssignTaskCardProps = {
 	currentUserId: string;
 };
 
-export const AssignTaskCard = ({
-	members,
-	presets,
-	currentUserId,
-}: AssignTaskCardProps) => {
+export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCardProps) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [isPending, startTransition] = useTransition();
 
 	const sortedMembers = useMemo(
-		() =>
-			[...members].sort((a, b) =>
-				(a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? ""),
-			),
+		() => [...members].sort((a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")),
 		[members],
 	);
-	const sortedPresets = useMemo(
-		() => [...presets].sort((a, b) => a.label.localeCompare(b.label)),
-		[presets],
-	);
+	const sortedPresets = useMemo(() => [...presets].sort((a, b) => a.label.localeCompare(b.label)), [presets]);
 
 	const [assigneeId, setAssigneeId] = useState(currentUserId);
 	const [presetId, setPresetId] = useState(sortedPresets[0]?.id ?? "");
 	const [cadenceTarget, setCadenceTarget] = useState(DEFAULT_CADENCE_TARGET);
-	const [cadenceInterval, setCadenceInterval] = useState(
-		String(DEFAULT_CADENCE_INTERVAL_MINUTES),
-	);
+	const [cadenceInterval, setCadenceInterval] = useState(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
 	const [isRecurring, setIsRecurring] = useState(true);
 
 	useEffect(() => {
@@ -101,27 +71,22 @@ export const AssignTaskCard = ({
 			return;
 		}
 
-		const cadenceTargetValue = isRecurring
-			? Math.max(1, Math.floor(cadenceTarget || 1))
-			: DEFAULT_CADENCE_TARGET;
+		const cadenceTargetValue = isRecurring ? Math.max(1, Math.floor(cadenceTarget || 1)) : DEFAULT_CADENCE_TARGET;
 		const cadenceIntervalMinutes = isRecurring
 			? Math.max(1, Number.parseInt(cadenceInterval, 10) || 1)
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
 		startTransition(async () => {
-			const { res, data } = await requestJson<{ error?: string }>(
-				"/api/assigned-tasks",
-				{
-					method: "POST",
-					body: {
-						presetId,
-						assigneeId,
-						cadenceTarget: cadenceTargetValue,
-						cadenceIntervalMinutes,
-						isRecurring,
-					},
+			const { res, data } = await requestJson<{ error?: string }>("/api/assigned-tasks", {
+				method: "POST",
+				body: {
+					presetId,
+					assigneeId,
+					cadenceTarget: cadenceTargetValue,
+					cadenceIntervalMinutes,
+					isRecurring,
 				},
-			);
+			});
 
 			if (!res.ok) {
 				toast({
@@ -140,32 +105,23 @@ export const AssignTaskCard = ({
 		});
 	};
 
-	const disabled =
-		isPending || sortedMembers.length === 0 || sortedPresets.length === 0;
+	const disabled = isPending || sortedMembers.length === 0 || sortedPresets.length === 0;
 
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle className="text-xl">Assign task</CardTitle>
-				<CardDescription>
-					Send a preset task to someone's queue.
-				</CardDescription>
+				<CardDescription>Send a preset task to someone's queue.</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{sortedPresets.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						Create a preset chore before assigning tasks.
-					</p>
+					<p className="text-sm text-muted-foreground">Create a preset chore before assigning tasks.</p>
 				) : (
 					<form className="grid gap-4" onSubmit={handleSubmit}>
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="grid gap-2">
 								<Label htmlFor="assignee">Assignee</Label>
-								<Select
-									value={assigneeId}
-									onValueChange={setAssigneeId}
-									disabled={disabled}
-								>
+								<Select value={assigneeId} onValueChange={setAssigneeId} disabled={disabled}>
 									<SelectTrigger id="assignee">
 										<SelectValue placeholder="Select member" />
 									</SelectTrigger>
@@ -180,11 +136,7 @@ export const AssignTaskCard = ({
 							</div>
 							<div className="grid gap-2">
 								<Label htmlFor="preset">Preset</Label>
-								<Select
-									value={presetId}
-									onValueChange={setPresetId}
-									disabled={disabled}
-								>
+								<Select value={presetId} onValueChange={setPresetId} disabled={disabled}>
 									<SelectTrigger id="preset">
 										<SelectValue placeholder="Select preset" />
 									</SelectTrigger>
@@ -202,9 +154,7 @@ export const AssignTaskCard = ({
 							<div className="flex items-center justify-between gap-2 rounded-md border border-input px-3 py-2 md:col-span-2">
 								<div className="space-y-1">
 									<Label htmlFor="recurring">Recurring</Label>
-									<p className="text-xs text-muted-foreground">
-										Reset after each cadence cycle.
-									</p>
+									<p className="text-xs text-muted-foreground">Reset after each cadence cycle.</p>
 								</div>
 								<Switch
 									id="recurring"
@@ -213,9 +163,7 @@ export const AssignTaskCard = ({
 										setIsRecurring(value);
 										if (!value) {
 											setCadenceTarget(DEFAULT_CADENCE_TARGET);
-											setCadenceInterval(
-												String(DEFAULT_CADENCE_INTERVAL_MINUTES),
-											);
+											setCadenceInterval(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
 										}
 									}}
 									disabled={disabled}
@@ -231,9 +179,7 @@ export const AssignTaskCard = ({
 												if (value === CADENCE_NONE_VALUE) {
 													setIsRecurring(false);
 													setCadenceTarget(DEFAULT_CADENCE_TARGET);
-													setCadenceInterval(
-														String(DEFAULT_CADENCE_INTERVAL_MINUTES),
-													);
+													setCadenceInterval(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
 													return;
 												}
 												setCadenceInterval(value);
@@ -253,19 +199,13 @@ export const AssignTaskCard = ({
 										</Select>
 									</div>
 									<div className="grid gap-2">
-										<Label htmlFor="cadence-target">
-											Completions per cycle
-										</Label>
+										<Label htmlFor="cadence-target">Completions per cycle</Label>
 										<Input
 											id="cadence-target"
 											type="number"
 											min={1}
 											value={cadenceTarget}
-											onChange={(event) =>
-												setCadenceTarget(
-													Number.parseInt(event.target.value, 10) || 1,
-												)
-											}
+											onChange={(event) => setCadenceTarget(Number.parseInt(event.target.value, 10) || 1)}
 											disabled={disabled}
 										/>
 									</div>

@@ -19,10 +19,7 @@ export async function POST(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = selectionSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const { householdId } = parsed.data;

@@ -1,22 +1,12 @@
 "use client";
 
-import {
-	CheckIcon,
-	ChevronDownIcon,
-	HomeIcon,
-	Loader2Icon,
-} from "lucide-react";
+import { CheckIcon, ChevronDownIcon, HomeIcon, Loader2Icon } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/DropdownMenu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/DropdownMenu";
 import { useToast } from "@/hooks/use-toast";
 
 type Household = {
@@ -27,9 +17,7 @@ type Household = {
 
 export const Switcher = () => {
 	const [households, setHouseholds] = useState<Household[]>([]);
-	const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(
-		null,
-	);
+	const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
@@ -58,11 +46,7 @@ export const Switcher = () => {
 					return;
 				}
 				setHouseholds(Array.isArray(data?.households) ? data.households : []);
-				setActiveHouseholdId(
-					typeof data?.activeHouseholdId === "string"
-						? data.activeHouseholdId
-						: null,
-				);
+				setActiveHouseholdId(typeof data?.activeHouseholdId === "string" ? data.activeHouseholdId : null);
 			} catch (error) {
 				if (isActive) {
 					toast({
@@ -86,10 +70,7 @@ export const Switcher = () => {
 	}, [status, toast]);
 
 	const activeHousehold = useMemo(
-		() =>
-			households.find((household) => household.id === activeHouseholdId) ??
-			households[0] ??
-			null,
+		() => households.find((household) => household.id === activeHouseholdId) ?? households[0] ?? null,
 		[households, activeHouseholdId],
 	);
 
@@ -125,17 +106,9 @@ export const Switcher = () => {
 
 	const buttonContent = (
 		<>
-			{isLoading ? (
-				<Loader2Icon className="h-4 w-4 animate-spin" />
-			) : (
-				<HomeIcon className="h-4 w-4" />
-			)}
-			<span className="max-w-[140px] truncate text-left">
-				{activeHousehold?.name ?? "Household"}
-			</span>
-			{hasMultipleHouseholds ? (
-				<ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-			) : null}
+			{isLoading ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <HomeIcon className="h-4 w-4" />}
+			<span className="max-w-[140px] truncate text-left">{activeHousehold?.name ?? "Household"}</span>
+			{hasMultipleHouseholds ? <ChevronDownIcon className="h-4 w-4 text-muted-foreground" /> : null}
 		</>
 	);
 
@@ -146,13 +119,7 @@ export const Switcher = () => {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button
-					type="button"
-					variant="outline"
-					size="icon"
-					className="w-auto gap-2 px-2"
-					disabled={isLoading}
-				>
+				<Button type="button" variant="outline" size="icon" className="w-auto gap-2 px-2" disabled={isLoading}>
 					{buttonContent}
 				</Button>
 			</DropdownMenuTrigger>
@@ -171,9 +138,7 @@ export const Switcher = () => {
 							className="flex items-center justify-between gap-3"
 						>
 							<span className="truncate">{household.name}</span>
-							{household.id === activeHouseholdId ? (
-								<CheckIcon className="h-4 w-4 text-primary" />
-							) : null}
+							{household.id === activeHouseholdId ? <CheckIcon className="h-4 w-4 text-primary" /> : null}
 						</DropdownMenuItem>
 					))
 				)}

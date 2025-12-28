@@ -128,9 +128,7 @@ export const CreateUserDialog = ({ onCreated }: Props) => {
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Create user</AlertDialogTitle>
-					<AlertDialogDescription>
-						Create a password-based user account.
-					</AlertDialogDescription>
+					<AlertDialogDescription>Create a password-based user account.</AlertDialogDescription>
 				</AlertDialogHeader>
 				<form className="space-y-4" onSubmit={handleSubmit}>
 					<div className="grid gap-4 sm:grid-cols-2">
@@ -181,26 +179,13 @@ export const CreateUserDialog = ({ onCreated }: Props) => {
 					</div>
 					<div className="flex items-center justify-between rounded-md border p-3">
 						<div>
-							<p className="text-sm font-medium">
-								Require reset on first login
-							</p>
-							<p className="text-xs text-muted-foreground">
-								Forces the user to pick a new password after signing in.
-							</p>
+							<p className="text-sm font-medium">Require reset on first login</p>
+							<p className="text-xs text-muted-foreground">Forces the user to pick a new password after signing in.</p>
 						</div>
-						<Switch
-							checked={requireReset}
-							onCheckedChange={setRequireReset}
-							disabled={isPending}
-						/>
+						<Switch checked={requireReset} onCheckedChange={setRequireReset} disabled={isPending} />
 					</div>
 					<AlertDialogFooter>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => setOpen(false)}
-							disabled={isPending}
-						>
+						<Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
 							Cancel
 						</Button>
 						<Button type="submit" disabled={!canSubmit || isPending}>

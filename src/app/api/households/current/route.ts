@@ -9,16 +9,8 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 
 const updateSchema = z.object({
-	name: z
-		.string()
-		.trim()
-		.min(2, "Name is too short")
-		.max(50, "Keep the name short"),
-	rewardThreshold: z
-		.number()
-		.int()
-		.min(1, "Threshold must be at least 1")
-		.max(10000, "Threshold is too high"),
+	name: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
+	rewardThreshold: z.number().int().min(1, "Threshold must be at least 1").max(10000, "Threshold is too high"),
 	progressBarColor: z
 		.string()
 		.regex(/^#([0-9a-fA-F]{6})$/, "Color must be a 6-digit hex value")
@@ -32,10 +24,7 @@ export async function GET() {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -65,10 +54,7 @@ export async function PATCH(req: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -80,16 +66,9 @@ export async function PATCH(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = updateSchema.partial().safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
-	if (
-		!parsed.data.name &&
-		parsed.data.rewardThreshold === undefined &&
-		parsed.data.progressBarColor === undefined
-	) {
+	if (!parsed.data.name && parsed.data.rewardThreshold === undefined && parsed.data.progressBarColor === undefined) {
 		return NextResponse.json({ error: "No updates provided" }, { status: 400 });
 	}
 
@@ -97,12 +76,8 @@ export async function PATCH(req: Request) {
 		where: { id: active.householdId },
 		data: {
 			...(parsed.data.name ? { name: parsed.data.name.trim() } : {}),
-			...(parsed.data.rewardThreshold !== undefined
-				? { rewardThreshold: parsed.data.rewardThreshold }
-				: {}),
-			...(parsed.data.progressBarColor !== undefined
-				? { progressBarColor: parsed.data.progressBarColor }
-				: {}),
+			...(parsed.data.rewardThreshold !== undefined ? { rewardThreshold: parsed.data.rewardThreshold } : {}),
+			...(parsed.data.progressBarColor !== undefined ? { progressBarColor: parsed.data.progressBarColor } : {}),
 		},
 		select: {
 			id: true,
@@ -122,10 +97,7 @@ export async function DELETE() {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}

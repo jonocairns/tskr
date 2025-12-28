@@ -2,13 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/use-toast";
@@ -17,14 +11,10 @@ type Props = {
 	initialAllowGoogleAccountCreation: boolean;
 };
 
-export const AuthSettingsCard = ({
-	initialAllowGoogleAccountCreation,
-}: Props) => {
+export const AuthSettingsCard = ({ initialAllowGoogleAccountCreation }: Props) => {
 	const { toast } = useToast();
 	const [isPending, startTransition] = useTransition();
-	const [allowGoogleAccountCreation, setAllowGoogleAccountCreation] = useState(
-		initialAllowGoogleAccountCreation,
-	);
+	const [allowGoogleAccountCreation, setAllowGoogleAccountCreation] = useState(initialAllowGoogleAccountCreation);
 
 	const handleToggle = (value: boolean) => {
 		const previousValue = allowGoogleAccountCreation;
@@ -63,8 +53,7 @@ export const AuthSettingsCard = ({
 					<div className="space-y-1">
 						<CardTitle>Allow new Google accounts?</CardTitle>
 						<CardDescription>
-							When disabled, only users with an existing Google linked account
-							or email/password can sign in.
+							When disabled, only users with an existing Google linked account or email/password can sign in.
 						</CardDescription>
 					</div>
 					<Switch

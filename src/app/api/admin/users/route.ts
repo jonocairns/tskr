@@ -30,10 +30,7 @@ export async function POST(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = createSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const normalizedEmail = parsed.data.email.trim().toLowerCase();
@@ -72,19 +69,10 @@ export async function POST(req: Request) {
 			{ status: 201 },
 		);
 	} catch (error) {
-		if (
-			error instanceof Prisma.PrismaClientKnownRequestError &&
-			error.code === "P2002"
-		) {
-			return NextResponse.json(
-				{ error: "Email already in use" },
-				{ status: 409 },
-			);
+		if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+			return NextResponse.json({ error: "Email already in use" }, { status: 409 });
 		}
 
-		return NextResponse.json(
-			{ error: "Unable to create user" },
-			{ status: 500 },
-		);
+		return NextResponse.json({ error: "Unable to create user" }, { status: 500 });
 	}
 }

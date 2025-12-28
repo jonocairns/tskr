@@ -1,6 +1,4 @@
-import webPush, {
-	type PushSubscription as WebPushSubscription,
-} from "web-push";
+import webPush, { type PushSubscription as WebPushSubscription } from "web-push";
 
 import { prisma } from "@/lib/prisma";
 import { config } from "@/server-config";
@@ -17,11 +15,7 @@ const { vapidPublicKey, vapidPrivateKey, vapidSubject } = config;
 const pushConfigured = Boolean(vapidPublicKey && vapidPrivateKey);
 
 if (pushConfigured) {
-	webPush.setVapidDetails(
-		vapidSubject,
-		vapidPublicKey as string,
-		vapidPrivateKey as string,
-	);
+	webPush.setVapidDetails(vapidSubject, vapidPublicKey as string, vapidPrivateKey as string);
 }
 
 const toWebPushSubscription = (subscription: {
@@ -56,9 +50,7 @@ export async function broadcastPush(
 	const where = {
 		...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
 		...(userId ? { userId } : {}),
-		...(householdId
-			? { user: { memberships: { some: { householdId } } } }
-			: {}),
+		...(householdId ? { user: { memberships: { some: { householdId } } } } : {}),
 	};
 	const subscriptions = await prisma.pushSubscription.findMany({
 		where: Object.keys(where).length > 0 ? where : undefined,
@@ -73,10 +65,7 @@ export async function broadcastPush(
 	const results = await Promise.all(
 		subscriptions.map(async (subscription) => {
 			try {
-				await webPush.sendNotification(
-					toWebPushSubscription(subscription),
-					payloadText,
-				);
+				await webPush.sendNotification(toWebPushSubscription(subscription), payloadText);
 				return { sent: 1, removed: 0 };
 			} catch (error) {
 				const statusCode =

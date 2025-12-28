@@ -19,13 +19,7 @@ export const Providers = ({
 }) => {
 	return (
 		<SessionProvider session={session}>
-			<ThemeProvider
-				attribute="class"
-				defaultTheme="system"
-				enableSystem
-				disableTransitionOnChange
-				nonce={nonce}
-			>
+			<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
 				<PullToRefresh />
 				<PageTransition>{children}</PageTransition>
 				<Toaster />

@@ -6,21 +6,8 @@ import { useEffect, useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/Table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 import type { LogKind } from "@/lib/points";
 
@@ -137,15 +124,11 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 		<Card>
 			<CardHeader>
 				<CardTitle className="text-xl">History</CardTitle>
-				<CardDescription>
-					Everything recorded, including reward claims and reverts.
-				</CardDescription>
+				<CardDescription>Everything recorded, including reward claims and reverts.</CardDescription>
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
 				{items.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						No activity yet. Start logging tasks.
-					</p>
+					<p className="text-sm text-muted-foreground">No activity yet. Start logging tasks.</p>
 				) : (
 					<Table>
 						<TableHeader>
@@ -159,17 +142,12 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 						</TableHeader>
 						<TableBody>
 							{items.map((log) => (
-								<TableRow
-									key={log.id}
-									className={log.revertedAt ? "opacity-50" : ""}
-								>
+								<TableRow key={log.id} className={log.revertedAt ? "opacity-50" : ""}>
 									<TableCell>
 										<div className="font-semibold">{log.description}</div>
 										<div className="text-xs text-muted-foreground">
 											{log.userName} · {log.kind.toLowerCase()}
-											{log.status && log.status !== "APPROVED"
-												? ` · ${log.status.toLowerCase()}`
-												: ""}
+											{log.status && log.status !== "APPROVED" ? ` · ${log.status.toLowerCase()}` : ""}
 										</div>
 									</TableCell>
 									<TableCell>
@@ -187,8 +165,7 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 											<span className="text-xs text-muted-foreground">
 												Reverted {new Date(log.revertedAt).toLocaleDateString()}
 											</span>
-										) : log.status === "REJECTED" &&
-											log.userId === currentUserId ? (
+										) : log.status === "REJECTED" && log.userId === currentUserId ? (
 											<Button
 												variant="ghost"
 												size="sm"
@@ -199,9 +176,7 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 												Resubmit
 											</Button>
 										) : log.status === "PENDING" ? (
-											<span className="text-xs text-muted-foreground">
-												Awaiting approval
-											</span>
+											<span className="text-xs text-muted-foreground">Awaiting approval</span>
 										) : (
 											<Button
 												variant="ghost"
@@ -222,17 +197,8 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 				)}
 				{items.length > 0 ? (
 					<div className="flex justify-center pt-4">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={loadMore}
-							disabled={!hasMore || isLoadingMore}
-						>
-							{isLoadingMore
-								? "Loading..."
-								: hasMore
-									? "Load 10 more"
-									: "No more history"}
+						<Button type="button" variant="outline" onClick={loadMore} disabled={!hasMore || isLoadingMore}>
+							{isLoadingMore ? "Loading..." : hasMore ? "Load 10 more" : "No more history"}
 						</Button>
 					</div>
 				) : null}

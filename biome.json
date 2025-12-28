@@ -4,6 +4,9 @@
 		"ignore": [".next", "out", "build", "node_modules", "next-env.d.ts"]
 	},
 	"formatter": {
+		"lineWidth": 120,
+		"indentStyle": "tab",
+		"indentWidth": 2,
 		"enabled": true
 	},
 	"linter": {

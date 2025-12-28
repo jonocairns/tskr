@@ -26,10 +26,7 @@ export async function POST(req: Request, { params }: Params) {
 	const json = await req.json().catch(() => null);
 	const parsed = requestSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const resetToken = await prisma.passwordResetToken.findUnique({
@@ -41,15 +38,8 @@ export async function POST(req: Request, { params }: Params) {
 		},
 	});
 
-	if (
-		!resetToken ||
-		resetToken.usedAt ||
-		resetToken.expiresAt.getTime() < Date.now()
-	) {
-		return NextResponse.json(
-			{ error: "Invalid or expired token" },
-			{ status: 400 },
-		);
+	if (!resetToken || resetToken.usedAt || resetToken.expiresAt.getTime() < Date.now()) {
+		return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
 	}
 
 	const passwordHash = await hashPassword(parsed.data.password);

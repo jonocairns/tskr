@@ -33,9 +33,7 @@ export default async function Home({ searchParams }: Props) {
 
 	if (!session?.user?.id) {
 		const resolvedSearchParams = searchParams ? await searchParams : {};
-		const authError = resolvedSearchParams.error
-			? getAuthErrorMessage(resolvedSearchParams.error)
-			: null;
+		const authError = resolvedSearchParams.error ? getAuthErrorMessage(resolvedSearchParams.error) : null;
 
 		return (
 			<PageShell layout="centered" size="lg">
@@ -45,10 +43,7 @@ export default async function Home({ searchParams }: Props) {
 	}
 
 	const userId = session.user.id;
-	const active = await getActiveHouseholdMembership(
-		userId,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
 	if (!active) {
 		redirect("/landing");
 	}
@@ -87,9 +82,7 @@ export default async function Home({ searchParams }: Props) {
 	const presetSummaries = mapPresetSummaries(presets);
 	const auditEntries = buildAuditEntries(recentLogs);
 	const approvalEntries = buildApprovalEntries(pendingLogs);
-	const showApprovals =
-		membership.role !== "DOER" &&
-		(hasApprovalMembers || approvalEntries.length > 0);
+	const showApprovals = membership.role !== "DOER" && (hasApprovalMembers || approvalEntries.length > 0);
 
 	return (
 		<PageShell>
@@ -111,27 +104,15 @@ export default async function Home({ searchParams }: Props) {
 				currentStreak={currentStreak}
 			/>
 
-			{assignedTasks.length > 0 ? (
-				<AssignedTaskQueue entries={assignedTasks} />
-			) : null}
+			{assignedTasks.length > 0 ? <AssignedTaskQueue entries={assignedTasks} /> : null}
 
-			<TaskActions
-				presets={presetSummaries}
-				currentUserId={userId}
-				currentUserRole={membership.role}
-			/>
+			<TaskActions presets={presetSummaries} currentUserId={userId} currentUserRole={membership.role} />
 
-			{showApprovals ? (
-				<ApprovalQueue entries={approvalEntries} currentUserId={userId} />
-			) : null}
+			{showApprovals ? <ApprovalQueue entries={approvalEntries} currentUserId={userId} /> : null}
 
 			<Leaderboard entries={leaderboardEntries} />
 
-			<AuditLog
-				entries={auditEntries}
-				currentUserId={userId}
-				initialHasMore={hasMoreHistory}
-			/>
+			<AuditLog entries={auditEntries} currentUserId={userId} initialHasMore={hasMoreHistory} />
 
 			<LiveRefresh key={householdId} />
 		</PageShell>

@@ -15,14 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/Table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 import { ChromeIcon, XIcon } from "lucide-react";
 
@@ -61,12 +54,7 @@ type Props = {
 	googleEnabled: boolean;
 };
 
-export const UsersTable = ({
-	rows,
-	setRows,
-	currentUserId,
-	googleEnabled,
-}: Props) => {
+export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Props) => {
 	const { toast } = useToast();
 	const [isPending, startTransition] = useTransition();
 	const [draft, setDraft] = useState<Draft | null>(null);
@@ -80,9 +68,7 @@ export const UsersTable = ({
 	}, [rows]);
 
 	const setRow = (id: string, updater: (row: RowState) => RowState) => {
-		setRows((current) =>
-			current.map((row) => (row.id === id ? updater(row) : row)),
-		);
+		setRows((current) => current.map((row) => (row.id === id ? updater(row) : row)));
 	};
 
 	const openEditor = (row: RowState) => {
@@ -240,8 +226,7 @@ export const UsersTable = ({
 
 			const body = await res.json().catch(() => ({}));
 			const resetUrl = typeof body?.resetUrl === "string" ? body.resetUrl : "";
-			const expiresAt =
-				typeof body?.expiresAt === "string" ? body.expiresAt : "";
+			const expiresAt = typeof body?.expiresAt === "string" ? body.expiresAt : "";
 
 			setRow(id, (current) => ({
 				...current,
@@ -284,8 +269,7 @@ export const UsersTable = ({
 			}
 
 			const body = await res.json().catch(() => ({}));
-			const deleted =
-				typeof body?.deleted === "number" ? body.deleted : undefined;
+			const deleted = typeof body?.deleted === "number" ? body.deleted : undefined;
 
 			setRow(id, (current) => ({
 				...current,
@@ -294,10 +278,7 @@ export const UsersTable = ({
 				resetExpiresAt: "",
 			}));
 			toast({
-				title:
-					deleted && deleted > 0
-						? "Reset links deleted"
-						: "No reset links found",
+				title: deleted && deleted > 0 ? "Reset links deleted" : "No reset links found",
 			});
 		});
 	};
@@ -324,16 +305,9 @@ export const UsersTable = ({
 	const draftEmail = draft?.email.trim().toLowerCase() ?? "";
 	const nameDirty = Boolean(activeRow && draftName !== savedName);
 	const emailDirty = Boolean(activeRow && draftEmail !== savedEmail);
-	const resetRequiredDirty = Boolean(
-		activeRow &&
-			draft?.passwordResetRequired !== activeRow.passwordResetRequired,
-	);
-	const passwordLoginDirty = Boolean(
-		activeRow &&
-			draft?.passwordLoginDisabled !== activeRow.passwordLoginDisabled,
-	);
-	const hasChanges =
-		nameDirty || emailDirty || resetRequiredDirty || passwordLoginDirty;
+	const resetRequiredDirty = Boolean(activeRow && draft?.passwordResetRequired !== activeRow.passwordResetRequired);
+	const passwordLoginDirty = Boolean(activeRow && draft?.passwordLoginDisabled !== activeRow.passwordLoginDisabled);
+	const hasChanges = nameDirty || emailDirty || resetRequiredDirty || passwordLoginDirty;
 	const isBusy =
 		(activeRow?.isSaving ?? false) ||
 		(activeRow?.isDeleting ?? false) ||
@@ -341,13 +315,9 @@ export const UsersTable = ({
 		(activeRow?.isClearingReset ?? false) ||
 		isPending;
 	const allowPassword = draft ? !draft.passwordLoginDisabled : true;
-	const canDisablePassword =
-		googleEnabled && (activeRow?.hasGoogleAccount ?? false);
-	const passwordToggleDisabled =
-		isBusy || (!canDisablePassword && allowPassword);
-	const canSave = Boolean(
-		draft && hasChanges && draftEmail.length > 0 && !isBusy,
-	);
+	const canDisablePassword = googleEnabled && (activeRow?.hasGoogleAccount ?? false);
+	const passwordToggleDisabled = isBusy || (!canDisablePassword && allowPassword);
+	const canSave = Boolean(draft && hasChanges && draftEmail.length > 0 && !isBusy);
 	const columnCount = googleEnabled ? 8 : 7;
 
 	if (rows.length === 0) {
@@ -360,9 +330,7 @@ export const UsersTable = ({
 						<TableHead>Role</TableHead>
 						<TableHead>Reset required</TableHead>
 						<TableHead>Created</TableHead>
-						{googleEnabled ? (
-							<TableHead className="text-center">Google linked</TableHead>
-						) : null}
+						{googleEnabled ? <TableHead className="text-center">Google linked</TableHead> : null}
 						<TableHead>Password login</TableHead>
 						<TableHead>Actions</TableHead>
 					</TableRow>
@@ -388,9 +356,7 @@ export const UsersTable = ({
 						<TableHead>Role</TableHead>
 						<TableHead>Reset required</TableHead>
 						<TableHead>Created</TableHead>
-						{googleEnabled ? (
-							<TableHead className="text-center">Google linked</TableHead>
-						) : null}
+						{googleEnabled ? <TableHead className="text-center">Google linked</TableHead> : null}
 						<TableHead>Password login</TableHead>
 						<TableHead>Actions</TableHead>
 					</TableRow>
@@ -404,12 +370,8 @@ export const UsersTable = ({
 							<TableRow key={row.id}>
 								<TableCell>{row.name ?? "—"}</TableCell>
 								<TableCell>{row.email ?? "—"}</TableCell>
-								<TableCell>
-									{row.isSuperAdmin ? "Super admin" : "User"}
-								</TableCell>
-								<TableCell>
-									{row.passwordResetRequired ? "Yes" : "No"}
-								</TableCell>
+								<TableCell>{row.isSuperAdmin ? "Super admin" : "User"}</TableCell>
+								<TableCell>{row.passwordResetRequired ? "Yes" : "No"}</TableCell>
 								<TableCell>{createdLabel}</TableCell>
 								{googleEnabled ? (
 									<TableCell className="text-center">
@@ -426,16 +388,9 @@ export const UsersTable = ({
 										)}
 									</TableCell>
 								) : null}
+								<TableCell>{row.passwordLoginDisabled ? "Disabled" : "Allowed"}</TableCell>
 								<TableCell>
-									{row.passwordLoginDisabled ? "Disabled" : "Allowed"}
-								</TableCell>
-								<TableCell>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										onClick={() => openEditor(row)}
-									>
+									<Button type="button" size="sm" variant="outline" onClick={() => openEditor(row)}>
 										Edit
 									</Button>
 									{isSelf ? <span className="sr-only">You</span> : null}
@@ -446,10 +401,7 @@ export const UsersTable = ({
 				</TableBody>
 			</Table>
 
-			<AlertDialog
-				open={editorOpen}
-				onOpenChange={(open) => (!open ? closeEditor() : null)}
-			>
+			<AlertDialog open={editorOpen} onOpenChange={(open) => (!open ? closeEditor() : null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<div className="flex items-center justify-between gap-4">
@@ -471,11 +423,7 @@ export const UsersTable = ({
 										id="admin-user-name"
 										value={draft.name}
 										onChange={(event) =>
-											setDraft((current) =>
-												current
-													? { ...current, name: event.target.value }
-													: current,
-											)
+											setDraft((current) => (current ? { ...current, name: event.target.value } : current))
 										}
 										disabled={isBusy}
 									/>
@@ -487,11 +435,7 @@ export const UsersTable = ({
 										type="email"
 										value={draft.email}
 										onChange={(event) =>
-											setDraft((current) =>
-												current
-													? { ...current, email: event.target.value }
-													: current,
-											)
+											setDraft((current) => (current ? { ...current, email: event.target.value } : current))
 										}
 										disabled={isBusy}
 									/>
@@ -502,9 +446,7 @@ export const UsersTable = ({
 								<div className="flex items-center justify-between rounded-md border p-3">
 									<div>
 										<p className="text-sm font-medium">Password login</p>
-										<p className="text-xs text-muted-foreground">
-											Allow email/password login
-										</p>
+										<p className="text-xs text-muted-foreground">Allow email/password login</p>
 									</div>
 									<Switch
 										checked={allowPassword}
@@ -524,9 +466,7 @@ export const UsersTable = ({
 								<div className="flex items-center justify-between rounded-md border p-3">
 									<div>
 										<p className="text-sm font-medium">Reset required</p>
-										<p className="text-xs text-muted-foreground">
-											Require a password reset on their next login.
-										</p>
+										<p className="text-xs text-muted-foreground">Require a password reset on their next login.</p>
 									</div>
 									<Switch
 										checked={draft.passwordResetRequired}
@@ -552,23 +492,12 @@ export const UsersTable = ({
 										variant="outline"
 										size="sm"
 										onClick={() => handleResetLink(activeRow.id, draft.email)}
-										disabled={
-											isBusy ||
-											activeRow.isResetting ||
-											draft.passwordLoginDisabled
-										}
+										disabled={isBusy || activeRow.isResetting || draft.passwordLoginDisabled}
 									>
-										{activeRow.isResetting
-											? "Generating reset link..."
-											: "Generate password reset link"}
+										{activeRow.isResetting ? "Generating reset link..." : "Generate password reset link"}
 									</Button>
 									{activeRow.resetUrl ? (
-										<Button
-											type="button"
-											variant="secondary"
-											size="sm"
-											onClick={() => handleCopy(activeRow.resetUrl)}
-										>
+										<Button type="button" variant="secondary" size="sm" onClick={() => handleCopy(activeRow.resetUrl)}>
 											Copy
 										</Button>
 									) : null}
@@ -579,34 +508,21 @@ export const UsersTable = ({
 										onClick={() => handleClearResetLinks(activeRow.id)}
 										disabled={isBusy || activeRow.isClearingReset}
 									>
-										{activeRow.isClearingReset
-											? "Deleting links..."
-											: "Delete reset links"}
+										{activeRow.isClearingReset ? "Deleting links..." : "Delete reset links"}
 									</Button>
 								</div>
-								{activeRow.resetUrl ? (
-									<Input
-										value={activeRow.resetUrl}
-										readOnly
-										className="text-xs"
-									/>
-								) : null}
+								{activeRow.resetUrl ? <Input value={activeRow.resetUrl} readOnly className="text-xs" /> : null}
 								{activeRow.resetExpiresAt ? (
 									<div className="text-xs text-muted-foreground">
-										Reset link expires{" "}
-										{new Date(activeRow.resetExpiresAt).toLocaleString()}
+										Reset link expires {new Date(activeRow.resetExpiresAt).toLocaleString()}
 									</div>
 								) : null}
 							</div>
 
 							<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
 								<div>
-									<p className="text-sm font-medium text-destructive">
-										Delete user
-									</p>
-									<p className="text-xs text-muted-foreground">
-										This removes the user and their memberships.
-									</p>
+									<p className="text-sm font-medium text-destructive">Delete user</p>
+									<p className="text-xs text-muted-foreground">This removes the user and their memberships.</p>
 								</div>
 								<Button
 									type="button"
@@ -621,12 +537,7 @@ export const UsersTable = ({
 						</div>
 					) : null}
 					<AlertDialogFooter>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={closeEditor}
-							disabled={isBusy}
-						>
+						<Button type="button" variant="outline" onClick={closeEditor} disabled={isBusy}>
 							Cancel
 						</Button>
 						<Button type="button" onClick={handleSave} disabled={!canSave}>

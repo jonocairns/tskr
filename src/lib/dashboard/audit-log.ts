@@ -1,10 +1,5 @@
 import type { AuditLogEntry } from "@/components/AuditLog";
-import {
-	DURATION_BUCKETS,
-	type DurationKey,
-	LOG_KINDS,
-	type LogKind,
-} from "@/lib/points";
+import { DURATION_BUCKETS, type DurationKey, LOG_KINDS, type LogKind } from "@/lib/points";
 
 type RecentLog = {
 	id: string;
@@ -19,20 +14,14 @@ type RecentLog = {
 	user?: { name: string | null; email: string | null } | null;
 };
 
-const bucketLabelMap = Object.fromEntries(
-	DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]),
-);
+const bucketLabelMap = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]));
 
-const isLogKind = (kind: string): kind is LogKind =>
-	LOG_KINDS.includes(kind as LogKind);
+const isLogKind = (kind: string): kind is LogKind => LOG_KINDS.includes(kind as LogKind);
 
 export function buildAuditEntries(recentLogs: RecentLog[]): AuditLogEntry[] {
 	return recentLogs.map((log) => {
 		const kind = isLogKind(log.kind) ? log.kind : "PRESET";
-		const status =
-			log.status === "PENDING" || log.status === "REJECTED"
-				? log.status
-				: "APPROVED";
+		const status = log.status === "PENDING" || log.status === "REJECTED" ? log.status : "APPROVED";
 
 		return {
 			id: log.id,

@@ -19,10 +19,7 @@ export const ResetPasswordForm = ({ token }: Props) => {
 	const { toast } = useToast();
 	const router = useRouter();
 
-	const canSubmit =
-		password.length >= 8 &&
-		confirmPassword.length >= 8 &&
-		password === confirmPassword;
+	const canSubmit = password.length >= 8 && confirmPassword.length >= 8 && password === confirmPassword;
 
 	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();

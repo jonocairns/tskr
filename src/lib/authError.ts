@@ -15,8 +15,7 @@ const authErrorCopy: Record<string, AuthErrorMessage> = {
 	},
 	OAuthAccountNotLinked: {
 		title: "Account not linked",
-		description:
-			"Sign in with the provider you used before, or ask a super admin to link your account.",
+		description: "Sign in with the provider you used before, or ask a super admin to link your account.",
 	},
 	CredentialsSignin: {
 		title: "Sign in failed",
@@ -43,9 +42,7 @@ export const normalizeAuthError = (value?: string | string[]) => {
 	return Array.isArray(value) ? (value[0] ?? "Default") : value;
 };
 
-export const getAuthErrorMessage = (
-	value?: string | string[],
-): AuthErrorInfo => {
+export const getAuthErrorMessage = (value?: string | string[]): AuthErrorInfo => {
 	const key = normalizeAuthError(value);
 	const message = authErrorCopy[key] ?? authErrorCopy.Default;
 	return { key, ...message };

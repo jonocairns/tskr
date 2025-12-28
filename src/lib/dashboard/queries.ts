@@ -160,9 +160,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 	]);
 
 	const hasMoreHistory = recentLogs.length > HISTORY_LIMIT;
-	const trimmedLogs = hasMoreHistory
-		? recentLogs.slice(0, HISTORY_LIMIT)
-		: recentLogs;
+	const trimmedLogs = hasMoreHistory ? recentLogs.slice(0, HISTORY_LIMIT) : recentLogs;
 
 	return {
 		pointSums,

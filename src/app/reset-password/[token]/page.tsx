@@ -1,12 +1,6 @@
 import { PageShell } from "@/components/PageShell";
 import { ResetPasswordForm } from "@/components/ResetPasswordForm";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +16,7 @@ export default async function ResetPasswordPage({ params }: Props) {
 			<Card>
 				<CardHeader>
 					<CardTitle>Set a new password</CardTitle>
-					<CardDescription>
-						Choose a new password to sign in with email.
-					</CardDescription>
+					<CardDescription>Choose a new password to sign in with email.</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<ResetPasswordForm token={token} />

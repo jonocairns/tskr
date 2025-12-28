@@ -29,10 +29,7 @@ export async function GET() {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -78,10 +75,7 @@ export async function POST(req: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -93,10 +87,7 @@ export async function POST(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = inviteSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const role = parsed.data.role ?? "DOER";
@@ -133,10 +124,7 @@ export async function POST(req: Request) {
 	}
 
 	if (!invite) {
-		return NextResponse.json(
-			{ error: "Unable to generate invite code" },
-			{ status: 500 },
-		);
+		return NextResponse.json({ error: "Unable to generate invite code" }, { status: 500 });
 	}
 
 	return NextResponse.json({ invite }, { status: 201 });

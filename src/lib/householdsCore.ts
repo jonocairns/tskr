@@ -7,13 +7,8 @@ export type HouseholdMembership = {
 };
 
 export type HouseholdStore = {
-	getMembership: (
-		userId: string,
-		householdId: string,
-	) => Promise<HouseholdMembership | null>;
-	getFirstMembership: (
-		userId: string,
-	) => Promise<{ householdId: string } | null>;
+	getMembership: (userId: string, householdId: string) => Promise<HouseholdMembership | null>;
+	getFirstMembership: (userId: string) => Promise<{ householdId: string } | null>;
 };
 
 export async function resolveActiveHouseholdId(
@@ -38,11 +33,7 @@ export async function getActiveHouseholdMembership(
 	userId: string,
 	lastHouseholdId?: string | null,
 ): Promise<{ householdId: string; membership: HouseholdMembership } | null> {
-	const householdId = await resolveActiveHouseholdId(
-		store,
-		userId,
-		lastHouseholdId,
-	);
+	const householdId = await resolveActiveHouseholdId(store, userId, lastHouseholdId);
 	if (!householdId) {
 		return null;
 	}

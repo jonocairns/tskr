@@ -15,31 +15,12 @@ import {
 	AlertDialogTrigger,
 } from "@/components/ui/AlertDialog";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/Table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 import {
 	CADENCE_NONE_VALUE,
@@ -87,9 +68,7 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 			const label = task.assigneeName ?? task.assigneeEmail ?? "Unknown";
 			map.set(task.assigneeId, { id: task.assigneeId, label });
 		}
-		return Array.from(map.values()).sort((a, b) =>
-			a.label.localeCompare(b.label),
-		);
+		return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
 	}, [tasks]);
 
 	useEffect(() => {
@@ -102,11 +81,7 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 	}, [assigneeFilter, assigneeOptions]);
 
 	const sortedTasks = useMemo(
-		() =>
-			[...tasks].sort(
-				(a, b) =>
-					new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime(),
-			),
+		() => [...tasks].sort((a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime()),
 		[tasks],
 	);
 	const filteredTasks = useMemo(() => {
@@ -118,16 +93,9 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 
 	const updateTask = (
 		id: string,
-		updates: Partial<
-			Pick<
-				AssignedTaskRow,
-				"cadenceTarget" | "cadenceIntervalMinutes" | "isRecurring"
-			>
-		>,
+		updates: Partial<Pick<AssignedTaskRow, "cadenceTarget" | "cadenceIntervalMinutes" | "isRecurring">>,
 	) => {
-		setTasks((prev) =>
-			prev.map((task) => (task.id === id ? { ...task, ...updates } : task)),
-		);
+		setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, ...updates } : task)));
 	};
 
 	const toggleRecurring = (taskId: string, value: boolean) => {
@@ -158,9 +126,7 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 			return;
 		}
 
-		const cadenceTarget = task.isRecurring
-			? Math.max(1, Math.floor(task.cadenceTarget || 1))
-			: DEFAULT_CADENCE_TARGET;
+		const cadenceTarget = task.isRecurring ? Math.max(1, Math.floor(task.cadenceTarget || 1)) : DEFAULT_CADENCE_TARGET;
 		const cadenceIntervalMinutes = task.isRecurring
 			? Math.max(1, task.cadenceIntervalMinutes || 1)
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
@@ -206,10 +172,9 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 
 	const handleDelete = (taskId: string) => {
 		startTransition(async () => {
-			const { res, data } = await requestJson<{ error?: string }>(
-				`/api/assigned-tasks/${taskId}`,
-				{ method: "DELETE" },
-			);
+			const { res, data } = await requestJson<{ error?: string }>(`/api/assigned-tasks/${taskId}`, {
+				method: "DELETE",
+			});
 
 			if (!res.ok) {
 				toast({
@@ -231,24 +196,16 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 			<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div className="space-y-1">
 					<CardTitle className="text-xl">Assigned tasks</CardTitle>
-					<CardDescription>
-						Manage assigned tasks across the household.
-					</CardDescription>
+					<CardDescription>Manage assigned tasks across the household.</CardDescription>
 				</div>
 				{sortedTasks.length > 0 ? (
 					<div className="sm:min-w-[220px]">
-						<Select
-							value={assigneeFilter}
-							onValueChange={setAssigneeFilter}
-							disabled={isPending}
-						>
+						<Select value={assigneeFilter} onValueChange={setAssigneeFilter} disabled={isPending}>
 							<SelectTrigger aria-label="Filter by assignee">
 								<SelectValue placeholder="All assignees" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value={ASSIGNEE_ALL_VALUE}>
-									All assignees
-								</SelectItem>
+								<SelectItem value={ASSIGNEE_ALL_VALUE}>All assignees</SelectItem>
 								{assigneeOptions.map((option) => (
 									<SelectItem key={option.id} value={option.id}>
 										{option.label}
@@ -261,9 +218,7 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
 				{sortedTasks.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						No assigned tasks yet.
-					</p>
+					<p className="text-sm text-muted-foreground">No assigned tasks yet.</p>
 				) : (
 					<Table>
 						<TableHeader>
@@ -284,31 +239,21 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 									</TableCell>
 									<TableCell>
 										<div className="flex flex-col">
-											<span className="text-sm">
-												{task.assigneeName ?? task.assigneeEmail ?? "Unknown"}
-											</span>
-											<span className="text-xs text-muted-foreground">
-												{task.assigneeEmail ?? "—"}
-											</span>
+											<span className="text-sm">{task.assigneeName ?? task.assigneeEmail ?? "Unknown"}</span>
+											<span className="text-xs text-muted-foreground">{task.assigneeEmail ?? "—"}</span>
 										</div>
 									</TableCell>
 									<TableCell>
 										<Switch
 											checked={task.isRecurring}
-											onCheckedChange={(value) =>
-												toggleRecurring(task.id, value)
-											}
+											onCheckedChange={(value) => toggleRecurring(task.id, value)}
 											disabled={isPending}
 											aria-label="Recurring"
 										/>
 									</TableCell>
 									<TableCell>
 										<Select
-											value={
-												task.isRecurring
-													? String(task.cadenceIntervalMinutes)
-													: CADENCE_NONE_VALUE
-											}
+											value={task.isRecurring ? String(task.cadenceIntervalMinutes) : CADENCE_NONE_VALUE}
 											onValueChange={(value) => {
 												if (value === CADENCE_NONE_VALUE) {
 													toggleRecurring(task.id, false);
@@ -342,15 +287,10 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 												id={`cadence-${task.id}`}
 												type="number"
 												min={1}
-												value={
-													task.isRecurring
-														? task.cadenceTarget
-														: DEFAULT_CADENCE_TARGET
-												}
+												value={task.isRecurring ? task.cadenceTarget : DEFAULT_CADENCE_TARGET}
 												onChange={(event) =>
 													updateTask(task.id, {
-														cadenceTarget:
-															Number.parseInt(event.target.value, 10) || 1,
+														cadenceTarget: Number.parseInt(event.target.value, 10) || 1,
 													})
 												}
 												disabled={isPending || !task.isRecurring}
@@ -359,33 +299,20 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 									</TableCell>
 									<TableCell className="text-right">
 										<div className="flex justify-end gap-2">
-											<Button
-												type="button"
-												size="sm"
-												disabled={isPending}
-												onClick={() => handleSave(task.id)}
-											>
+											<Button type="button" size="sm" disabled={isPending} onClick={() => handleSave(task.id)}>
 												Save
 											</Button>
 											<AlertDialog>
 												<AlertDialogTrigger asChild>
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														disabled={isPending}
-													>
+													<Button type="button" size="sm" variant="outline" disabled={isPending}>
 														Delete
 													</Button>
 												</AlertDialogTrigger>
 												<AlertDialogContent>
 													<AlertDialogHeader>
-														<AlertDialogTitle>
-															Delete assigned task?
-														</AlertDialogTitle>
+														<AlertDialogTitle>Delete assigned task?</AlertDialogTitle>
 														<AlertDialogDescription>
-															This removes the task from the queue. Existing
-															completions stay in the log.
+															This removes the task from the queue. Existing completions stay in the log.
 														</AlertDialogDescription>
 													</AlertDialogHeader>
 													<AlertDialogFooter>

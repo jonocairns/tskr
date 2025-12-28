@@ -4,13 +4,7 @@ import type { PresetSummary } from "@/components/task-actions/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import type { DurationKey } from "@/lib/points";
 import { DURATION_BUCKETS } from "@/lib/points";
 
@@ -55,10 +49,7 @@ export function PresetListItem({
 }: Props) {
 	if (isEditing) {
 		return (
-			<form
-				className="space-y-3 rounded-lg border p-3"
-				onSubmit={(event) => onUpdatePreset(event, preset.id)}
-			>
+			<form className="space-y-3 rounded-lg border p-3" onSubmit={(event) => onUpdatePreset(event, preset.id)}>
 				<div className="space-y-2">
 					<Label htmlFor={`preset-edit-${preset.id}`}>Name</Label>
 					<Input
@@ -89,14 +80,10 @@ export function PresetListItem({
 				</div>
 				{canEditApprovalOverride ? (
 					<div className="space-y-2">
-						<Label htmlFor={`preset-approval-${preset.id}`}>
-							Approval override
-						</Label>
+						<Label htmlFor={`preset-approval-${preset.id}`}>Approval override</Label>
 						<Select
 							value={editApprovalOverride}
-							onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") =>
-								onEditApprovalOverrideChange(value)
-							}
+							onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => onEditApprovalOverrideChange(value)}
 							disabled={disabled}
 						>
 							<SelectTrigger id={`preset-approval-${preset.id}`}>
@@ -111,20 +98,10 @@ export function PresetListItem({
 					</div>
 				) : null}
 				<div className="flex items-center gap-2">
-					<Button
-						type="submit"
-						size="sm"
-						disabled={disabled || !canUpdatePreset}
-					>
+					<Button type="submit" size="sm" disabled={disabled || !canUpdatePreset}>
 						Save
 					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onClick={onCancelEdit}
-						disabled={disabled}
-					>
+					<Button type="button" variant="ghost" size="sm" onClick={onCancelEdit} disabled={disabled}>
 						Cancel
 					</Button>
 				</div>
@@ -143,19 +120,12 @@ export function PresetListItem({
 				</p>
 				{preset.approvalOverride ? (
 					<p className="text-xs text-muted-foreground">
-						Approval{" "}
-						{preset.approvalOverride === "REQUIRE" ? "required" : "skipped"}
+						Approval {preset.approvalOverride === "REQUIRE" ? "required" : "skipped"}
 					</p>
 				) : null}
 			</div>
 			<div className="flex items-center gap-2">
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => onStartEdit(preset)}
-					disabled={disabled}
-				>
+				<Button type="button" variant="ghost" size="sm" onClick={() => onStartEdit(preset)} disabled={disabled}>
 					Edit
 				</Button>
 				{canDelete ? (

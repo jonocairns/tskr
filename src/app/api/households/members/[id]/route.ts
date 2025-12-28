@@ -26,10 +26,7 @@ export async function PATCH(req: Request, { params }: Params) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -46,10 +43,7 @@ export async function PATCH(req: Request, { params }: Params) {
 	const json = await req.json().catch(() => null);
 	const parsed = updateSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const member = await prisma.householdMember.findFirst({
@@ -71,10 +65,7 @@ export async function PATCH(req: Request, { params }: Params) {
 			where: { householdId: active.householdId, role: "DICTATOR" },
 		});
 		if (dictatorCount <= 1) {
-			return NextResponse.json(
-				{ error: "Household must have at least one dictator" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "Household must have at least one dictator" }, { status: 400 });
 		}
 	}
 

@@ -10,13 +10,7 @@ import { InvitesCard } from "@/components/household/InvitesCard";
 import { JoinCard } from "@/components/household/JoinCard";
 import { MembersCard } from "@/components/household/MembersCard";
 import { SettingsCard } from "@/components/household/SettingsCard";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getActiveHouseholdMembership } from "@/lib/households";
@@ -36,10 +30,7 @@ export default async function HouseholdPage() {
 	}
 
 	const userId = session.user.id;
-	const active = await getActiveHouseholdMembership(
-		userId,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
 	if (!active) {
 		redirect("/landing");
 	}
@@ -61,23 +52,14 @@ export default async function HouseholdPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle className="text-xl">General</CardTitle>
-					<CardDescription>
-						Update household settings, notifications, and manage deletion.
-					</CardDescription>
+					<CardDescription>Update household settings, notifications, and manage deletion.</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-8">
-					<SettingsCard
-						householdId={householdId}
-						canManage={membership.role === "DICTATOR"}
-						variant="section"
-					/>
+					<SettingsCard householdId={householdId} canManage={membership.role === "DICTATOR"} variant="section" />
 
 					<PushNotifications variant="section" />
 
-					<DangerZone
-						canDelete={membership.role === "DICTATOR"}
-						variant="section"
-					/>
+					<DangerZone canDelete={membership.role === "DICTATOR"} variant="section" />
 				</CardContent>
 			</Card>
 
@@ -89,10 +71,7 @@ export default async function HouseholdPage() {
 				/>
 			) : null}
 
-			<InvitesCard
-				householdId={householdId}
-				canInvite={membership.role === "DICTATOR"}
-			/>
+			<InvitesCard householdId={householdId} canInvite={membership.role === "DICTATOR"} />
 
 			<JoinCard />
 		</PageShell>

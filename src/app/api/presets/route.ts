@@ -10,11 +10,7 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 
 const presetSchema = z.object({
-	label: z
-		.string()
-		.trim()
-		.min(2, "Name is too short")
-		.max(50, "Keep the name short"),
+	label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 	bucket: z.enum(DURATION_KEYS),
 	isShared: z.boolean().optional(),
 	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullable().optional(),
@@ -27,10 +23,7 @@ export async function GET() {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -64,10 +57,7 @@ export async function POST(req: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -77,15 +67,11 @@ export async function POST(req: Request) {
 	const parsed = presetSchema.safeParse(json);
 
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const allowShared = membership.role !== "DOER";
-	const approvalOverride =
-		membership.role === "DOER" ? null : (parsed.data.approvalOverride ?? null);
+	const approvalOverride = membership.role === "DOER" ? null : (parsed.data.approvalOverride ?? null);
 	const preset = await prisma.presetTask.create({
 		data: {
 			householdId,

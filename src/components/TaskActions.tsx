@@ -10,17 +10,9 @@ type TaskActionsProps = {
 	currentUserRole: "DICTATOR" | "APPROVER" | "DOER";
 };
 
-export const TaskActions = ({
-	presets,
-	currentUserId,
-	currentUserRole,
-}: TaskActionsProps) => {
+export const TaskActions = ({ presets, currentUserId, currentUserRole }: TaskActionsProps) => {
 	return (
-		<TaskActionsProvider
-			presets={presets}
-			currentUserId={currentUserId}
-			currentUserRole={currentUserRole}
-		>
+		<TaskActionsProvider presets={presets} currentUserId={currentUserId} currentUserRole={currentUserRole}>
 			<div className="grid gap-4">
 				<PresetActionsCard />
 			</div>

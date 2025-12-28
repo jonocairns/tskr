@@ -9,13 +9,7 @@ import { useTaskActions } from "@/components/task-actions/Context";
 import { normalizeText } from "@/components/task-actions/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -23,14 +17,7 @@ import { DURATION_BUCKETS } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 export const TimedActionsCard = () => {
-	const {
-		presetOptions,
-		disabled,
-		defaultBucket,
-		isPending,
-		startTransition,
-		logPreset,
-	} = useTaskActions();
+	const { presetOptions, disabled, defaultBucket, isPending, startTransition, logPreset } = useTaskActions();
 	const [selectedBucket, setSelectedBucket] = useState(defaultBucket);
 	const [description, setDescription] = useState("");
 	const [durationMinutes, setDurationMinutes] = useState("");
@@ -41,15 +28,12 @@ export const TimedActionsCard = () => {
 	const descriptionQuery = normalizeText(description);
 	const shouldSearchDescription = descriptionQuery.length >= 2;
 	const descriptionMatches = shouldSearchDescription
-		? presetOptions.filter((preset) =>
-				normalizeText(preset.label).includes(descriptionQuery),
-			)
+		? presetOptions.filter((preset) => normalizeText(preset.label).includes(descriptionQuery))
 		: [];
 
 	const handleTimed = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		const minutes =
-			durationMinutes.trim().length > 0 ? Number(durationMinutes) : undefined;
+		const minutes = durationMinutes.trim().length > 0 ? Number(durationMinutes) : undefined;
 
 		startTransition(async () => {
 			const res = await fetch("/api/logs", {
@@ -79,9 +63,7 @@ export const TimedActionsCard = () => {
 			setDurationMinutes("");
 			toast({
 				title: isPending ? "Submitted for approval" : "Task logged",
-				description: isPending
-					? "Task logged and waiting for approval."
-					: "Time-based task recorded and points added.",
+				description: isPending ? "Task logged and waiting for approval." : "Time-based task recorded and points added.",
 			});
 			router.refresh();
 		});
@@ -103,8 +85,7 @@ export const TimedActionsCard = () => {
 								onClick={() => setSelectedBucket(bucket.key)}
 								className={cn(
 									"flex flex-col items-start rounded-lg border p-3 text-left transition hover:border-primary",
-									selectedBucket === bucket.key &&
-										"border-primary bg-primary/5",
+									selectedBucket === bucket.key && "border-primary bg-primary/5",
 								)}
 								disabled={disabled}
 							>
@@ -112,9 +93,7 @@ export const TimedActionsCard = () => {
 									<span className="font-semibold">{bucket.label}</span>
 									<Badge variant="secondary">{bucket.points} pts</Badge>
 								</div>
-								<span className="text-xs text-muted-foreground">
-									{bucket.window}
-								</span>
+								<span className="text-xs text-muted-foreground">{bucket.window}</span>
 							</button>
 						))}
 					</div>
@@ -145,14 +124,10 @@ export const TimedActionsCard = () => {
 							/>
 							{descriptionMatches.length > 0 ? (
 								<div className="rounded-md border bg-muted/40 p-2 text-xs">
-									<p className="text-muted-foreground">
-										This looks like an existing preset. Log it instead:
-									</p>
+									<p className="text-muted-foreground">This looks like an existing preset. Log it instead:</p>
 									<div className="mt-2 flex flex-wrap gap-2">
 										{descriptionMatches.slice(0, 6).map((preset) => {
-											const bucket = DURATION_BUCKETS.find(
-												(item) => item.key === preset.bucket,
-											);
+											const bucket = DURATION_BUCKETS.find((item) => item.key === preset.bucket);
 											return (
 												<Button
 													key={`preset-desc-${preset.id}`}
@@ -160,10 +135,7 @@ export const TimedActionsCard = () => {
 													variant="secondary"
 													size="sm"
 													onClick={() => {
-														logPreset(
-															{ presetId: preset.id },
-															description.trim() || undefined,
-														);
+														logPreset({ presetId: preset.id }, description.trim() || undefined);
 														setDescription("");
 														setDurationMinutes("");
 													}}
@@ -190,8 +162,7 @@ export const TimedActionsCard = () => {
 						) : (
 							<SparklesIcon className="mr-2 h-4 w-4" />
 						)}
-						Log {DURATION_BUCKETS.find((b) => b.key === selectedBucket)?.points}{" "}
-						pts
+						Log {DURATION_BUCKETS.find((b) => b.key === selectedBucket)?.points} pts
 					</Button>
 				</form>
 			</CardContent>

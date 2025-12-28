@@ -14,8 +14,7 @@ const isIOSDevice = () => {
 
 	const userAgent = navigator.userAgent;
 	const isIPhoneOrIPad = /iPad|iPhone|iPod/.test(userAgent);
-	const isIPadDesktopMode =
-		navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+	const isIPadDesktopMode = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
 
 	return isIPhoneOrIPad || isIPadDesktopMode;
 };
@@ -25,9 +24,7 @@ const isStandaloneMode = () => {
 		return false;
 	}
 
-	const mediaStandalone = window.matchMedia?.(
-		"(display-mode: standalone)",
-	)?.matches;
+	const mediaStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches;
 	const nav = navigator as Navigator & { standalone?: boolean };
 	const navigatorStandalone = Boolean(nav.standalone);
 
@@ -127,10 +124,7 @@ export const PullToRefresh = () => {
 			style={{
 				transform: `translateY(${visibleDistance - 60}px)`,
 				opacity: pullDistance > 0 ? 1 : 0,
-				transition:
-					pullDistance === 0
-						? "transform 200ms ease, opacity 200ms ease"
-						: "none",
+				transition: pullDistance === 0 ? "transform 200ms ease, opacity 200ms ease" : "none",
 			}}
 		>
 			{armed ? "Release to refresh" : "Pull to refresh"}

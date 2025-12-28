@@ -1,11 +1,7 @@
 import { baseConfig } from "./config";
 
 export const buildCsp = (nonce: string) => {
-	const scriptSrc = [
-		"'self'",
-		`'nonce-${nonce}'`,
-		...(baseConfig.isDev ? ["'unsafe-eval'"] : []),
-	].join(" ");
+	const scriptSrc = ["'self'", `'nonce-${nonce}'`, ...(baseConfig.isDev ? ["'unsafe-eval'"] : [])].join(" ");
 
 	const connectSrc = ["'self'", ...(baseConfig.isDev ? ["ws:"] : [])].join(" ");
 

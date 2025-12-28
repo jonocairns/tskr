@@ -15,12 +15,7 @@ type Params = {
 
 const updateSchema = z
 	.object({
-		label: z
-			.string()
-			.trim()
-			.min(2, "Name is too short")
-			.max(50, "Keep the name short")
-			.optional(),
+		label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short").optional(),
 		bucket: z.enum(DURATION_KEYS).optional(),
 		isShared: z.boolean().optional(),
 		approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullable().optional(),
@@ -36,10 +31,7 @@ export async function PATCH(req: Request, { params }: Params) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -54,10 +46,7 @@ export async function PATCH(req: Request, { params }: Params) {
 	const parsed = updateSchema.safeParse(json);
 
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const preset = await prisma.presetTask.findFirst({
@@ -75,27 +64,15 @@ export async function PATCH(req: Request, { params }: Params) {
 	}
 
 	if (parsed.data.isShared !== undefined && !isOwner) {
-		return NextResponse.json(
-			{ error: "Only the owner can change sharing" },
-			{ status: 403 },
-		);
+		return NextResponse.json({ error: "Only the owner can change sharing" }, { status: 403 });
 	}
 
 	if (parsed.data.isShared === true && membership.role === "DOER") {
-		return NextResponse.json(
-			{ error: "Doers cannot share presets" },
-			{ status: 403 },
-		);
+		return NextResponse.json({ error: "Doers cannot share presets" }, { status: 403 });
 	}
 
-	if (
-		parsed.data.approvalOverride !== undefined &&
-		membership.role === "DOER"
-	) {
-		return NextResponse.json(
-			{ error: "Doers cannot change approval overrides" },
-			{ status: 403 },
-		);
+	if (parsed.data.approvalOverride !== undefined && membership.role === "DOER") {
+		return NextResponse.json({ error: "Doers cannot change approval overrides" }, { status: 403 });
 	}
 
 	const updated = await prisma.presetTask.update({
@@ -104,10 +81,7 @@ export async function PATCH(req: Request, { params }: Params) {
 			label: parsed.data.label,
 			bucket: parsed.data.bucket,
 			isShared: isOwner ? parsed.data.isShared : undefined,
-			approvalOverride:
-				parsed.data.approvalOverride === undefined
-					? undefined
-					: parsed.data.approvalOverride,
+			approvalOverride: parsed.data.approvalOverride === undefined ? undefined : parsed.data.approvalOverride,
 		},
 		select: {
 			id: true,
@@ -131,10 +105,7 @@ export async function DELETE(_req: Request, { params }: Params) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}

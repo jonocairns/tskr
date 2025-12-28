@@ -20,10 +20,7 @@ export async function GET() {
 	}
 
 	const userId = session.user.id;
-	const activeHouseholdId = await resolveActiveHouseholdId(
-		userId,
-		session.user.householdId ?? null,
-	);
+	const activeHouseholdId = await resolveActiveHouseholdId(userId, session.user.householdId ?? null);
 
 	const memberships = await prisma.householdMember.findMany({
 		where: { userId },
@@ -58,18 +55,12 @@ export async function POST(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = createSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const userId = session.user.id;
 	const defaultName = "My household";
-	const name =
-		parsed.data.name && parsed.data.name.trim().length >= 2
-			? parsed.data.name.trim()
-			: defaultName;
+	const name = parsed.data.name && parsed.data.name.trim().length >= 2 ? parsed.data.name.trim() : defaultName;
 
 	const household = await prisma.household.create({
 		data: {

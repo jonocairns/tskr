@@ -45,23 +45,12 @@ export function buildLeaderboardSummary({
 	rewardCounts: CountSum[];
 	lastActivity: LastActivity[];
 }): LeaderboardSummary {
-	const netPointSumMap = new Map(
-		pointSums.map((item) => [item.userId, item._sum.points ?? 0]),
-	);
-	const earnedPointSumMap = new Map(
-		earnedPointSums.map((item) => [item.userId, item._sum.points ?? 0]),
-	);
-	const taskCountMap = new Map(
-		taskCounts.map((item) => [item.userId, item._count._all]),
-	);
-	const rewardCountMap = new Map(
-		rewardCounts.map((item) => [item.userId, item._count._all]),
-	);
+	const netPointSumMap = new Map(pointSums.map((item) => [item.userId, item._sum.points ?? 0]));
+	const earnedPointSumMap = new Map(earnedPointSums.map((item) => [item.userId, item._sum.points ?? 0]));
+	const taskCountMap = new Map(taskCounts.map((item) => [item.userId, item._count._all]));
+	const rewardCountMap = new Map(rewardCounts.map((item) => [item.userId, item._count._all]));
 	const lastActivityMap = new Map(
-		lastActivity.map((item) => [
-			item.userId,
-			item._max.createdAt?.toISOString() ?? null,
-		]),
+		lastActivity.map((item) => [item.userId, item._max.createdAt?.toISOString() ?? null]),
 	);
 
 	const rankedEntries = users
@@ -75,12 +64,7 @@ export function buildLeaderboardSummary({
 			claims: rewardCountMap.get(user.id) ?? 0,
 			lastActivity: lastActivityMap.get(user.id),
 		}))
-		.sort(
-			(a, b) =>
-				b.points - a.points ||
-				b.currentBalance - a.currentBalance ||
-				a.name.localeCompare(b.name),
-		);
+		.sort((a, b) => b.points - a.points || b.currentBalance - a.currentBalance || a.name.localeCompare(b.name));
 
 	return {
 		entries: rankedEntries,

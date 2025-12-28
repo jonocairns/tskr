@@ -5,21 +5,8 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/Table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 
 export type ApprovalEntry = {
@@ -52,8 +39,7 @@ export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({}));
 				toast({
-					title:
-						action === "approve" ? "Unable to approve" : "Unable to reject",
+					title: action === "approve" ? "Unable to approve" : "Unable to reject",
 					description: body?.error ?? "Please try again.",
 					variant: "destructive",
 				});
@@ -75,9 +61,7 @@ export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
 				{entries.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						No tasks awaiting approval.
-					</p>
+					<p className="text-sm text-muted-foreground">No tasks awaiting approval.</p>
 				) : (
 					<Table>
 						<TableHeader>
@@ -93,9 +77,7 @@ export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
 								<TableRow key={entry.id}>
 									<TableCell>
 										<div className="font-semibold">{entry.description}</div>
-										<div className="text-xs text-muted-foreground">
-											{entry.userName}
-										</div>
+										<div className="text-xs text-muted-foreground">{entry.userName}</div>
 									</TableCell>
 									<TableCell className="text-sm text-muted-foreground">
 										{new Date(entry.createdAt).toLocaleString()}

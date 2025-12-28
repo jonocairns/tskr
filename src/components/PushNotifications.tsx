@@ -23,11 +23,7 @@ const toUint8Array = (base64String: string) => {
 	return outputArray;
 };
 
-const subscribeWithTimeout = async (
-	registration: ServiceWorkerRegistration,
-	publicKey: string,
-	timeoutMs = 10000,
-) => {
+const subscribeWithTimeout = async (registration: ServiceWorkerRegistration, publicKey: string, timeoutMs = 10000) => {
 	let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
 	try {
@@ -42,10 +38,7 @@ const subscribeWithTimeout = async (
 			}, timeoutMs);
 		});
 
-		return (await Promise.race([
-			subscribePromise,
-			timeoutPromise,
-		])) as PushSubscription;
+		return (await Promise.race([subscribePromise, timeoutPromise])) as PushSubscription;
 	} finally {
 		if (timeoutId) {
 			clearTimeout(timeoutId);
@@ -59,8 +52,7 @@ type Props = {
 
 export const PushNotifications = ({ variant = "card" }: Props) => {
 	const [status, setStatus] = useState<Status>("loading");
-	const [registration, setRegistration] =
-		useState<ServiceWorkerRegistration | null>(null);
+	const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
 	const [isTesting, setIsTesting] = useState(false);
 	const [vapidPublicKey, setVapidPublicKey] = useState("");
@@ -85,11 +77,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 		let active = true;
 
 		const setup = async () => {
-			if (
-				!("serviceWorker" in navigator) ||
-				!("PushManager" in window) ||
-				!("Notification" in window)
-			) {
+			if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
 				setStatus("unsupported");
 				return;
 			}
@@ -202,9 +190,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 	}, [status, isKeyLoaded, hasVapidKey]);
 
 	const isSubscribed = status === "subscribed";
-	const toggleDisabled = isSubscribed
-		? isBusy
-		: isBusy || status !== "ready" || !isKeyLoaded || !hasVapidKey;
+	const toggleDisabled = isSubscribed ? isBusy : isBusy || status !== "ready" || !isKeyLoaded || !hasVapidKey;
 
 	const handleEnable = async () => {
 		if (!isKeyLoaded) {
@@ -232,8 +218,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 				description: "Waiting for the browser subscription.",
 			});
 
-			const activeRegistration =
-				registration ?? (await navigator.serviceWorker.ready);
+			const activeRegistration = registration ?? (await navigator.serviceWorker.ready);
 
 			if (!activeRegistration?.pushManager) {
 				toast({
@@ -264,19 +249,13 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 				return;
 			}
 
-			const permission =
-				Notification.permission === "granted"
-					? "granted"
-					: await Notification.requestPermission();
+			const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
 			if (permission !== "granted") {
 				setStatus(permission === "denied" ? "blocked" : "ready");
 				return;
 			}
 
-			const subscription = await subscribeWithTimeout(
-				activeRegistration,
-				vapidPublicKey,
-			);
+			const subscription = await subscribeWithTimeout(activeRegistration, vapidPublicKey);
 
 			const res = await fetch("/api/push/subscribe", {
 				method: "POST",
@@ -380,26 +359,15 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 						id="push-notifications-toggle"
 						checked={isSubscribed}
 						disabled={toggleDisabled}
-						onCheckedChange={(checked) =>
-							checked ? handleEnable() : handleDisable()
-						}
+						onCheckedChange={(checked) => (checked ? handleEnable() : handleDisable())}
 					/>
-					<span className="text-sm text-muted-foreground">
-						{isSubscribed ? "On" : "Off"}
-					</span>
+					<span className="text-sm text-muted-foreground">{isSubscribed ? "On" : "Off"}</span>
 				</div>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={handleTest}
-					disabled={isTesting || !isSubscribed}
-				>
+				<Button type="button" variant="outline" onClick={handleTest} disabled={isTesting || !isSubscribed}>
 					{isTesting ? "Sending..." : "Send test"}
 				</Button>
 			</div>
-			{helperText ? (
-				<p className="text-xs text-muted-foreground">{helperText}</p>
-			) : null}
+			{helperText ? <p className="text-xs text-muted-foreground">{helperText}</p> : null}
 		</div>
 	);
 

@@ -39,10 +39,7 @@ export async function PATCH(req: Request, { params }: Params) {
 	const json = await req.json().catch(() => null);
 	const parsed = updateSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	if (
@@ -76,10 +73,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
 	if (data.passwordLoginDisabled === true) {
 		if (!isGoogleAuthEnabled) {
-			return NextResponse.json(
-				{ error: "Google OAuth is disabled" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "Google OAuth is disabled" }, { status: 400 });
 		}
 
 		const hasGoogleAccount = await prisma.account.findFirst({
@@ -88,10 +82,7 @@ export async function PATCH(req: Request, { params }: Params) {
 		});
 
 		if (!hasGoogleAccount) {
-			return NextResponse.json(
-				{ error: "Link Google before disabling password login" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ error: "Link Google before disabling password login" }, { status: 400 });
 		}
 
 		data.passwordResetRequired = false;
@@ -106,20 +97,11 @@ export async function PATCH(req: Request, { params }: Params) {
 
 		return NextResponse.json({ user });
 	} catch (error) {
-		if (
-			error instanceof Prisma.PrismaClientKnownRequestError &&
-			error.code === "P2002"
-		) {
-			return NextResponse.json(
-				{ error: "Email already in use" },
-				{ status: 409 },
-			);
+		if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+			return NextResponse.json({ error: "Email already in use" }, { status: 409 });
 		}
 
-		return NextResponse.json(
-			{ error: "Unable to update user" },
-			{ status: 500 },
-		);
+		return NextResponse.json({ error: "Unable to update user" }, { status: 500 });
 	}
 }
 
@@ -140,10 +122,7 @@ export async function DELETE(req: Request, { params }: Params) {
 	}
 
 	if (session.user.id === id) {
-		return NextResponse.json(
-			{ error: "You cannot delete your own account" },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "You cannot delete your own account" }, { status: 400 });
 	}
 
 	await prisma.user.delete({ where: { id } });

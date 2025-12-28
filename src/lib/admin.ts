@@ -37,9 +37,7 @@ export const ensureDefaultSuperAdmin = async () => {
 
 		const bootstrap = getBootstrapSuperAdmin();
 		if (!bootstrap) {
-			console.warn(
-				"No super admin found and SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD are not set. Skipping bootstrap.",
-			);
+			console.warn("No super admin found and SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD are not set. Skipping bootstrap.");
 			hasEnsuredDefaultAdmin = true;
 			return;
 		}

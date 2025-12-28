@@ -13,21 +13,15 @@ type AssignedTaskRecord = {
 	logs: Array<{ createdAt: Date }>;
 };
 
-const isDurationKey = (bucket: string): bucket is DurationKey =>
-	DURATION_KEYS.includes(bucket as DurationKey);
+const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
-export function buildAssignedTaskEntries(
-	tasks: AssignedTaskRecord[],
-	now = new Date(),
-): AssignedTaskEntry[] {
+export function buildAssignedTaskEntries(tasks: AssignedTaskRecord[], now = new Date()): AssignedTaskEntry[] {
 	return tasks.flatMap((task) => {
 		if (task.status !== "ACTIVE" || !task.preset) {
 			return [];
 		}
 
-		const bucket = isDurationKey(task.preset.bucket)
-			? task.preset.bucket
-			: "QUICK";
+		const bucket = isDurationKey(task.preset.bucket) ? task.preset.bucket : "QUICK";
 		const state = computeAssignedTaskState(
 			{
 				cadenceTarget: task.cadenceTarget,

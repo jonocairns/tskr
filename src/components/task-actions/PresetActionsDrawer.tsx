@@ -4,21 +4,12 @@ import { useEffect, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 
 import { PresetListItem } from "@/components/task-actions/PresetListItem";
-import type {
-	PresetSummary,
-	PresetTemplate,
-} from "@/components/task-actions/types";
+import type { PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { Button } from "@/components/ui/Button";
 import { CardDescription, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import type { DurationKey } from "@/lib/points";
 import { DURATION_BUCKETS } from "@/lib/points";
 import { cn } from "@/lib/utils";
@@ -86,15 +77,11 @@ export function PresetActionsDrawer({
 }: Props) {
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
-	const [customApprovalOverride, setCustomApprovalOverride] = useState<
-		"DEFAULT" | "REQUIRE" | "SKIP"
-	>("DEFAULT");
+	const [customApprovalOverride, setCustomApprovalOverride] = useState<"DEFAULT" | "REQUIRE" | "SKIP">("DEFAULT");
 	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
 	const [editLabel, setEditLabel] = useState("");
 	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
-	const [editApprovalOverride, setEditApprovalOverride] = useState<
-		"DEFAULT" | "REQUIRE" | "SKIP"
-	>("DEFAULT");
+	const [editApprovalOverride, setEditApprovalOverride] = useState<"DEFAULT" | "REQUIRE" | "SKIP">("DEFAULT");
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -121,11 +108,7 @@ export function PresetActionsDrawer({
 				? null
 				: customApprovalOverride
 			: undefined;
-		const success = await onCreatePreset(
-			customLabel,
-			customBucket,
-			approvalOverride,
-		);
+		const success = await onCreatePreset(customLabel, customBucket, approvalOverride);
 		if (success) {
 			setCustomLabel("");
 			setCustomBucket(defaultBucket);
@@ -139,10 +122,7 @@ export function PresetActionsDrawer({
 				? null
 				: customApprovalOverride
 			: undefined;
-		const success = await onCreatePresetFromTemplate(
-			template,
-			approvalOverride,
-		);
+		const success = await onCreatePresetFromTemplate(template, approvalOverride);
 		if (success) {
 			setCustomLabel("");
 			setCustomBucket(defaultBucket);
@@ -174,10 +154,7 @@ export function PresetActionsDrawer({
 		setEditApprovalOverride("DEFAULT");
 	};
 
-	const handleUpdatePreset = async (
-		event: FormEvent<HTMLFormElement>,
-		presetId: string,
-	) => {
+	const handleUpdatePreset = async (event: FormEvent<HTMLFormElement>, presetId: string) => {
 		event.preventDefault();
 		if (!canUpdate) return;
 		const approvalOverride = canEditApprovalOverride
@@ -185,21 +162,14 @@ export function PresetActionsDrawer({
 				? null
 				: editApprovalOverride
 			: undefined;
-		const success = await onUpdatePreset(
-			presetId,
-			editLabel,
-			editBucket,
-			approvalOverride,
-		);
+		const success = await onUpdatePreset(presetId, editLabel, editBucket, approvalOverride);
 		if (success) {
 			setEditingPresetId(null);
 		}
 	};
 
 	const handleDeletePreset = async (presetId: string, label: string) => {
-		const confirmed = window.confirm(
-			`Delete the "${label}" preset? This cannot be undone.`,
-		);
+		const confirmed = window.confirm(`Delete the "${label}" preset? This cannot be undone.`);
 		if (!confirmed) return;
 		const success = await onDeletePreset(presetId);
 		if (success && editingPresetId === presetId) {
@@ -232,9 +202,7 @@ export function PresetActionsDrawer({
 					<div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
 						<div className="space-y-3">
 							<div className="space-y-3 rounded-lg border p-3">
-								<p className="text-sm font-medium">
-									Add or log a one off chore
-								</p>
+								<p className="text-sm font-medium">Add or log a one off chore</p>
 								<div className="space-y-2">
 									<Label htmlFor="custom-name">Task name</Label>
 									<Input
@@ -246,14 +214,8 @@ export function PresetActionsDrawer({
 									/>
 								</div>
 								<div className="space-y-2">
-									<p className="text-xs font-medium text-muted-foreground">
-										Bucket
-									</p>
-									<div
-										className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-										role="radiogroup"
-										aria-label="Bucket"
-									>
+									<p className="text-xs font-medium text-muted-foreground">Bucket</p>
+									<div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Bucket">
 										{DURATION_BUCKETS.map((bucket) => (
 											<button
 												key={bucket.key}
@@ -261,18 +223,14 @@ export function PresetActionsDrawer({
 												onClick={() => setCustomBucket(bucket.key)}
 												className={cn(
 													"flex w-full flex-col items-start rounded-lg border p-3 text-left transition hover:border-primary disabled:pointer-events-none disabled:opacity-50",
-													customBucket === bucket.key &&
-														"border-primary bg-primary/5",
+													customBucket === bucket.key && "border-primary bg-primary/5",
 												)}
 												aria-checked={customBucket === bucket.key}
 												disabled={disabled}
 											>
-												<span className="text-sm font-semibold">
-													{bucket.label}
-												</span>
+												<span className="text-sm font-semibold">{bucket.label}</span>
 												<span className="text-xs text-muted-foreground">
-													{bucket.points} pts ·{" "}
-													{BUCKET_WINDOW_SHORT[bucket.key]}
+													{bucket.points} pts · {BUCKET_WINDOW_SHORT[bucket.key]}
 												</span>
 											</button>
 										))}
@@ -280,26 +238,18 @@ export function PresetActionsDrawer({
 								</div>
 								{canEditApprovalOverride ? (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">
-											Approval override
-										</p>
+										<p className="text-xs font-medium text-muted-foreground">Approval override</p>
 										<Select
 											value={customApprovalOverride}
-											onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") =>
-												setCustomApprovalOverride(value)
-											}
+											onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setCustomApprovalOverride(value)}
 											disabled={disabled}
 										>
 											<SelectTrigger>
 												<SelectValue placeholder="Use member default" />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="DEFAULT">
-													Use member default
-												</SelectItem>
-												<SelectItem value="REQUIRE">
-													Require approval
-												</SelectItem>
+												<SelectItem value="DEFAULT">Use member default</SelectItem>
+												<SelectItem value="REQUIRE">Require approval</SelectItem>
 												<SelectItem value="SKIP">Skip approval</SelectItem>
 											</SelectContent>
 										</Select>
@@ -313,9 +263,7 @@ export function PresetActionsDrawer({
 										onClick={handleLogTimed}
 										disabled={disabled || !canLogTimed}
 									>
-										{isPending ? (
-											<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-										) : null}
+										{isPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 										Log one off task
 									</Button>
 									<Button
@@ -324,17 +272,13 @@ export function PresetActionsDrawer({
 										onClick={handleCreatePreset}
 										disabled={disabled || !canCreate}
 									>
-										{isPresetPending ? (
-											<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-										) : null}
+										{isPresetPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 										Create new chore
 									</Button>
 								</div>
 								{templatesByBucket.length > 0 ? (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">
-											Templates
-										</p>
+										<p className="text-xs font-medium text-muted-foreground">Templates</p>
 										<div className="flex flex-wrap gap-2">
 											{templatesByBucket.flatMap(({ templates }) =>
 												templates.map((template) => (
@@ -344,9 +288,7 @@ export function PresetActionsDrawer({
 														variant="outline"
 														size="sm"
 														className="rounded-full px-3"
-														onClick={() =>
-															handleCreatePresetFromTemplate(template)
-														}
+														onClick={() => handleCreatePresetFromTemplate(template)}
 														disabled={disabled}
 													>
 														{template.label}
@@ -365,9 +307,7 @@ export function PresetActionsDrawer({
 										<PresetListItem
 											key={preset.id}
 											preset={preset}
-											bucket={DURATION_BUCKETS.find(
-												(item) => item.key === preset.bucket,
-											)}
+											bucket={DURATION_BUCKETS.find((item) => item.key === preset.bucket)}
 											isEditing={editingPresetId === preset.id}
 											editLabel={editLabel}
 											onEditLabelChange={setEditLabel}

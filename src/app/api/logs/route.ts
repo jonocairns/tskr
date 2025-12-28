@@ -6,12 +6,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { buildAuditEntries } from "@/lib/dashboard/audit-log";
 import { getActiveHouseholdMembership } from "@/lib/households";
-import {
-	DURATION_KEYS,
-	type DurationKey,
-	findPreset,
-	getBucketPoints,
-} from "@/lib/points";
+import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
 
@@ -32,10 +27,7 @@ const presetSchema = z
 const timedSchema = z.object({
 	type: z.literal("timed"),
 	bucket: z.enum(DURATION_KEYS),
-	description: z
-		.string()
-		.min(1, "Describe what you did")
-		.max(160, "Keep the note short"),
+	description: z.string().min(1, "Describe what you did").max(160, "Keep the note short"),
 	durationMinutes: z.number().int().positive().max(120).optional(),
 });
 
@@ -52,10 +44,7 @@ export async function GET(req: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -66,10 +55,7 @@ export async function GET(req: Request) {
 		limit: searchParams.get("limit"),
 	});
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid query", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid query", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const take = parsed.data.limit + 1;
@@ -103,18 +89,12 @@ export async function POST(req: Request) {
 	const parsed = payloadSchema.safeParse(json);
 
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const userId = session.user.id;
 	const actorLabel = session.user.name ?? session.user.email ?? "Someone";
-	const active = await getActiveHouseholdMembership(
-		userId,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -126,8 +106,7 @@ export async function POST(req: Request) {
 			return;
 		}
 
-		const trimmed =
-			description.length > 96 ? `${description.slice(0, 93)}...` : description;
+		const trimmed = description.length > 96 ? `${description.slice(0, 93)}...` : description;
 
 		try {
 			await broadcastPush(
@@ -195,26 +174,16 @@ export async function POST(req: Request) {
 				});
 
 				if (!preset) {
-					return NextResponse.json(
-						{ error: "Unknown preset task" },
-						{ status: 400 },
-					);
+					return NextResponse.json({ error: "Unknown preset task" }, { status: 400 });
 				}
 
-				const bucket = DURATION_KEYS.includes(preset.bucket as DurationKey)
-					? (preset.bucket as DurationKey)
-					: null;
+				const bucket = DURATION_KEYS.includes(preset.bucket as DurationKey) ? (preset.bucket as DurationKey) : null;
 
 				if (!bucket) {
-					return NextResponse.json(
-						{ error: "Unknown preset task" },
-						{ status: 400 },
-					);
+					return NextResponse.json({ error: "Unknown preset task" }, { status: 400 });
 				}
 
-				const requiresApproval = resolveRequiresApproval(
-					preset.approvalOverride,
-				);
+				const requiresApproval = resolveRequiresApproval(preset.approvalOverride);
 				const status = requiresApproval ? "PENDING" : "APPROVED";
 				return createEntry({
 					householdId,
@@ -230,10 +199,7 @@ export async function POST(req: Request) {
 
 			const preset = findPreset(payload.presetKey ?? "");
 			if (!preset) {
-				return NextResponse.json(
-					{ error: "Unknown preset task" },
-					{ status: 400 },
-				);
+				return NextResponse.json({ error: "Unknown preset task" }, { status: 400 });
 			}
 
 			const requiresApproval = resolveRequiresApproval(null);

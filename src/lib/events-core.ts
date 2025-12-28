@@ -10,8 +10,7 @@ declare global {
 	var dashboardEventHandlers: Set<DashboardHandler> | undefined;
 }
 
-const handlers =
-	globalThis.dashboardEventHandlers ?? new Set<DashboardHandler>();
+const handlers = globalThis.dashboardEventHandlers ?? new Set<DashboardHandler>();
 
 if (!globalThis.dashboardEventHandlers) {
 	globalThis.dashboardEventHandlers = handlers;

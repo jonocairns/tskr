@@ -22,9 +22,7 @@ export function computeAssignedTaskState(
 	const target = Math.max(task.cadenceTarget, 1);
 	const intervalMinutes = Math.max(task.cadenceIntervalMinutes, 1);
 	const intervalMs = intervalMinutes * 60_000;
-	const sortedLogs = [...logs].sort(
-		(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-	);
+	const sortedLogs = [...logs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
 	if (sortedLogs.length === 0) {
 		return { progress: 0, isActive: true, nextResetAt: null };
@@ -48,9 +46,7 @@ export function computeAssignedTaskState(
 		return { progress: totalCount, isActive: true, nextResetAt: null };
 	}
 
-	const nextResetAt = new Date(
-		lastCompletionLog.createdAt.getTime() + intervalMs,
-	);
+	const nextResetAt = new Date(lastCompletionLog.createdAt.getTime() + intervalMs);
 	if (now < nextResetAt) {
 		return { progress: target, isActive: false, nextResetAt };
 	}

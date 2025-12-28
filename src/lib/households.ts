@@ -9,10 +9,7 @@ import { prisma } from "@/lib/prisma";
 
 export type { HouseholdMembership, HouseholdRole };
 
-export async function getHouseholdMembership(
-	userId: string,
-	householdId: string,
-): Promise<HouseholdMembership | null> {
+export async function getHouseholdMembership(userId: string, householdId: string): Promise<HouseholdMembership | null> {
 	return prisma.householdMember.findFirst({
 		where: { userId, householdId },
 		select: { householdId: true, role: true, requiresApprovalDefault: true },

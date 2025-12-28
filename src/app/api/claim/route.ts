@@ -12,10 +12,7 @@ export async function POST() {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -80,9 +77,6 @@ export async function POST() {
 		});
 	} catch (error) {
 		console.error("[claim:POST]", error);
-		return NextResponse.json(
-			{ error: "Unable to claim reward right now" },
-			{ status: 500 },
-		);
+		return NextResponse.json({ error: "Unable to claim reward right now" }, { status: 500 });
 	}
 }

@@ -1,11 +1,4 @@
-export const DURATION_KEYS = [
-	"TINY",
-	"QUICK",
-	"ROUTINE",
-	"CHALLENGING",
-	"HEAVY",
-	"MAJOR",
-] as const;
+export const DURATION_KEYS = ["TINY", "QUICK", "ROUTINE", "CHALLENGING", "HEAVY", "MAJOR"] as const;
 
 export type DurationKey = (typeof DURATION_KEYS)[number];
 

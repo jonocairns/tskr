@@ -11,16 +11,11 @@ const readJson = async <T>(res: Response): Promise<T> => {
 	}
 };
 
-export const requestJson = async <T>(
-	input: RequestInfo | URL,
-	{ body, headers, ...init }: JsonRequestInit = {},
-) => {
+export const requestJson = async <T>(input: RequestInfo | URL, { body, headers, ...init }: JsonRequestInit = {}) => {
 	const hasBody = body !== undefined;
 	const res = await fetch(input, {
 		...init,
-		headers: hasBody
-			? { "Content-Type": "application/json", ...headers }
-			: headers,
+		headers: hasBody ? { "Content-Type": "application/json", ...headers } : headers,
 		body: hasBody ? JSON.stringify(body) : undefined,
 	});
 

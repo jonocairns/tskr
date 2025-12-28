@@ -2,19 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import {
-	createContext,
-	useContext,
-	useEffect,
-	useState,
-	useTransition,
-} from "react";
+import { createContext, useContext, useEffect, useState, useTransition } from "react";
 
-import type {
-	PresetOption,
-	PresetSummary,
-	PresetTemplate,
-} from "@/components/task-actions/types";
+import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/use-toast";
 import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
 
@@ -33,10 +23,7 @@ type TaskActionsContextValue = {
 	isPresetPending: boolean;
 	startTransition: (callback: () => void) => void;
 	startPresetTransition: (callback: () => void) => void;
-	logPreset: (
-		payload: { presetKey?: string; presetId?: string },
-		overrideNote?: string,
-	) => void;
+	logPreset: (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => void;
 };
 
 type TaskActionsProviderProps = {
@@ -54,9 +41,7 @@ export const TaskActionsProvider = ({
 	currentUserRole,
 	children,
 }: TaskActionsProviderProps) => {
-	const defaultBucket =
-		DURATION_BUCKETS.find((bucket) => bucket.key === "QUICK")?.key ??
-		DURATION_BUCKETS[0].key;
+	const defaultBucket = DURATION_BUCKETS.find((bucket) => bucket.key === "QUICK")?.key ?? DURATION_BUCKETS[0].key;
 	const [note, setNote] = useState("");
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [isPending, startTransition] = useTransition();
@@ -82,10 +67,7 @@ export const TaskActionsProvider = ({
 		isShared: task.isShared,
 	}));
 
-	const logPreset = (
-		payload: { presetKey?: string; presetId?: string },
-		overrideNote?: string,
-	) => {
+	const logPreset = (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => {
 		startTransition(async () => {
 			const noteValue = overrideNote ?? note.trim();
 			const res = await fetch("/api/logs", {
@@ -113,9 +95,7 @@ export const TaskActionsProvider = ({
 			setNote("");
 			toast({
 				title: isPending ? "Submitted for approval" : "Task logged",
-				description: isPending
-					? "Task logged and waiting for approval."
-					: "Preset task recorded and points added.",
+				description: isPending ? "Task logged and waiting for approval." : "Preset task recorded and points added.",
 			});
 			router.refresh();
 		});

@@ -19,8 +19,7 @@ declare global {
 	var joinRateLimit: Map<string, RateLimitEntry> | undefined;
 }
 
-const rateLimitStore =
-	globalThis.joinRateLimit ?? new Map<string, RateLimitEntry>();
+const rateLimitStore = globalThis.joinRateLimit ?? new Map<string, RateLimitEntry>();
 
 if (!globalThis.joinRateLimit) {
 	globalThis.joinRateLimit = rateLimitStore;
@@ -54,21 +53,12 @@ export async function POST(req: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 	const userId = session.user.id;
-	const ip =
-		req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-		req.headers.get("x-real-ip") ||
-		"unknown";
+	const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
 	const rateKey = `join:${userId}:${ip}`;
 	const rateCheck = checkRateLimit(rateKey);
 	if (!rateCheck.ok) {
-		const retryAfterSeconds = Math.max(
-			1,
-			Math.ceil((rateCheck.resetAt - Date.now()) / 1000),
-		);
-		const response = NextResponse.json(
-			{ error: "Too many attempts, try again soon" },
-			{ status: 429 },
-		);
+		const retryAfterSeconds = Math.max(1, Math.ceil((rateCheck.resetAt - Date.now()) / 1000));
+		const response = NextResponse.json({ error: "Too many attempts, try again soon" }, { status: 429 });
 		response.headers.set("Retry-After", retryAfterSeconds.toString());
 		return response;
 	}
@@ -76,10 +66,7 @@ export async function POST(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = joinSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const code = parsed.data.code.trim().toUpperCase();

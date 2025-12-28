@@ -65,17 +65,9 @@ export default async function AdminPage() {
 				googleEnabled={googleEnabled}
 			/>
 			{googleEnabled && settings ? (
-				<AuthSettingsCard
-					initialAllowGoogleAccountCreation={
-						settings.allowGoogleAccountCreation
-					}
-				/>
+				<AuthSettingsCard initialAllowGoogleAccountCreation={settings.allowGoogleAccountCreation} />
 			) : null}
-			<UsersCard
-				users={userRows}
-				currentUserId={session.user.id}
-				googleEnabled={googleEnabled}
-			/>
+			<UsersCard users={userRows} currentUserId={session.user.id} googleEnabled={googleEnabled} />
 		</PageShell>
 	);
 }

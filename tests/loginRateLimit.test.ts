@@ -1,9 +1,7 @@
 import { isLoginRateLimited } from "../src/lib/loginRateLimit";
 
 const clearRateLimit = () => {
-	(
-		globalThis as { loginRateLimit?: Map<string, unknown> }
-	).loginRateLimit?.clear();
+	(globalThis as { loginRateLimit?: Map<string, unknown> }).loginRateLimit?.clear();
 };
 
 beforeEach(() => {

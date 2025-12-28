@@ -2,10 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-	getAppSettings,
-	setAllowGoogleAccountCreation,
-} from "@/lib/appSettings";
+import { getAppSettings, setAllowGoogleAccountCreation } from "@/lib/appSettings";
 import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -43,15 +40,10 @@ export async function PATCH(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = updateSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
-	const settings = await setAllowGoogleAccountCreation(
-		parsed.data.allowGoogleAccountCreation,
-	);
+	const settings = await setAllowGoogleAccountCreation(parsed.data.allowGoogleAccountCreation);
 
 	return NextResponse.json({ settings });
 }

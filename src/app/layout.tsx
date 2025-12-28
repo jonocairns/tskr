@@ -33,9 +33,7 @@ export const metadata: Metadata = {
 			{ url: "/icon-192.png", sizes: "192x192", type: "image/png" },
 			{ url: "/icon-512.png", sizes: "512x512", type: "image/png" },
 		],
-		apple: [
-			{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-		],
+		apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
 	},
 };
 
@@ -50,16 +48,12 @@ export default async function RootLayout({
 }>) {
 	const session = await getServerSession(authOptions);
 	const headerList = await headers();
-	const cspHeader =
-		headerList.get("content-security-policy") ??
-		headerList.get("content-security-policy-report-only");
+	const cspHeader = headerList.get("content-security-policy") ?? headerList.get("content-security-policy-report-only");
 	const nonce = getCspNonce(cspHeader);
 
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body
-				className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}
-			>
+			<body className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}>
 				<Providers session={session} nonce={nonce}>
 					{children}
 				</Providers>

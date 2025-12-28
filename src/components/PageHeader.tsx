@@ -34,12 +34,7 @@ export const PageHeader = ({
 	<header className="flex items-start justify-between">
 		<div className="flex items-center gap-3 flex-1">
 			{backHref ? (
-				<Button
-					asChild
-					variant="outline"
-					size="icon"
-					className="h-16 w-12 min-w-12"
-				>
+				<Button asChild variant="outline" size="icon" className="h-16 w-12 min-w-12">
 					<Link href={backHref} aria-label={backLabel}>
 						<ChevronLeftIcon className="h-5 w-5" />
 					</Link>
@@ -59,14 +54,8 @@ type TitleBlockProps = Pick<Props, "title" | "description" | "eyebrow">;
 
 const TitleBlock = ({ title, description, eyebrow }: TitleBlockProps) => (
 	<div>
-		{eyebrow ? (
-			<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-				{eyebrow}
-			</p>
-		) : null}
+		{eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</p> : null}
 		<h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-		{description ? (
-			<p className="text-sm text-muted-foreground">{description}</p>
-		) : null}
+		{description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
 	</div>
 );

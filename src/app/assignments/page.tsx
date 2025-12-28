@@ -27,10 +27,7 @@ export default async function AssignmentsPage() {
 	}
 
 	const userId = session.user.id;
-	const active = await getActiveHouseholdMembership(
-		userId,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
 	if (!active) {
 		redirect("/landing");
 	}
@@ -103,11 +100,7 @@ export default async function AssignmentsPage() {
 				googleEnabled={googleEnabled}
 			/>
 
-			<AssignTaskCard
-				members={members}
-				presets={presetSummaries}
-				currentUserId={userId}
-			/>
+			<AssignTaskCard members={members} presets={presetSummaries} currentUserId={userId} />
 
 			<AssignedTasksManager initialTasks={assignedTaskEntries} />
 		</PageShell>

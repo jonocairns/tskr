@@ -1,21 +1,8 @@
 import { CrownIcon, UsersIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/Table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 
 export type LeaderboardEntry = {
 	userId: string;
@@ -38,9 +25,7 @@ export const Leaderboard = ({ entries }: Props) => {
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
 					<CardTitle className="text-xl">Leaderboard</CardTitle>
-					<CardDescription>
-						Total earned points with current balance.
-					</CardDescription>
+					<CardDescription>Total earned points with current balance.</CardDescription>
 				</div>
 				<div className="rounded-full bg-primary/10 p-2 text-primary">
 					<UsersIcon className="h-5 w-5" />
@@ -64,9 +49,7 @@ export const Leaderboard = ({ entries }: Props) => {
 								<TableCell className="flex items-center gap-2">
 									<div className="flex flex-col">
 										<span className="font-semibold">{entry.name}</span>
-										<span className="text-xs text-muted-foreground">
-											{entry.email ?? "—"}
-										</span>
+										<span className="text-xs text-muted-foreground">{entry.email ?? "—"}</span>
 									</div>
 									{idx === 0 ? (
 										<Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
@@ -75,18 +58,14 @@ export const Leaderboard = ({ entries }: Props) => {
 										</Badge>
 									) : null}
 								</TableCell>
-								<TableCell className="text-right font-semibold">
-									{entry.points.toLocaleString()}
-								</TableCell>
+								<TableCell className="text-right font-semibold">{entry.points.toLocaleString()}</TableCell>
 								<TableCell className="text-right text-sm font-medium text-muted-foreground">
 									{entry.currentBalance.toLocaleString()}
 								</TableCell>
 								<TableCell className="text-right">{entry.tasks}</TableCell>
 								<TableCell className="text-right">{entry.claims}</TableCell>
 								<TableCell className="text-right text-sm text-muted-foreground">
-									{entry.lastActivity
-										? new Date(entry.lastActivity).toLocaleDateString()
-										: "—"}
+									{entry.lastActivity ? new Date(entry.lastActivity).toLocaleDateString() : "—"}
 								</TableCell>
 							</TableRow>
 						))}

@@ -15,13 +15,7 @@ import {
 	AlertDialogTrigger,
 } from "@/components/ui/AlertDialog";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useToast } from "@/hooks/use-toast";
 
 type Props = {
@@ -30,11 +24,7 @@ type Props = {
 	showTitle?: boolean;
 };
 
-export const DangerZone = ({
-	canDelete,
-	variant = "card",
-	showTitle = false,
-}: Props) => {
+export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
@@ -67,12 +57,8 @@ export const DangerZone = ({
 
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
-			<CardTitle className={isSection ? "text-base" : "text-xl"}>
-				Danger zone
-			</CardTitle>
-			<CardDescription>
-				Manage irreversible actions for this household.
-			</CardDescription>
+			<CardTitle className={isSection ? "text-base" : "text-xl"}>Danger zone</CardTitle>
+			<CardDescription>Manage irreversible actions for this household.</CardDescription>
 		</div>
 	);
 
@@ -80,12 +66,8 @@ export const DangerZone = ({
 		<AlertDialog>
 			<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
 				<div>
-					<p className="text-sm font-medium text-destructive">
-						Delete household
-					</p>
-					<p className="text-xs text-muted-foreground">
-						This removes all members, tasks, and history.
-					</p>
+					<p className="text-sm font-medium text-destructive">Delete household</p>
+					<p className="text-xs text-muted-foreground">This removes all members, tasks, and history.</p>
 				</div>
 				<AlertDialogTrigger asChild>
 					<Button type="button" variant="destructive" disabled={isPending}>
@@ -97,8 +79,7 @@ export const DangerZone = ({
 				<AlertDialogHeader>
 					<AlertDialogTitle>Delete household?</AlertDialogTitle>
 					<AlertDialogDescription>
-						This action cannot be undone. All members and history will be
-						removed.
+						This action cannot be undone. All members and history will be removed.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>

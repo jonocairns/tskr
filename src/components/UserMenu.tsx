@@ -1,13 +1,6 @@
 "use client";
 
-import {
-	ClipboardListIcon,
-	HomeIcon,
-	LinkIcon,
-	LogOutIcon,
-	ShieldIcon,
-	UserRoundIcon,
-} from "lucide-react";
+import { ClipboardListIcon, HomeIcon, LinkIcon, LogOutIcon, ShieldIcon, UserRoundIcon } from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useEffect } from "react";
@@ -43,9 +36,7 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
 	const initials =
-		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ??
-		resolvedUser?.email?.slice(0, 1)?.toUpperCase() ??
-		"U";
+		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
 
 	useEffect(() => {
 		if (!googleEnabled) {
@@ -70,19 +61,12 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 			<DropdownMenuTrigger asChild>
 				<Button variant="ghost" className="gap-2 py-6">
 					<Avatar className="h-9 w-9">
-						<AvatarImage
-							src={resolvedUser?.image ?? undefined}
-							alt={resolvedUser?.name ?? ""}
-						/>
+						<AvatarImage src={resolvedUser?.image ?? undefined} alt={resolvedUser?.name ?? ""} />
 						<AvatarFallback>{initials}</AvatarFallback>
 					</Avatar>
 					<div className="hidden flex-col items-start text-left sm:flex ">
-						<span className="text-sm font-semibold leading-5">
-							{resolvedUser?.name ?? "User"}
-						</span>
-						<span className="text-xs text-muted-foreground">
-							{resolvedUser?.email}
-						</span>
+						<span className="text-sm font-semibold leading-5">{resolvedUser?.name ?? "User"}</span>
+						<span className="text-xs text-muted-foreground">{resolvedUser?.email}</span>
 					</div>
 				</Button>
 			</DropdownMenuTrigger>
@@ -117,14 +101,9 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 					<DropdownMenuItem
 						className="cursor-pointer"
 						onSelect={() => {
-							const returnTo =
-								window.location.pathname +
-								window.location.search +
-								window.location.hash;
+							const returnTo = window.location.pathname + window.location.search + window.location.hash;
 							signIn("google", {
-								callbackUrl: `/auth/link?returnTo=${encodeURIComponent(
-									returnTo,
-								)}`,
+								callbackUrl: `/auth/link?returnTo=${encodeURIComponent(returnTo)}`,
 							});
 						}}
 					>

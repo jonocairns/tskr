@@ -13,15 +13,7 @@ const adapter = new PrismaBetterSqlite3({
 });
 
 const DASHBOARD_MODELS = new Set(["AssignedTask", "PointLog", "PresetTask"]);
-const DASHBOARD_ACTIONS = new Set([
-	"create",
-	"createMany",
-	"update",
-	"updateMany",
-	"upsert",
-	"delete",
-	"deleteMany",
-]);
+const DASHBOARD_ACTIONS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 
 const createPrismaClient = () => {
 	const client = new PrismaClient({ adapter, log: ["warn", "error"] });
@@ -32,17 +24,12 @@ const createPrismaClient = () => {
 				async $allOperations({ model, operation, args, query }) {
 					const result = await query(args);
 
-					if (
-						model &&
-						DASHBOARD_MODELS.has(model) &&
-						DASHBOARD_ACTIONS.has(operation)
-					) {
+					if (model && DASHBOARD_MODELS.has(model) && DASHBOARD_ACTIONS.has(operation)) {
 						const householdId =
 							result &&
 							typeof result === "object" &&
 							"householdId" in result &&
-							typeof (result as { householdId?: unknown }).householdId ===
-								"string"
+							typeof (result as { householdId?: unknown }).householdId === "string"
 								? (result as { householdId: string }).householdId
 								: null;
 						publishDashboardUpdate(householdId);
@@ -55,11 +42,8 @@ const createPrismaClient = () => {
 	});
 };
 
-const hasHouseholdDashboardFields = (
-	client: ReturnType<typeof createPrismaClient>,
-) => {
-	const runtime = (client as { _runtimeDataModel?: unknown })
-		._runtimeDataModel as
+const hasHouseholdDashboardFields = (client: ReturnType<typeof createPrismaClient>) => {
+	const runtime = (client as { _runtimeDataModel?: unknown })._runtimeDataModel as
 		| {
 				models?: Record<string, { fields?: Array<{ name?: string }> }>;
 		  }
@@ -73,11 +57,8 @@ const hasHouseholdDashboardFields = (
 	);
 };
 
-const hasAssignedTaskModel = (
-	client: ReturnType<typeof createPrismaClient>,
-) => {
-	const runtime = (client as { _runtimeDataModel?: unknown })
-		._runtimeDataModel as
+const hasAssignedTaskModel = (client: ReturnType<typeof createPrismaClient>) => {
+	const runtime = (client as { _runtimeDataModel?: unknown })._runtimeDataModel as
 		| {
 				models?: Record<string, { fields?: Array<{ name?: string }> }>;
 		  }

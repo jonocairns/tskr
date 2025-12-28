@@ -23,10 +23,7 @@ export async function POST(req: Request) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(
-		session.user.id,
-		session.user.householdId ?? null,
-	);
+	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (!active) {
 		return NextResponse.json({ error: "Household not found" }, { status: 403 });
 	}
@@ -38,19 +35,10 @@ export async function POST(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = payloadSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
-	const {
-		presetId,
-		assigneeId,
-		cadenceTarget,
-		cadenceIntervalMinutes,
-		isRecurring,
-	} = parsed.data;
+	const { presetId, assigneeId, cadenceTarget, cadenceIntervalMinutes, isRecurring } = parsed.data;
 	const normalizedCadenceTarget = isRecurring ? cadenceTarget : 1;
 	const normalizedCadenceIntervalMinutes = Math.max(1, cadenceIntervalMinutes);
 
@@ -60,10 +48,7 @@ export async function POST(req: Request) {
 	});
 
 	if (!member) {
-		return NextResponse.json(
-			{ error: "Assignee not found in household" },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Assignee not found in household" }, { status: 400 });
 	}
 
 	const preset = await prisma.presetTask.findFirst({
@@ -92,9 +77,6 @@ export async function POST(req: Request) {
 		return NextResponse.json({ assignedTask }, { status: 201 });
 	} catch (error) {
 		console.error("[assigned-tasks:POST]", error);
-		return NextResponse.json(
-			{ error: "Failed to assign task" },
-			{ status: 500 },
-		);
+		return NextResponse.json({ error: "Failed to assign task" }, { status: 500 });
 	}
 }

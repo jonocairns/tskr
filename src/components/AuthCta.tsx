@@ -63,10 +63,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 							target = "/";
 						}
 					}
-					const current =
-						window.location.pathname +
-						window.location.search +
-						window.location.hash;
+					const current = window.location.pathname + window.location.search + window.location.hash;
 					if (target === current) {
 						router.refresh();
 						return;
@@ -93,9 +90,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 				<RocketIcon className="h-6 w-6" />
 			</div>
 			<div className="space-y-2">
-				<h1 className="text-3xl font-semibold tracking-tight">
-					Track tasks, claim rewards.
-				</h1>
+				<h1 className="text-3xl font-semibold tracking-tight">Track tasks, claim rewards.</h1>
 				<p className="text-muted-foreground">
 					{googleEnabled
 						? "Sign in with Google or email to log tasks, watch your points climb, and keep an audit trail you can always undo."
@@ -105,11 +100,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 			<div className="flex w-full flex-col gap-4">
 				{googleEnabled ? (
 					<>
-						<Button
-							size="lg"
-							onClick={() => signIn("google")}
-							disabled={isPending}
-						>
+						<Button size="lg" onClick={() => signIn("google")} disabled={isPending}>
 							Sign in with Google
 						</Button>
 						<div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -150,12 +141,8 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 					<>
 						<Separator />
 						<div className="w-full rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center">
-							<p className="text-sm font-medium text-destructive">
-								{authError.title}
-							</p>
-							<p className="text-xs text-muted-foreground">
-								{authError.description}
-							</p>
+							<p className="text-sm font-medium text-destructive">{authError.title}</p>
+							<p className="text-xs text-muted-foreground">{authError.description}</p>
 							{authError.key !== "Default" ? (
 								<p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
 									Error code: {authError.key}

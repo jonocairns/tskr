@@ -31,10 +31,7 @@ export async function POST(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = requestSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const email = parsed.data.email.trim().toLowerCase();
@@ -48,18 +45,12 @@ export async function POST(req: Request) {
 	}
 
 	if (user.passwordLoginDisabled) {
-		return NextResponse.json(
-			{ error: "Password login is disabled for this user" },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Password login is disabled for this user" }, { status: 400 });
 	}
 
 	const { token, expiresAt } = await createPasswordResetToken(user.id);
 
-	const resetUrl = new URL(
-		`/reset-password/${token}`,
-		config.appUrl,
-	).toString();
+	const resetUrl = new URL(`/reset-password/${token}`, config.appUrl).toString();
 
 	return NextResponse.json({
 		resetUrl,
@@ -81,10 +72,7 @@ export async function DELETE(req: Request) {
 	const json = await req.json().catch(() => null);
 	const parsed = deleteSchema.safeParse(json);
 	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "Invalid payload", details: parsed.error.flatten() },
-			{ status: 400 },
-		);
+		return NextResponse.json({ error: "Invalid payload", details: parsed.error.flatten() }, { status: 400 });
 	}
 
 	const user = await prisma.user.findUnique({

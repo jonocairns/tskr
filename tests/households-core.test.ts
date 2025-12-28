@@ -6,15 +6,11 @@ import {
 } from "../src/lib/householdsCore";
 
 const makeStore = (memberships: HouseholdMembership[]) => {
-	const membershipMap = new Map(
-		memberships.map((membership) => [membership.householdId, membership]),
-	);
+	const membershipMap = new Map(memberships.map((membership) => [membership.householdId, membership]));
 
 	const store: HouseholdStore = {
-		getMembership: async (_userId, householdId) =>
-			membershipMap.get(householdId) ?? null,
-		getFirstMembership: async () =>
-			memberships[0] ? { householdId: memberships[0].householdId } : null,
+		getMembership: async (_userId, householdId) => membershipMap.get(householdId) ?? null,
+		getFirstMembership: async () => (memberships[0] ? { householdId: memberships[0].householdId } : null),
 	};
 
 	return { store };

@@ -6,22 +6,9 @@ import { useTransition } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Progress } from "@/components/ui/Progress";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/Table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/use-toast";
 import { formatCadenceInterval } from "@/lib/assignedTasksCadence";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
@@ -40,9 +27,7 @@ export type AssignedTaskEntry = {
 	progress: number;
 };
 
-const BUCKET_LABELS = Object.fromEntries(
-	DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]),
-);
+const BUCKET_LABELS = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]));
 
 type Props = {
 	entries: AssignedTaskEntry[];
@@ -84,15 +69,11 @@ export const AssignedTaskQueue = ({ entries }: Props) => {
 		<Card>
 			<CardHeader>
 				<CardTitle className="text-xl">Assignments</CardTitle>
-				<CardDescription>
-					Complete tasks that were assigned to you.
-				</CardDescription>
+				<CardDescription>Complete tasks that were assigned to you.</CardDescription>
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
 				{entries.length === 0 ? (
-					<p className="text-sm text-muted-foreground">
-						No assignments right now.
-					</p>
+					<p className="text-sm text-muted-foreground">No assignments right now.</p>
 				) : (
 					<Table>
 						<TableHeader>
@@ -106,18 +87,14 @@ export const AssignedTaskQueue = ({ entries }: Props) => {
 						<TableBody>
 							{entries.map((entry) => {
 								const target = Math.max(entry.cadenceTarget, 1);
-								const progressValue = Math.min(
-									100,
-									Math.round((entry.progress / target) * 100),
-								);
+								const progressValue = Math.min(100, Math.round((entry.progress / target) * 100));
 								return (
 									<TableRow key={entry.id}>
 										<TableCell>
 											<div className="flex flex-col gap-1">
 												<span className="font-semibold">{entry.label}</span>
 												<span className="text-xs text-muted-foreground">
-													{entry.points} pts -{" "}
-													{BUCKET_LABELS[entry.bucket] ?? entry.bucket}
+													{entry.points} pts - {BUCKET_LABELS[entry.bucket] ?? entry.bucket}
 												</span>
 											</div>
 										</TableCell>
@@ -134,25 +111,14 @@ export const AssignedTaskQueue = ({ entries }: Props) => {
 										</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2 text-sm">
-												<Badge variant="secondary">
-													{entry.isRecurring ? "Recurring" : "One-off"}
-												</Badge>
+												<Badge variant="secondary">{entry.isRecurring ? "Recurring" : "One-off"}</Badge>
 												<span className="text-muted-foreground">
-													{entry.isRecurring
-														? formatCadenceInterval(
-																entry.cadenceIntervalMinutes,
-															)
-														: "None"}
+													{entry.isRecurring ? formatCadenceInterval(entry.cadenceIntervalMinutes) : "None"}
 												</span>
 											</div>
 										</TableCell>
 										<TableCell className="text-right">
-											<Button
-												type="button"
-												size="sm"
-												disabled={isPending}
-												onClick={() => handleComplete(entry.id)}
-											>
+											<Button type="button" size="sm" disabled={isPending} onClick={() => handleComplete(entry.id)}>
 												<CheckIcon className="mr-2 h-4 w-4" />
 												Complete
 											</Button>
