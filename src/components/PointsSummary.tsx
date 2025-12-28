@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/Card";
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/use-toast";
+import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
 import { requestJson } from "@/lib/request-json";
 
 type Props = {
@@ -40,14 +41,27 @@ export const PointsSummary = ({
 	const router = useRouter();
 	const { toast } = useToast();
 
-	const progress = Math.min(
-		100,
-		Math.max(0, Math.round((points / threshold) * 100)),
-	);
+	const {
+		progress,
+		pointsToGo,
+		rewardsAvailable,
+		nextRewardProgress,
+		nextRewardPointsToGo,
+		canClaim,
+		showCarryover,
+	} = getPointsSummaryMetrics({ points, threshold });
 	const progressIndicatorStyle = progressBarColor
 		? { backgroundColor: progressBarColor }
 		: undefined;
-	const canClaim = points >= threshold;
+	const overlayBaseColor = progressBarColor ?? "hsl(var(--primary))";
+	const overlapIndicatorStyle = {
+		backgroundColor: `color-mix(in srgb, ${overlayBaseColor} 70%, black)`,
+		backgroundImage:
+			"repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0, rgba(0,0,0,0.25) 6px, rgba(0,0,0,0) 6px, rgba(0,0,0,0) 12px)",
+	};
+	const progressLabel = canClaim
+		? `${nextRewardProgress}% toward another reward`
+		: `${progress}% toward next reward`;
 
 	const handleClaim = () => {
 		setSubmitting(true);
@@ -105,16 +119,45 @@ export const PointsSummary = ({
 				</div>
 				<div className="space-y-2">
 					<div className="flex items-center justify-between text-sm text-muted-foreground">
-						<span>{progress}% toward next reward</span>
-						<span>
-							{Math.max(threshold - points, 0).toLocaleString()} pts to go
-						</span>
+						<span>{progressLabel}</span>
+						{canClaim ? (
+							<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+								Reward ready
+							</span>
+						) : (
+							<span>{`${pointsToGo.toLocaleString()} pts to go`}</span>
+						)}
 					</div>
-					<Progress
-						value={progress}
-						className="h-2"
-						indicatorStyle={progressIndicatorStyle}
-					/>
+					<div className="relative">
+						<Progress
+							value={progress}
+							className="h-2"
+							indicatorStyle={progressIndicatorStyle}
+						/>
+						{showCarryover ? (
+							<div className="pointer-events-none absolute inset-0 z-10">
+								<div
+									className="h-full rounded-full bg-primary transition-all"
+									style={{
+										width: `${nextRewardProgress}%`,
+										...overlapIndicatorStyle,
+									}}
+								/>
+							</div>
+						) : null}
+					</div>
+					{showCarryover ? (
+						<div className="flex items-center justify-between text-xs text-muted-foreground">
+							<span>
+								{rewardsAvailable.toLocaleString()} reward
+								{rewardsAvailable === 1 ? "" : "s"} ready
+							</span>
+							<span>
+								Toward another reward: {nextRewardProgress}% (
+								{nextRewardPointsToGo.toLocaleString()} pts to go)
+							</span>
+						</div>
+					) : null}
 				</div>
 				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-2">
 					<Stat label="Tasks (7 days)" value={tasksLastWeek.toLocaleString()} />

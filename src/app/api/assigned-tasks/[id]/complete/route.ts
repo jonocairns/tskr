@@ -2,7 +2,7 @@ import { LogStatus } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { computeAssignedTaskState } from "@/lib/assigned-tasks";
+import { computeAssignedTaskState } from "@/lib/assignedTasks";
 import { authOptions } from "@/lib/auth";
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
