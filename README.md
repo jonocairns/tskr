@@ -71,10 +71,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Docker
 
-Build the image:
+Pull the image:
 
 ```bash
-docker build -t tskr .
+docker pull ghcr.io/<owner>/tskr:latest
 ```
 
 Run the container (persists the SQLite db and generated secrets under `/data`):
@@ -84,7 +84,13 @@ docker run --rm \
   -p 3000:3000 \
   -v tskr-data:/data \
   -e NEXTAUTH_URL="http://localhost:3000" \
-  tskr
+  ghcr.io/<owner>/tskr:latest
+```
+
+Build locally instead:
+
+```bash
+docker build -t tskr .
 ```
 
 Notes:
