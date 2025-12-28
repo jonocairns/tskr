@@ -1,5 +1,5 @@
 import type { AssignedTaskEntry } from "@/components/AssignedTaskQueue";
-import { computeAssignedTaskState } from "@/lib/assigned-tasks";
+import { computeAssignedTaskState } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 
 type AssignedTaskRecord = {
