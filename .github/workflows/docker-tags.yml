@@ -1,4 +1,4 @@
-name: Deploy (Tags)
+name: Docker (Tagged)
 
 on:
   push:
