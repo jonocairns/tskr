@@ -17,13 +17,19 @@ test("blocks protocol-relative urls", () => {
 test("blocks backslash paths", () => {
 	expect(resolveReturnTo("\\\\evil.com")).toBe("/");
 	expect(resolveReturnTo("/\\\\evil.com")).toBe("/");
+	expect(resolveReturnTo("/%5Cevil.com")).toBe("/");
 });
 
 test("blocks control characters", () => {
 	expect(resolveReturnTo("/\n")).toBe("/");
 	expect(resolveReturnTo("/%0A")).toBe("/");
+	expect(resolveReturnTo("/%00")).toBe("/");
 });
 
 test("returns / on invalid encoding", () => {
 	expect(resolveReturnTo("%E0%A4")).toBe("/");
+});
+
+test("accepts encoded relative paths", () => {
+	expect(resolveReturnTo("/dashboard%3Ftab%3D1")).toBe("/dashboard?tab=1");
 });

@@ -7,9 +7,9 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Progress } from "@/components/ui/Progress";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
-import { requestJson } from "@/lib/request-json";
+import { requestJson } from "@/lib/requestJson";
 
 type Props = {
 	points: number;

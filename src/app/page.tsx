@@ -15,7 +15,7 @@ import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getAuthErrorMessage } from "@/lib/authError";
 import { buildApprovalEntries } from "@/lib/dashboard/approvals";
-import { buildAuditEntries } from "@/lib/dashboard/audit-log";
+import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";

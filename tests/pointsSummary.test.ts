@@ -39,6 +39,32 @@ test("handles zero threshold safely", () => {
 	expect(metrics.showCarryover).toBe(false);
 });
 
+test("handles negative threshold safely", () => {
+	const metrics = getPointsSummaryMetrics({ points: 50, threshold: -10 });
+
+	expect(metrics.progress).toBe(100);
+	expect(metrics.pointsToGo).toBe(0);
+	expect(metrics.rewardsAvailable).toBe(0);
+	expect(metrics.carryoverPoints).toBe(0);
+	expect(metrics.nextRewardProgress).toBe(0);
+	expect(metrics.nextRewardPointsToGo).toBe(0);
+	expect(metrics.canClaim).toBe(true);
+	expect(metrics.showCarryover).toBe(false);
+});
+
+test("clamps negative points with negative threshold", () => {
+	const metrics = getPointsSummaryMetrics({ points: -5, threshold: -10 });
+
+	expect(metrics.progress).toBe(100);
+	expect(metrics.pointsToGo).toBe(0);
+	expect(metrics.rewardsAvailable).toBe(0);
+	expect(metrics.carryoverPoints).toBe(0);
+	expect(metrics.nextRewardProgress).toBe(0);
+	expect(metrics.nextRewardPointsToGo).toBe(0);
+	expect(metrics.canClaim).toBe(true);
+	expect(metrics.showCarryover).toBe(false);
+});
+
 test("handles exact threshold as a claimable reward", () => {
 	const metrics = getPointsSummaryMetrics({ points: 100, threshold: 100 });
 

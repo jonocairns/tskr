@@ -18,7 +18,7 @@ if (!globalThis.loginRateLimit) {
 	globalThis.loginRateLimit = loginRateLimitStore;
 }
 
-const checkRateLimit = (key: string) => {
+export const checkRateLimit = (key: string) => {
 	const now = Date.now();
 	const entry = loginRateLimitStore.get(key);
 	if (!entry || entry.resetAt <= now) {
@@ -35,7 +35,7 @@ const checkRateLimit = (key: string) => {
 	return { ok: true, resetAt: entry.resetAt };
 };
 
-const getHeaderValue = (req: unknown, key: string) => {
+export const getHeaderValue = (req: unknown, key: string) => {
 	if (!req || typeof req !== "object") {
 		return undefined;
 	}
@@ -64,7 +64,7 @@ const getHeaderValue = (req: unknown, key: string) => {
 	return undefined;
 };
 
-const getClientIp = (req: unknown) => {
+export const getClientIp = (req: unknown) => {
 	const forwarded = getHeaderValue(req, "x-forwarded-for");
 	if (forwarded) {
 		return forwarded.split(",")[0]?.trim() || undefined;

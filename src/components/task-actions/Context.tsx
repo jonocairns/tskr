@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState, useTransition } from "react";
 
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
 
 type TaskActionsContextValue = {

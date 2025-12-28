@@ -1,4 +1,4 @@
-import { publishDashboardUpdate, subscribeToDashboardUpdates } from "../src/lib/events-core";
+import { publishDashboardUpdate, subscribeToDashboardUpdates } from "../src/lib/eventsCore";
 
 test("publishes dashboard updates to subscribers", () => {
 	let calls = 0;

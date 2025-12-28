@@ -10,14 +10,14 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 import {
 	CADENCE_NONE_VALUE,
 	CADENCE_OPTIONS,
 	DEFAULT_CADENCE_INTERVAL_MINUTES,
 	DEFAULT_CADENCE_TARGET,
 } from "@/lib/assignedTasksCadence";
-import { requestJson } from "@/lib/request-json";
+import { requestJson } from "@/lib/requestJson";
 
 type MemberOption = {
 	id: string;

@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Progress } from "@/components/ui/Progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 import { formatCadenceInterval } from "@/lib/assignedTasksCadence";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
-import { requestJson } from "@/lib/request-json";
+import { requestJson } from "@/lib/requestJson";
 
 export type AssignedTaskEntry = {
 	id: string;

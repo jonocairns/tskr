@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
-import { buildAuditEntries } from "@/lib/dashboard/audit-log";
+import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";

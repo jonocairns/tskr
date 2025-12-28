@@ -21,14 +21,14 @@ import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 import {
 	CADENCE_NONE_VALUE,
 	CADENCE_OPTIONS,
 	DEFAULT_CADENCE_INTERVAL_MINUTES,
 	DEFAULT_CADENCE_TARGET,
 } from "@/lib/assignedTasksCadence";
-import { requestJson } from "@/lib/request-json";
+import { requestJson } from "@/lib/requestJson";
 
 const ASSIGNEE_ALL_VALUE = "all";
 
