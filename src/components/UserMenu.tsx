@@ -57,9 +57,9 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" className="gap-2 py-6">
-					<Avatar className="h-9 w-9">
+			<DropdownMenuTrigger asChild className="cursor-pointer">
+				<Button variant="ghost" className="group gap-2 py-6">
+					<Avatar className="h-9 w-9 ring-1 ring-ring/25 transition group-hover:ring-ring/50">
 						<AvatarImage src={resolvedUser?.image ?? undefined} alt={resolvedUser?.name ?? ""} />
 						<AvatarFallback>{initials}</AvatarFallback>
 					</Avatar>
