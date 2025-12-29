@@ -4,7 +4,6 @@ import { getServerSession, type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
-import { ensureDefaultSuperAdmin } from "@/lib/admin";
 import { getAppSettings } from "@/lib/appSettings";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getProfileEmail, getProfileImage, getProfileName } from "@/lib/authProfile";
@@ -17,7 +16,7 @@ import { prisma } from "./prisma";
 
 const { googleClientId, googleClientSecret } = config;
 
-if (!isGoogleAuthEnabled) {
+if (!isGoogleAuthEnabled && config.isDev) {
 	console.warn("Google OAuth is disabled. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it.");
 }
 
@@ -43,8 +42,6 @@ export const authOptions: NextAuthOptions = {
 				if (isLoginRateLimited(email, req)) {
 					return null;
 				}
-
-				await ensureDefaultSuperAdmin();
 
 				const user = await prisma.user.findUnique({
 					where: { email },
@@ -235,7 +232,3 @@ export const authOptions: NextAuthOptions = {
 };
 
 export const getAuthSession = () => getServerSession(authOptions);
-
-void ensureDefaultSuperAdmin().catch((error) => {
-	console.error("Failed to ensure default super admin", error);
-});

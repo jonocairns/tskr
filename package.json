@@ -16,8 +16,12 @@
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
-		"compile": "tsgo",
-		"test": "jest"
+		"compile": "tsgo --pretty",
+		"test": "jest",
+		"check": "pnpm lint && pnpm compile && pnpm test"
+	},
+	"prisma": {
+		"seed": "node scripts/db-bootstrap.js"
 	},
 	"dependencies": {
 		"@next-auth/prisma-adapter": "^1.0.7",

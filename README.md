@@ -59,6 +59,7 @@ cp .env.example .env
 pnpm install
 pnpm db:generate
 pnpm db:sync
+pnpm prisma db seed
 ```
 
 4) Start the dev server:

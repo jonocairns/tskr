@@ -41,6 +41,8 @@ COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nextjs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nextjs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=nextjs:nextjs /app/package.json /app/seed/package.json
+COPY --from=builder --chown=nextjs:nextjs /app/scripts /app/seed/scripts
 COPY --from=builder --chown=nextjs:nextjs /app/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=prisma-deps --chown=nextjs:nextjs /prisma-deps/node_modules /app/prisma-node_modules/node_modules
 RUN chmod +x /app/docker-entrypoint.sh

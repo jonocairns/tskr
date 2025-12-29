@@ -115,21 +115,35 @@ if [ ! -f "$prisma_cli" ]; then
   prisma_cli="./node_modules/.bin/prisma"
 fi
 config_arg=""
-if [ -f "./prisma.config.ts" ]; then
-  config_arg="--config=./prisma.config.ts"
+schema_path="/app/prisma/schema.prisma"
+config_path="/app/prisma.config.ts"
+if [ -f "$config_path" ]; then
+  config_arg="--config=$config_path"
 fi
 
 if [ -d "./prisma/migrations" ] && [ "$(ls -A ./prisma/migrations 2>/dev/null)" ]; then
   echo "Running prisma migrate deploy..."
-  migrate_output="$(node "$prisma_cli" migrate deploy --schema=./prisma/schema.prisma $config_arg 2>&1)" || migrate_status=$?
+  migrate_output="$(node "$prisma_cli" migrate deploy --schema="$schema_path" $config_arg 2>&1)" || migrate_status=$?
   if [ -n "$migrate_output" ]; then
     echo "$migrate_output"
   fi
 elif [ "$db_existed" != "1" ]; then
   echo "Initializing database with prisma db push..."
-  node "$prisma_cli" db push --schema=./prisma/schema.prisma $config_arg
+  node "$prisma_cli" db push --schema="$schema_path" $config_arg
 else
   echo "Database already exists; skipping Prisma db push."
+fi
+
+if [ -n "$SUPER_ADMIN_EMAIL" ] && [ -n "$SUPER_ADMIN_PASSWORD" ]; then
+  echo "Running prisma db seed..."
+  seed_dir="/app/seed"
+  if [ -f "$seed_dir/package.json" ]; then
+    (cd "$seed_dir" && node "$prisma_cli" db seed --schema="$schema_path" $config_arg)
+  else
+    echo "Skipping prisma db seed; seed package.json not found."
+  fi
+else
+  echo "Skipping prisma db seed; SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD not set."
 fi
 
 exec "$@"
