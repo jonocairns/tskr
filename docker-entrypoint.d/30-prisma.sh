@@ -18,5 +18,5 @@ else
   echo "No Prisma migrations found; skipping migrate deploy."
 fi
 
-  echo "Running db bootstrap..."
-  node ./scripts/db-bootstrap.cjs
+echo "Running db bootstrap..."
+node ./scripts/db-bootstrap.cjs
