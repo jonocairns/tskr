@@ -25,12 +25,11 @@ const loadEnvFile = (path) => {
 			continue;
 		}
 		const key = line.slice(0, equalsIndex).trim();
-		if (!key || Object.prototype.hasOwnProperty.call(process.env, key)) {
+		if (!key || Object.hasOwn(process.env, key)) {
 			continue;
 		}
 		let value = line.slice(equalsIndex + 1).trim();
-		const isQuoted =
-			(value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"));
+		const isQuoted = (value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"));
 		if (isQuoted) {
 			value = value.slice(1, -1);
 		}
@@ -53,10 +52,7 @@ const cleanEnvValue = (value) => {
 		return undefined;
 	}
 	const trimmed = value.trim();
-	if (
-		(trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-		(trimmed.startsWith("'") && trimmed.endsWith("'"))
-	) {
+	if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
 		return trimmed.slice(1, -1);
 	}
 	return trimmed;
