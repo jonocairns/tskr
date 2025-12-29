@@ -45,7 +45,11 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 
 	const undo = (id: string) => {
 		startTransition(async () => {
-			const res = await fetch(`/api/logs/${id}`, { method: "PATCH" });
+			const res = await fetch(`/api/logs/${id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ action: "revert" }),
+			});
 
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({}));
