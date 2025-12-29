@@ -1,10 +1,10 @@
-import { randomBytes, scrypt } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { promisify } from "node:util";
+const { randomBytes, scrypt } = require("node:crypto");
+const { existsSync, readFileSync } = require("node:fs");
+const { resolve } = require("node:path");
+const { promisify } = require("node:util");
 
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
+const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
+const { PrismaClient } = require("@prisma/client");
 
 const scryptAsync = promisify(scrypt);
 const HASH_KEY_LENGTH = 64;
@@ -48,6 +48,21 @@ for (const candidate of envCandidates) {
 }
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
+const cleanEnvValue = (value) => {
+	if (!value) {
+		return undefined;
+	}
+	const trimmed = value.trim();
+	if (
+		(trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+		(trimmed.startsWith("'") && trimmed.endsWith("'"))
+	) {
+		return trimmed.slice(1, -1);
+	}
+	return trimmed;
+};
+
+const generatePassword = () => randomBytes(12).toString("base64url");
 
 const hashPassword = async (password) => {
 	const salt = randomBytes(SALT_LENGTH).toString("hex");
@@ -64,75 +79,78 @@ const log = (message) => {
 };
 
 const main = async () => {
-	const existingSuperAdmin = await prisma.user.findFirst({
-		where: { isSuperAdmin: true },
-		select: { id: true },
-	});
+	const fallbackEmail = "admin@tskr.com";
+	const envEmail = cleanEnvValue(process.env.SUPER_ADMIN_EMAIL);
+	const forceRotate = cleanEnvValue(process.env.SUPER_ADMIN_FORCE_PASSWORD) === "1";
 
-	if (existingSuperAdmin) {
-		log("Super admin already exists. Skipping bootstrap.");
-		return;
+	if (!envEmail) {
+		const existingSuperAdmin = await prisma.user.findFirst({
+			where: { isSuperAdmin: true },
+			select: { id: true },
+		});
+
+		if (existingSuperAdmin && !forceRotate) {
+			log("Super admin already exists. Skipping bootstrap.");
+			return;
+		}
+
+		log(`SUPER_ADMIN_EMAIL not set; using ${fallbackEmail}.`);
 	}
 
-	const email = process.env.SUPER_ADMIN_EMAIL?.trim();
-	const password = process.env.SUPER_ADMIN_PASSWORD;
-	if (!email || !password) {
-		console.warn(
-			"[db:bootstrap] No super admin found and SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD are not set. Skipping bootstrap.",
-		);
-		return;
-	}
-
-	const normalizedEmail = normalizeEmail(email);
+	const normalizedEmail = normalizeEmail(envEmail || fallbackEmail);
 	const existing = await prisma.user.findUnique({
 		where: { email: normalizedEmail },
 		select: {
 			id: true,
 			isSuperAdmin: true,
+			passwordLoginDisabled: true,
 			passwordHash: true,
 			passwordResetRequired: true,
 		},
 	});
 
-	if (!existing) {
-		const passwordHash = await hashPassword(password);
-		await prisma.user.create({
-			data: {
-				email: normalizedEmail,
-				passwordHash,
-				isSuperAdmin: true,
-				passwordResetRequired: true,
-			},
-		});
-		log(`Created super admin for ${normalizedEmail}.`);
-		return;
-	}
+	const updates = {
+		isSuperAdmin: true,
+		passwordLoginDisabled: false,
+	};
 
-	const updates = {};
-	if (!existing.isSuperAdmin) {
-		updates.isSuperAdmin = true;
-	}
-	if (!existing.passwordHash) {
-		updates.passwordHash = await hashPassword(password);
+	let generatedPassword;
+	if (!existing || forceRotate || !existing.passwordHash) {
+		generatedPassword = generatePassword();
+		updates.passwordHash = await hashPassword(generatedPassword);
 		updates.passwordResetRequired = true;
 	}
 
-	if (Object.keys(updates).length > 0) {
+	if (!existing) {
+		await prisma.user.create({
+			data: {
+				email: normalizedEmail,
+				...updates,
+			},
+		});
+		log(`Created super admin for ${normalizedEmail}.`);
+	} else {
 		await prisma.user.update({
 			where: { id: existing.id },
 			data: updates,
 		});
 		log(`Updated super admin record for ${normalizedEmail}.`);
+	}
+
+	if (generatedPassword) {
+		log(`Temporary password: ${generatedPassword}`);
 	} else {
-		log(`Super admin record for ${normalizedEmail} already up to date.`);
+		log("Temporary password unchanged. Set SUPER_ADMIN_FORCE_PASSWORD=1 to rotate it.");
 	}
 };
 
-try {
-	await main();
-} catch (error) {
-	console.error("[db:bootstrap] Failed to bootstrap super admin.", error);
-	process.exitCode = 1;
-} finally {
-	await prisma.$disconnect();
-}
+void (async () => {
+	try {
+		await main();
+	} catch (error) {
+		console.error("[db:bootstrap] Failed to bootstrap super admin.", error);
+		process.exitCode = 1;
+	} finally {
+		await prisma.$disconnect();
+	}
+})();

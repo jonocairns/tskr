@@ -1,9 +1,11 @@
 #!/bin/sh
 
-prisma_cli="/app/prisma-node_modules/node_modules/prisma/build/index.js"
+prisma_cli="/app/node_modules/prisma/build/index.js"
 if [ ! -f "$prisma_cli" ]; then
-  prisma_cli="./node_modules/.bin/prisma"
+  echo "Prisma CLI not found at $prisma_cli" >&2
+  exit 1
 fi
+
 config_arg=""
 if [ -f "./prisma.config.ts" ]; then
   config_arg="--config=./prisma.config.ts"
@@ -16,9 +18,5 @@ else
   echo "No Prisma migrations found; skipping migrate deploy."
 fi
 
-if [ -n "$SUPER_ADMIN_EMAIL" ] && [ -n "$SUPER_ADMIN_PASSWORD" ]; then
-  echo "Running prisma db seed..."
-  node "$prisma_cli" db seed $config_arg
-else
-  echo "Skipping prisma db seed; SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD not set."
-fi
+  echo "Running db bootstrap..."
+  node ./scripts/db-bootstrap.cjs

@@ -48,10 +48,11 @@ cp .env.example .env
 2) Update `.env` as needed. At minimum set `NEXTAUTH_SECRET` and `NEXTAUTH_URL`.
    `DATABASE_URL` defaults to `file:./prisma/dev.db`. Google OAuth reads from
    `process.env.GOOGLE_CLIENT_ID` and `process.env.GOOGLE_CLIENT_SECRET` (leave blank
-   to disable the Google button). Set `SUPER_ADMIN_EMAIL` and
-   `SUPER_ADMIN_PASSWORD` to bootstrap the first super admin account if none exists
-   (password reset required on first login). Push notifications need the VAPID
-   variables.
+   to disable the Google button). Set `SUPER_ADMIN_EMAIL` to bootstrap the first
+   super admin account if none exists; a temporary password is generated and
+   logged on first bootstrap (password reset required on first login). Set
+   `SUPER_ADMIN_FORCE_PASSWORD=1` to rotate the password on the next bootstrap.
+   Push notifications need the VAPID variables.
 
 3) Install dependencies and prepare Prisma:
 
@@ -88,14 +89,17 @@ docker run --rm \
   ghcr.io/<owner>/tskr:latest
 ```
 
-Build locally instead:
+Build and run locally instead:
 
 ```bash
 docker build -t tskr .
+
+docker run --rm -p 3000:3000 -v tskr-data:/data --env-file .env tskr
 ```
 
 Notes:
 - `DATABASE_URL` is optional; the entrypoint defaults to `file:/data/dev.db`.
+- Migrations run on container start when Prisma migrations are present.
 - Set `NEXTAUTH_SECRET` for stable sessions. If unset, the entrypoint generates one and
   stores it in `/data/tskr-secrets.env`.
 - Google OAuth reads `GOOGLE_CLIENT_ID` and
