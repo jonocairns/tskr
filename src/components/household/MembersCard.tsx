@@ -60,7 +60,7 @@ export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" 
 					return;
 				}
 				setMembers(Array.isArray(data?.members) ? data.members : []);
-			} catch (error) {
+			} catch (_error) {
 				if (isActive) {
 					toast({
 						title: "Unable to load members",

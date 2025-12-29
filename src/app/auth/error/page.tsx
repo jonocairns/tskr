@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { XIcon } from "lucide-react";
+import Link from "next/link";
 
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/Button";

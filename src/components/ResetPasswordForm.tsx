@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { type FormEvent, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -58,7 +59,34 @@ export const ResetPasswordForm = ({ token }: Props) => {
 				return;
 			}
 
-			toast({ title: "Password updated" });
+			const body = await res.json();
+			const email = body?.email;
+
+			if (!email) {
+				toast({ title: "Password updated" });
+				router.push("/");
+				router.refresh();
+				return;
+			}
+
+			toast({ title: "Password updated", description: "Signing you in..." });
+
+			const result = await signIn("credentials", {
+				email,
+				password,
+				redirect: false,
+			});
+
+			if (result?.error) {
+				toast({
+					title: "Signed in failed",
+					description: "Please sign in manually.",
+					variant: "destructive",
+				});
+				router.push("/");
+				return;
+			}
+
 			router.push("/");
 			router.refresh();
 		});

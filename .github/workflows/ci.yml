@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches: ["main"]
-    tags: ["v*.*.*"]
   pull_request:
 
 permissions:
@@ -30,7 +29,15 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
       - name: Generate Prisma client
         run: pnpm prisma generate
       - name: Lint
@@ -39,4 +46,3 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
-

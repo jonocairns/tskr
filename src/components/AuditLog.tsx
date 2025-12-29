@@ -113,7 +113,7 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 			} else {
 				setHasMore(false);
 			}
-		} catch (error) {
+		} catch (_error) {
 			toast({
 				title: "Unable to load more history",
 				description: "Please try again shortly.",

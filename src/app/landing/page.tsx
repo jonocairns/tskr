@@ -1,11 +1,11 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
 import { AuthCta } from "@/components/AuthCta";
-import { PageHeader } from "@/components/PageHeader";
-import { PageShell } from "@/components/PageShell";
 import { CreateCard } from "@/components/household/CreateCard";
 import { JoinCard } from "@/components/household/JoinCard";
+import { PageHeader } from "@/components/PageHeader";
+import { PageShell } from "@/components/PageShell";
 import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getActiveHouseholdMembership } from "@/lib/households";

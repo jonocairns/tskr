@@ -1,9 +1,9 @@
 "use client";
 
 import { Loader2Icon } from "lucide-react";
-import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useEffect, useMemo } from "react";
 
 import { PageShell } from "@/components/PageShell";

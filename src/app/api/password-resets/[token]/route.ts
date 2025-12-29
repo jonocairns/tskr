@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { checkRateLimit, getClientIp } from "@/lib/loginRateLimit";
 import { hashPasswordResetToken } from "@/lib/passwordReset";
 import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +17,11 @@ type Params = {
 };
 
 export async function POST(req: Request, { params }: Params) {
+	const ip = getClientIp(req);
+	if (ip && !checkRateLimit(`password-reset:${ip}`).ok) {
+		return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+	}
+
 	const { token: rawToken } = await params;
 	const token = rawToken?.trim();
 	if (!token) {
@@ -35,6 +41,11 @@ export async function POST(req: Request, { params }: Params) {
 			userId: true,
 			expiresAt: true,
 			usedAt: true,
+			user: {
+				select: {
+					email: true,
+				},
+			},
 		},
 	});
 
@@ -54,7 +65,10 @@ export async function POST(req: Request, { params }: Params) {
 			where: { userId: resetToken.userId, usedAt: null },
 			data: { usedAt: now },
 		}),
+		prisma.session.deleteMany({
+			where: { userId: resetToken.userId },
+		}),
 	]);
 
-	return NextResponse.json({ ok: true });
+	return NextResponse.json({ ok: true, email: resetToken.user.email });
 }

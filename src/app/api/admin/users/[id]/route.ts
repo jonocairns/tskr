@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
@@ -105,7 +105,7 @@ export async function PATCH(req: Request, { params }: Params) {
 	}
 }
 
-export async function DELETE(req: Request, { params }: Params) {
+export async function DELETE(_req: Request, { params }: Params) {
 	const session = await getServerSession(authOptions);
 
 	if (!session?.user?.id) {

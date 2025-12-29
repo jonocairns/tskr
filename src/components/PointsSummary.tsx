@@ -149,15 +149,7 @@ export const PointsSummary = ({
 	);
 };
 
-function Stat({
-	label,
-	value,
-	muted,
-}: {
-	label: string;
-	value: string | number;
-	muted?: boolean;
-}) {
+function Stat({ label, value, muted }: { label: string; value: string | number; muted?: boolean }) {
 	return (
 		<div className="space-y-1">
 			<p className="text-sm text-muted-foreground">{label}</p>

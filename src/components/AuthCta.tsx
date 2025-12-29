@@ -1,8 +1,8 @@
 "use client";
 
 import { RocketIcon } from "lucide-react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { type FormEvent, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -74,7 +74,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 				}
 
 				router.refresh();
-			} catch (error) {
+			} catch (_error) {
 				toast({
 					title: "Unable to sign in",
 					description: "Please try again.",

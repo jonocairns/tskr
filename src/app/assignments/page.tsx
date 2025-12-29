@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-
-import { AssignTaskCard } from "@/components/AssignTaskCard";
+import { getServerSession } from "next-auth";
 import { AssignedTasksManager } from "@/components/AssignedTasksManager";
+import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { AuthCta } from "@/components/AuthCta";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";

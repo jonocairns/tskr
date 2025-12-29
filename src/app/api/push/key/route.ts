@@ -1,5 +1,5 @@
-import { config } from "@/server-config";
 import { NextResponse } from "next/server";
+import { config } from "@/server-config";
 
 export const runtime = "nodejs";
 
