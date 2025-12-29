@@ -1,4 +1,4 @@
-FROM node:24.12.0-slim AS base
+FROM node:25.2.1-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update \
