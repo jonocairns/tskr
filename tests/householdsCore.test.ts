@@ -1,7 +1,7 @@
 import {
+	getActiveHouseholdMembership,
 	type HouseholdMembership,
 	type HouseholdStore,
-	getActiveHouseholdMembership,
 	resolveActiveHouseholdId,
 } from "../src/lib/householdsCore";
 

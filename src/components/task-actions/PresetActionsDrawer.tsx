@@ -1,7 +1,6 @@
+import { Loader2Icon } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-
-import { Loader2Icon } from "lucide-react";
 
 import { PresetListItem } from "@/components/task-actions/PresetListItem";
 import type { PresetSummary, PresetTemplate } from "@/components/task-actions/types";
@@ -186,7 +185,9 @@ export function PresetActionsDrawer({
 				aria-label="Close tasks editor"
 			/>
 			<div
+				role="dialog"
 				aria-modal="true"
+				aria-label="Tasks editor"
 				className="absolute right-0 top-0 h-full w-full border-l bg-background shadow-xl sm:max-w-md"
 			>
 				<div className="flex h-full flex-col">
@@ -216,24 +217,33 @@ export function PresetActionsDrawer({
 								<div className="space-y-2">
 									<p className="text-xs font-medium text-muted-foreground">Bucket</p>
 									<div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Bucket">
-										{DURATION_BUCKETS.map((bucket) => (
-											<button
-												key={bucket.key}
-												type="button"
-												onClick={() => setCustomBucket(bucket.key)}
-												className={cn(
-													"flex w-full flex-col items-start rounded-lg border p-3 text-left transition hover:border-primary disabled:pointer-events-none disabled:opacity-50",
-													customBucket === bucket.key && "border-primary bg-primary/5",
-												)}
-												aria-checked={customBucket === bucket.key}
-												disabled={disabled}
-											>
-												<span className="text-sm font-semibold">{bucket.label}</span>
-												<span className="text-xs text-muted-foreground">
-													{bucket.points} pts · {BUCKET_WINDOW_SHORT[bucket.key]}
-												</span>
-											</button>
-										))}
+										{DURATION_BUCKETS.map((bucket) => {
+											const isSelected = customBucket === bucket.key;
+											return (
+												<label
+													key={bucket.key}
+													className={cn(
+														"flex w-full flex-col items-start rounded-lg border p-3 text-left transition",
+														isSelected && "border-primary bg-primary/5",
+														disabled ? "pointer-events-none opacity-50" : "hover:border-primary",
+													)}
+												>
+													<input
+														type="radio"
+														name="custom-bucket"
+														value={bucket.key}
+														checked={isSelected}
+														onChange={() => setCustomBucket(bucket.key)}
+														className="sr-only"
+														disabled={disabled}
+													/>
+													<span className="text-sm font-semibold">{bucket.label}</span>
+													<span className="text-xs text-muted-foreground">
+														{bucket.points} pts · {BUCKET_WINDOW_SHORT[bucket.key]}
+													</span>
+												</label>
+											);
+										})}
 									</div>
 								</div>
 								{canEditApprovalOverride ? (

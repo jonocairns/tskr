@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { ChromeIcon, XIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-
+import { useMemo, useState, useTransition } from "react";
 import {
 	AlertDialog,
 	AlertDialogContent,
@@ -17,7 +17,6 @@ import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
-import { ChromeIcon, XIcon } from "lucide-react";
 
 export type UserRow = {
 	id: string;
@@ -287,7 +286,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 		try {
 			await navigator.clipboard.writeText(url);
 			toast({ title: "Link copied to clipboard" });
-		} catch (error) {
+		} catch (_error) {
 			toast({
 				title: "Unable to copy",
 				description: "Copy the link manually.",

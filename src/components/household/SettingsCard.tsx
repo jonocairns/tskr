@@ -68,7 +68,7 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 				setProgressBarColor(fetchedProgressBarColor ?? DEFAULT_PROGRESS_BAR_COLOR);
 				setInitialProgressBarColor(fetchedProgressBarColor);
 				setUseCustomProgressBarColor(Boolean(fetchedProgressBarColor));
-			} catch (error) {
+			} catch (_error) {
 				if (isActive) {
 					toast({
 						title: "Unable to load household settings",

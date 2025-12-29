@@ -1,15 +1,15 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
 import { AuthCta } from "@/components/AuthCta";
-import { PageHeader } from "@/components/PageHeader";
-import { PageShell } from "@/components/PageShell";
-import { PushNotifications } from "@/components/PushNotifications";
 import { DangerZone } from "@/components/household/DangerZone";
 import { InvitesCard } from "@/components/household/InvitesCard";
 import { JoinCard } from "@/components/household/JoinCard";
 import { MembersCard } from "@/components/household/MembersCard";
 import { SettingsCard } from "@/components/household/SettingsCard";
+import { PageHeader } from "@/components/PageHeader";
+import { PageShell } from "@/components/PageShell";
+import { PushNotifications } from "@/components/PushNotifications";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";

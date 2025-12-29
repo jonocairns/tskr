@@ -1,7 +1,12 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
 	"files": {
-		"ignore": [".next", "out", "build", "node_modules", "next-env.d.ts"]
+		"includes": ["**", "!**/.next", "!**/out", "!**/build", "!**/node_modules", "!**/next-env.d.ts"]
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
 	},
 	"formatter": {
 		"lineWidth": 120,

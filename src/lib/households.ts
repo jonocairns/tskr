@@ -1,8 +1,8 @@
 import {
+	getActiveHouseholdMembership as getActiveHouseholdMembershipCore,
 	type HouseholdMembership,
 	type HouseholdRole,
 	type HouseholdStore,
-	getActiveHouseholdMembership as getActiveHouseholdMembershipCore,
 	resolveActiveHouseholdId as resolveActiveHouseholdIdCore,
 } from "@/lib/householdsCore";
 import { prisma } from "@/lib/prisma";

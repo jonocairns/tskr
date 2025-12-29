@@ -1,8 +1,8 @@
 "use client";
 
-import { ClipboardListIcon, HomeIcon, LinkIcon, LogOutIcon, ShieldIcon, UserRoundIcon } from "lucide-react";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { ClipboardListIcon, HomeIcon, LinkIcon, LogOutIcon, ShieldIcon } from "lucide-react";
 import Link from "next/link";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
@@ -11,7 +11,6 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";

@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Label } from "@/components/ui/Label";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
 

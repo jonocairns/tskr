@@ -3,11 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { usePathname } from "next/navigation";
 
-export const PageTransition = ({
-	children,
-}: {
-	children: React.ReactNode;
-}) => {
+export const PageTransition = ({ children }: { children: React.ReactNode }) => {
 	const pathname = usePathname();
 	const prefersReducedMotion = useReducedMotion();
 	const distance = prefersReducedMotion ? 0 : 8;

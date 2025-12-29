@@ -1,5 +1,5 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";

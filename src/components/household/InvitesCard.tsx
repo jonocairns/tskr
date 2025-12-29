@@ -53,7 +53,7 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 					return;
 				}
 				setInvites(Array.isArray(data?.invites) ? data.invites : []);
-			} catch (error) {
+			} catch (_error) {
 				if (isActive) {
 					toast({
 						title: "Unable to load invites",
@@ -160,7 +160,7 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 		try {
 			await navigator.clipboard.writeText(code);
 			toast({ title: "Invite code copied" });
-		} catch (error) {
+		} catch (_error) {
 			toast({
 				title: "Unable to copy code",
 				description: "Please copy it manually.",

@@ -10,6 +10,8 @@ import { normalizeText } from "@/components/task-actions/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
 
@@ -35,6 +37,7 @@ export const PresetActionsCard = () => {
 	const { toast } = useToast();
 	const canSharePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = currentUserRole !== "DOER";
+	const [searchQuery, setSearchQuery] = useState("");
 
 	const editablePresets = customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId);
 	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
@@ -49,6 +52,11 @@ export const PresetActionsCard = () => {
 				!appliedTemplateKeys.has(`${normalizeText(template.label)}|${template.bucket}`),
 		),
 	})).filter((group) => group.templates.length > 0);
+	const normalizedQuery = normalizeText(searchQuery);
+	const filteredPresets =
+		normalizedQuery.length > 0
+			? presetOptions.filter((preset) => normalizeText(preset.label).includes(normalizedQuery))
+			: presetOptions;
 
 	const handleCreatePresetFromTemplate = async (
 		template: PresetTemplate,
@@ -289,12 +297,35 @@ export const PresetActionsCard = () => {
 						</Button>
 					</div>
 				</CardHeader>
-				<CardContent>
+				<CardContent className="space-y-4">
+					<div className="grid gap-2">
+						<div className="flex items-center justify-between gap-2">
+							<Label htmlFor="task-search">Search tasks</Label>
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								onClick={() => setSearchQuery("")}
+								disabled={searchQuery.trim().length === 0}
+							>
+								Clear
+							</Button>
+						</div>
+						<Input
+							id="task-search"
+							type="search"
+							placeholder="Filter tasks by name"
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
+						/>
+					</div>
 					<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 						{presetOptions.length === 0 ? (
 							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">No saved tasks yet.</p>
+						) : filteredPresets.length === 0 ? (
+							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">No tasks match that search.</p>
 						) : (
-							presetOptions.map((task) => {
+							filteredPresets.map((task) => {
 								const bucket = DURATION_BUCKETS.find((b) => b.key === task.bucket);
 								return (
 									<Button

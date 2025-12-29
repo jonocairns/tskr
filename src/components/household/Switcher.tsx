@@ -1,8 +1,8 @@
 "use client";
 
 import { CheckIcon, ChevronDownIcon, HomeIcon, Loader2Icon } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -47,7 +47,7 @@ export const Switcher = () => {
 				}
 				setHouseholds(Array.isArray(data?.households) ? data.households : []);
 				setActiveHouseholdId(typeof data?.activeHouseholdId === "string" ? data.activeHouseholdId : null);
-			} catch (error) {
+			} catch (_error) {
 				if (isActive) {
 					toast({
 						title: "Unable to load households",

@@ -1,6 +1,6 @@
 import { LogStatus } from "@prisma/client";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 
 import { computeAssignedTaskState } from "@/lib/assignedTasks";
 import { authOptions } from "@/lib/auth";
