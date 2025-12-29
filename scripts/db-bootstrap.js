@@ -1,10 +1,51 @@
 import { randomBytes, scrypt } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { promisify } from "node:util";
+
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@prisma/client";
 
 const scryptAsync = promisify(scrypt);
 const HASH_KEY_LENGTH = 64;
 const SALT_LENGTH = 16;
+
+const loadEnvFile = (path) => {
+	if (!existsSync(path)) {
+		return false;
+	}
+	const contents = readFileSync(path, "utf8");
+	for (const rawLine of contents.split(/\r?\n/)) {
+		const line = rawLine.trim();
+		if (!line || line.startsWith("#")) {
+			continue;
+		}
+		const equalsIndex = line.indexOf("=");
+		if (equalsIndex === -1) {
+			continue;
+		}
+		const key = line.slice(0, equalsIndex).trim();
+		if (!key || Object.prototype.hasOwnProperty.call(process.env, key)) {
+			continue;
+		}
+		let value = line.slice(equalsIndex + 1).trim();
+		const isQuoted =
+			(value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"));
+		if (isQuoted) {
+			value = value.slice(1, -1);
+		}
+		value = value.replace(/\\n/g, "\n");
+		process.env[key] = value;
+	}
+	return true;
+};
+
+const envCandidates = [resolve(process.cwd(), ".env"), resolve(process.cwd(), "prisma/.env")];
+for (const candidate of envCandidates) {
+	if (loadEnvFile(candidate)) {
+		break;
+	}
+}
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
@@ -14,7 +55,9 @@ const hashPassword = async (password) => {
 	return `scrypt$${salt}$${Buffer.from(derived).toString("hex")}`;
 };
 
-const prisma = new PrismaClient();
+const databaseUrl = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
+const adapter = new PrismaBetterSqlite3({ url: databaseUrl });
+const prisma = new PrismaClient({ adapter });
 
 const log = (message) => {
 	console.log(`[db:bootstrap] ${message}`);
