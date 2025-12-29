@@ -2,7 +2,7 @@ FROM node:24.12.0-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends openssl ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
@@ -33,6 +33,7 @@ FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATABASE_URL="file:/data/dev.db"
+ENV NEXTAUTH_URL="http://localhost:3000"
 
 RUN groupadd -g 1001 nextjs \
   && useradd -m -u 1001 -g 1001 nextjs \
@@ -56,7 +57,7 @@ USER nextjs
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+  CMD curl -f http://localhost:3000/api/health || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "server.js"]
