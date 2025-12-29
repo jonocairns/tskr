@@ -79,17 +79,17 @@ const main = async () => {
 	const envEmail = cleanEnvValue(process.env.SUPER_ADMIN_EMAIL);
 	const forceRotate = cleanEnvValue(process.env.SUPER_ADMIN_FORCE_PASSWORD) === "1";
 
+	const existingSuperAdmin = await prisma.user.findFirst({
+		where: { isSuperAdmin: true },
+		select: { id: true },
+	});
+
+	if (existingSuperAdmin && !forceRotate) {
+		log("Super admin already exists. Skipping bootstrap.");
+		return;
+	}
+
 	if (!envEmail) {
-		const existingSuperAdmin = await prisma.user.findFirst({
-			where: { isSuperAdmin: true },
-			select: { id: true },
-		});
-
-		if (existingSuperAdmin && !forceRotate) {
-			log("Super admin already exists. Skipping bootstrap.");
-			return;
-		}
-
 		log(`SUPER_ADMIN_EMAIL not set; using ${fallbackEmail}.`);
 	}
 
