@@ -20,11 +20,12 @@ import { useToast } from "@/hooks/useToast";
 
 type Props = {
 	canDelete: boolean;
+	householdId?: string;
 	variant?: "card" | "section";
 	showTitle?: boolean;
 };
 
-export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: Props) => {
+export const DangerZone = ({ canDelete, householdId, variant = "card", showTitle = false }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
@@ -36,7 +37,8 @@ export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: P
 
 	const handleDelete = () => {
 		startTransition(async () => {
-			const res = await fetch("/api/households/current", {
+			const endpoint = householdId ? `/api/households/${householdId}` : "/api/households/current";
+			const res = await fetch(endpoint, {
 				method: "DELETE",
 			});
 
@@ -51,7 +53,7 @@ export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: P
 			}
 
 			toast({ title: "Household deleted" });
-			router.push("/landing");
+			router.push("/household");
 		});
 	};
 

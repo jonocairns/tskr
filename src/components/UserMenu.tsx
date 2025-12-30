@@ -70,23 +70,19 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="w-56" align="end">
-				{resolvedUser?.hasHouseholdMembership ? (
-					<>
-						<DropdownMenuItem asChild>
-							<Link href="/household">
-								<HomeIcon className="mr-2 h-4 w-4" />
-								Household
-							</Link>
-						</DropdownMenuItem>
-						{resolvedUser?.householdRole !== "DOER" ? (
-							<DropdownMenuItem asChild>
-								<Link href="/assignments">
-									<ClipboardListIcon className="mr-2 h-4 w-4" />
-									Assignments
-								</Link>
-							</DropdownMenuItem>
-						) : null}
-					</>
+				<DropdownMenuItem asChild>
+					<Link href="/household">
+						<HomeIcon className="mr-2 h-4 w-4" />
+						Households
+					</Link>
+				</DropdownMenuItem>
+				{resolvedUser?.hasHouseholdMembership && resolvedUser?.householdRole !== "DOER" ? (
+					<DropdownMenuItem asChild>
+						<Link href="/assignments">
+							<ClipboardListIcon className="mr-2 h-4 w-4" />
+							Assignments
+						</Link>
+					</DropdownMenuItem>
 				) : null}
 				{resolvedUser?.isSuperAdmin ? (
 					<DropdownMenuItem asChild>

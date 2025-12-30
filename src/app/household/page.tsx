@@ -1,23 +1,18 @@
-import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { AuthCta } from "@/components/AuthCta";
-import { DangerZone } from "@/components/household/DangerZone";
-import { InvitesCard } from "@/components/household/InvitesCard";
+import { CreateCard } from "@/components/household/CreateCard";
+import { HouseholdDirectory } from "@/components/household/HouseholdDirectory";
 import { JoinCard } from "@/components/household/JoinCard";
-import { MembersCard } from "@/components/household/MembersCard";
-import { SettingsCard } from "@/components/household/SettingsCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
-import { PushNotifications } from "@/components/PushNotifications";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
-import { getActiveHouseholdMembership } from "@/lib/households";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export default async function HouseholdPage() {
+export default async function HouseholdListPage() {
 	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
 
@@ -30,50 +25,64 @@ export default async function HouseholdPage() {
 	}
 
 	const userId = session.user.id;
-	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
-	if (!active) {
-		redirect("/landing");
-	}
 
-	const { householdId, membership } = active;
+	const memberships = await prisma.householdMember.findMany({
+		where: { userId },
+		select: {
+			householdId: true,
+			role: true,
+			joinedAt: true,
+			household: {
+				select: {
+					name: true,
+					createdById: true,
+				},
+			},
+		},
+		orderBy: { joinedAt: "asc" },
+	});
+
+	const householdIds = memberships.map((membership) => membership.householdId);
+	const dictatorCounts = householdIds.length
+		? await prisma.householdMember.groupBy({
+				by: ["householdId"],
+				where: { householdId: { in: householdIds }, role: "DICTATOR" },
+				_count: { _all: true },
+			})
+		: [];
+
+	const dictatorCountByHousehold = new Map(
+		dictatorCounts.map((entry) => [entry.householdId, entry._count._all]),
+	);
+
+	const households = memberships.map((membership) => ({
+		id: membership.householdId,
+		name: membership.household.name,
+		role: membership.role,
+		isOwner: membership.household.createdById === userId,
+		isActive: session.user.householdId === membership.householdId,
+		isLastDictator:
+			membership.role === "DICTATOR" && (dictatorCountByHousehold.get(membership.householdId) ?? 0) <= 1,
+	}));
 
 	return (
 		<PageShell size="lg">
 			<PageHeader
 				eyebrow="tskr"
-				title="Household"
-				description="Manage settings, members, and invite codes."
+				title="Households"
+				description="Manage memberships, invites, and ownership."
 				backHref="/"
 				backLabel="Back to dashboard"
 				user={session.user}
 				googleEnabled={googleEnabled}
 			/>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="text-xl">General</CardTitle>
-					<CardDescription>Update household settings, notifications, and manage deletion.</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-8">
-					<SettingsCard householdId={householdId} canManage={membership.role === "DICTATOR"} variant="section" />
+			<HouseholdDirectory households={households} currentUserId={userId} />
 
-					<PushNotifications variant="section" />
-
-					<DangerZone canDelete={membership.role === "DICTATOR"} variant="section" />
-				</CardContent>
-			</Card>
-
-			{membership.role !== "DOER" ? (
-				<MembersCard
-					householdId={householdId}
-					currentUserId={userId}
-					canManageMembers={membership.role === "DICTATOR"}
-				/>
-			) : null}
-
-			<InvitesCard householdId={householdId} canInvite={membership.role === "DICTATOR"} />
-
-			<JoinCard />
+			<div className="grid gap-6 md:grid-cols-2">
+				<JoinCard />
+				<CreateCard />
+			</div>
 		</PageShell>
 	);
 }
