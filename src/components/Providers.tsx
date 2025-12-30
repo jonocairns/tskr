@@ -7,6 +7,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/Toaster";
+import { TRPCProvider } from "@/lib/trpc/react";
 
 export const Providers = ({
 	session,
@@ -19,11 +20,13 @@ export const Providers = ({
 }) => {
 	return (
 		<SessionProvider session={session}>
-			<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
-				<PullToRefresh />
-				<PageTransition>{children}</PageTransition>
-				<Toaster />
-			</ThemeProvider>
+			<TRPCProvider>
+				<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange nonce={nonce}>
+					<PullToRefresh />
+					<PageTransition>{children}</PageTransition>
+					<Toaster />
+				</ThemeProvider>
+			</TRPCProvider>
 		</SessionProvider>
 	);
 };

@@ -2,12 +2,12 @@
 
 import { CheckIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 export type ApprovalEntry = {
 	id: string;
@@ -24,34 +24,34 @@ type Props = {
 };
 
 export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
-	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
 	const { toast } = useToast();
+	const utils = trpc.useUtils();
 
-	const actOnEntry = (id: string, action: "approve" | "reject") => {
-		startTransition(async () => {
-			const res = await fetch(`/api/logs/${id}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ action }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: action === "approve" ? "Unable to approve" : "Unable to reject",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
+	const updateMutation = trpc.logs.updateStatus.useMutation({
+		onSuccess: (_, variables) => {
+			const action = variables.action;
 			toast({
 				title: action === "approve" ? "Task approved" : "Task rejected",
 			});
+			utils.logs.invalidate();
 			router.refresh();
-		});
+		},
+		onError: (error, variables) => {
+			const action = variables.action;
+			toast({
+				title: action === "approve" ? "Unable to approve" : "Unable to reject",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const actOnEntry = (id: string, action: "approve" | "reject") => {
+		updateMutation.mutate({ id, action });
 	};
+
+	const isPending = updateMutation.isPending;
 
 	return (
 		<Card>

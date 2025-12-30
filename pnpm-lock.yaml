@@ -50,6 +50,21 @@ importers:
       '@radix-ui/react-toast':
         specifier: ^1.2.15
         version: 1.2.15(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tanstack/react-query':
+        specifier: ^5.90.16
+        version: 5.90.16(react@19.2.3)
+      '@trpc/client':
+        specifier: ^11.8.1
+        version: 11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/next':
+        specifier: ^11.8.1
+        version: 11.8.1(@tanstack/react-query@5.90.16(react@19.2.3))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/react-query@11.8.1(@tanstack/react-query@5.90.16(react@19.2.3))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(next@16.1.1(@babel/core@7.28.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
+      '@trpc/react-query':
+        specifier: ^11.8.1
+        version: 11.8.1(@tanstack/react-query@5.90.16(react@19.2.3))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
+      '@trpc/server':
+        specifier: ^11.8.1
+        version: 11.8.1(typescript@5.9.3)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -80,6 +95,9 @@ importers:
       react-dom:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
+      superjson:
+        specifier: ^2.2.6
+        version: 2.2.6
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
@@ -1346,6 +1364,52 @@ packages:
   '@tailwindcss/postcss@4.1.18':
     resolution: {integrity: sha512-Ce0GFnzAOuPyfV5SxjXGn0CubwGcuDB0zcdaPuCSzAa/2vII24JTkH+I6jcbXLb1ctjZMZZI6OjDaLPJQL1S0g==}
 
+  '@tanstack/query-core@5.90.16':
+    resolution: {integrity: sha512-MvtWckSVufs/ja463/K4PyJeqT+HMlJWtw6PrCpywznd2NSgO3m4KwO9RqbFqGg6iDE8vVMFWMeQI4Io3eEYww==}
+
+  '@tanstack/react-query@5.90.16':
+    resolution: {integrity: sha512-bpMGOmV4OPmif7TNMteU/Ehf/hoC0Kf98PDc0F4BZkFrEapRMEqI/V6YS0lyzwSV6PQpY1y4xxArUIfBW5LVxQ==}
+    peerDependencies:
+      react: ^18 || ^19
+
+  '@trpc/client@11.8.1':
+    resolution: {integrity: sha512-L/SJFGanr9xGABmuDoeXR4xAdHJmsXsiF9OuH+apecJ+8sUITzVT1EPeqp0ebqA6lBhEl5pPfg3rngVhi/h60Q==}
+    peerDependencies:
+      '@trpc/server': 11.8.1
+      typescript: '>=5.7.2'
+
+  '@trpc/next@11.8.1':
+    resolution: {integrity: sha512-nn9e7+k4uWaZnB2fruH1qoBKni2LG+FRNxvddp1pFzjsyNFdPWFiHWKTM8/McDFw6GQ2CorXs+ceCfgFNA+9zQ==}
+    peerDependencies:
+      '@tanstack/react-query': ^5.59.15
+      '@trpc/client': 11.8.1
+      '@trpc/react-query': 11.8.1
+      '@trpc/server': 11.8.1
+      next: '*'
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+      typescript: '>=5.7.2'
+    peerDependenciesMeta:
+      '@tanstack/react-query':
+        optional: true
+      '@trpc/react-query':
+        optional: true
+
+  '@trpc/react-query@11.8.1':
+    resolution: {integrity: sha512-0Vu55ld/oINb4U6nIPPi7eZMhxUop6K+4QUK90RVsfSD5r+957sM80M4c8bjh/JBZUxMFv9JOhxxlWcrgHxHow==}
+    peerDependencies:
+      '@tanstack/react-query': ^5.80.3
+      '@trpc/client': 11.8.1
+      '@trpc/server': 11.8.1
+      react: '>=18.2.0'
+      react-dom: '>=18.2.0'
+      typescript: '>=5.7.2'
+
+  '@trpc/server@11.8.1':
+    resolution: {integrity: sha512-P4rzZRpEL7zDFgjxK65IdyH0e41FMFfTkQkuq0BA5tKcr7E6v9/v38DEklCpoDN6sPiB1Sigy/PUEzHENhswDA==}
+    peerDependencies:
+      typescript: '>=5.7.2'
+
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
 
@@ -1679,6 +1743,10 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
+  copy-anything@4.0.5:
+    resolution: {integrity: sha512-7Vv6asjS4gMOuILabD3l739tsaxFQmC+a7pLZm02zyvs8p977bL3zEgq3yDk5rn9B0PbYgIv++jmHcuUab4RhA==}
+    engines: {node: '>=18'}
+
   create-jest@29.7.0:
     resolution: {integrity: sha512-Adz2bdH0Vq3F53KEMJOoftQFutWCukm6J24wbPWRO4k1kMY7gS7ds/uoJkNuV8wDCtWWnuwGcJwpWcih+zEW1Q==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
@@ -2000,6 +2068,10 @@ packages:
   is-stream@2.0.1:
     resolution: {integrity: sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg==}
     engines: {node: '>=8'}
+
+  is-what@5.5.0:
+    resolution: {integrity: sha512-oG7cgbmg5kLYae2N5IVd3jm2s+vldjxJzK1pcu9LfpGuQ93MQSzo0okvRna+7y5ifrD+20FE8FvjusyGaz14fw==}
+    engines: {node: '>=18'}
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
@@ -2815,6 +2887,10 @@ packages:
         optional: true
       babel-plugin-macros:
         optional: true
+
+  superjson@2.2.6:
+    resolution: {integrity: sha512-H+ue8Zo4vJmV2nRjpx86P35lzwDT3nItnIsocgumgr0hHMQ+ZGq5vrERg9kJBo5AWGmxZDhzDo+WVIJqkB0cGA==}
+    engines: {node: '>=16'}
 
   supports-color@7.2.0:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
@@ -4297,6 +4373,43 @@ snapshots:
       postcss: 8.5.6
       tailwindcss: 4.1.18
 
+  '@tanstack/query-core@5.90.16': {}
+
+  '@tanstack/react-query@5.90.16(react@19.2.3)':
+    dependencies:
+      '@tanstack/query-core': 5.90.16
+      react: 19.2.3
+
+  '@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)':
+    dependencies:
+      '@trpc/server': 11.8.1(typescript@5.9.3)
+      typescript: 5.9.3
+
+  '@trpc/next@11.8.1(@tanstack/react-query@5.90.16(react@19.2.3))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/react-query@11.8.1(@tanstack/react-query@5.90.16(react@19.2.3))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(next@16.1.1(@babel/core@7.28.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)':
+    dependencies:
+      '@trpc/client': 11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/server': 11.8.1(typescript@5.9.3)
+      next: 16.1.1(@babel/core@7.28.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+      typescript: 5.9.3
+    optionalDependencies:
+      '@tanstack/react-query': 5.90.16(react@19.2.3)
+      '@trpc/react-query': 11.8.1(@tanstack/react-query@5.90.16(react@19.2.3))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
+
+  '@trpc/react-query@11.8.1(@tanstack/react-query@5.90.16(react@19.2.3))(@trpc/client@11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.8.1(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)':
+    dependencies:
+      '@tanstack/react-query': 5.90.16(react@19.2.3)
+      '@trpc/client': 11.8.1(@trpc/server@11.8.1(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/server': 11.8.1(typescript@5.9.3)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+      typescript: 5.9.3
+
+  '@trpc/server@11.8.1(typescript@5.9.3)':
+    dependencies:
+      typescript: 5.9.3
+
   '@types/babel__core@7.20.5':
     dependencies:
       '@babel/parser': 7.28.5
@@ -4679,6 +4792,10 @@ snapshots:
 
   cookie@0.7.2: {}
 
+  copy-anything@4.0.5:
+    dependencies:
+      is-what: 5.5.0
+
   create-jest@29.7.0(@types/node@24.10.4):
     dependencies:
       '@jest/types': 29.6.3
@@ -4951,6 +5068,8 @@ snapshots:
   is-property@1.0.2: {}
 
   is-stream@2.0.1: {}
+
+  is-what@5.5.0: {}
 
   isexe@2.0.0: {}
 
@@ -5939,6 +6058,10 @@ snapshots:
       react: 19.2.3
     optionalDependencies:
       '@babel/core': 7.28.5
+
+  superjson@2.2.6:
+    dependencies:
+      copy-anything: 4.0.5
 
   supports-color@7.2.0:
     dependencies:
