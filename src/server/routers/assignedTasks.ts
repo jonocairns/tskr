@@ -7,7 +7,7 @@ import { z } from "zod";
 import { computeAssignedTaskState } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { approverProcedure, householdProcedure, protectedProcedure, router } from "@/server/trpc";
+import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
 const createAssignedTaskSchema = z.object({
 	presetId: z.string().min(1),

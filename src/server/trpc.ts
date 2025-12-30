@@ -1,11 +1,10 @@
 import "server-only";
 
+import type { HouseholdRole } from "@prisma/client";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-
 import { getAuthSession } from "@/lib/auth";
 import { getActiveHouseholdMembership } from "@/lib/households";
-import type { HouseholdRole } from "@prisma/client";
 
 export async function createTRPCContext() {
 	const session = await getAuthSession();

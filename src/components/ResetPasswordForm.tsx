@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	token: string;
@@ -21,6 +22,45 @@ export const ResetPasswordForm = ({ token }: Props) => {
 	const router = useRouter();
 
 	const canSubmit = password.length >= 8 && confirmPassword.length >= 8 && password === confirmPassword;
+
+	const resetMutation = trpc.passwordReset.reset.useMutation({
+		onSuccess: async (data) => {
+			if (!data.email) {
+				toast({ title: "Password updated" });
+				router.push("/");
+				router.refresh();
+				return;
+			}
+
+			toast({ title: "Password updated", description: "Signing you in..." });
+
+			const result = await signIn("credentials", {
+				email: data.email,
+				password,
+				redirect: false,
+			});
+
+			if (result?.error) {
+				toast({
+					title: "Unable to sign in",
+					description: "Try signing in manually.",
+					variant: "destructive",
+				});
+				router.push("/");
+				return;
+			}
+
+			router.push("/");
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to reset password",
+				description: error.message ?? "Please request a new link.",
+				variant: "destructive",
+			});
+		},
+	});
 
 	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -43,52 +83,7 @@ export const ResetPasswordForm = ({ token }: Props) => {
 		}
 
 		startTransition(async () => {
-			const res = await fetch(`/api/password-resets/${token}`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ password }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to reset password",
-					description: body?.error ?? "Please request a new link.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json();
-			const email = body?.email;
-
-			if (!email) {
-				toast({ title: "Password updated" });
-				router.push("/");
-				router.refresh();
-				return;
-			}
-
-			toast({ title: "Password updated", description: "Signing you in..." });
-
-			const result = await signIn("credentials", {
-				email,
-				password,
-				redirect: false,
-			});
-
-			if (result?.error) {
-				toast({
-					title: "Signed in failed",
-					description: "Please sign in manually.",
-					variant: "destructive",
-				});
-				router.push("/");
-				return;
-			}
-
-			router.push("/");
-			router.refresh();
+			await resetMutation.mutateAsync({ token, password });
 		});
 	};
 

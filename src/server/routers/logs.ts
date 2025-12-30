@@ -8,7 +8,7 @@ import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
-import { approverProcedure, householdProcedure, protectedProcedure, router } from "@/server/trpc";
+import { householdProcedure, protectedProcedure, router } from "@/server/trpc";
 
 const presetSchema = z
 	.object({

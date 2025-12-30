@@ -6,8 +6,8 @@ import { z } from "zod";
 
 import { getAppSettings, setAllowGoogleAccountCreation } from "@/lib/appSettings";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
-import { hashPassword } from "@/lib/passwords";
 import { createPasswordResetToken } from "@/lib/passwordReset";
+import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
 import { router, superAdminProcedure } from "@/server/trpc";
 import { config } from "@/server-config";

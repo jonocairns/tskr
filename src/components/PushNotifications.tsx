@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Status = "loading" | "unsupported" | "blocked" | "ready" | "subscribed";
 
@@ -58,6 +59,50 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 	const [vapidPublicKey, setVapidPublicKey] = useState("");
 	const [isKeyLoaded, setIsKeyLoaded] = useState(false);
 	const { toast } = useToast();
+
+	const subscribeMutation = trpc.push.subscribe.useMutation({
+		onError: (error) => {
+			console.error("[push] subscribe failed", error);
+			toast({
+				title: "Unable to enable notifications",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const unsubscribeMutation = trpc.push.unsubscribe.useMutation({
+		onError: (error) => {
+			console.error("[push] unsubscribe failed", error);
+			toast({
+				title: "Unable to disable notifications",
+				description: "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const testMutation = trpc.push.test.useMutation({
+		onSuccess: () => {
+			toast({
+				title: "Test notification sent",
+				description: "Check your device for the push alert.",
+			});
+		},
+		onError: (error) => {
+			console.error("[push] test failed", error);
+			toast({
+				title: "Unable to send test",
+				description: "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const { data: keyData } = trpc.push.getPublicKey.useQuery(undefined, {
+		retry: false,
+		refetchOnWindowFocus: false,
+	});
 
 	const hasVapidKey = vapidPublicKey.length > 0;
 
@@ -114,34 +159,11 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 	}, []);
 
 	useEffect(() => {
-		let active = true;
-
-		const loadKey = async () => {
-			try {
-				const res = await fetch("/api/push/key");
-				if (!res.ok) {
-					return;
-				}
-
-				const data = await res.json().catch(() => ({}));
-				if (typeof data?.publicKey === "string" && active) {
-					setVapidPublicKey(data.publicKey);
-				}
-			} catch (error) {
-				console.error("[push] key fetch failed", error);
-			} finally {
-				if (active) {
-					setIsKeyLoaded(true);
-				}
-			}
-		};
-
-		loadKey();
-
-		return () => {
-			active = false;
-		};
-	}, []);
+		if (keyData?.publicKey) {
+			setVapidPublicKey(keyData.publicKey);
+		}
+		setIsKeyLoaded(true);
+	}, [keyData]);
 
 	useEffect(() => {
 		if (!registration || !hasVapidKey) {
@@ -156,15 +178,18 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 				return;
 			}
 
-			const res = await fetch("/api/push/subscribe", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(subscription.toJSON()),
-			});
-
-			if (!res.ok) {
-				throw new Error("Subscription sync failed");
+			const json = subscription.toJSON();
+			if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+				return;
 			}
+
+			await subscribeMutation.mutateAsync({
+				endpoint: json.endpoint,
+				keys: {
+					p256dh: json.keys.p256dh,
+					auth: json.keys.auth,
+				},
+			});
 		};
 
 		syncSubscription().catch((error) => {
@@ -174,7 +199,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 		return () => {
 			active = false;
 		};
-	}, [registration, hasVapidKey]);
+	}, [registration, hasVapidKey, subscribeMutation]);
 
 	const helperText = useMemo(() => {
 		if (status === "unsupported") {
@@ -231,22 +256,23 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 
 			const existing = await activeRegistration.pushManager.getSubscription();
 			if (existing) {
-				const res = await fetch("/api/push/subscribe", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(existing.toJSON()),
-				});
+				const json = existing.toJSON();
+				if (json.endpoint && json.keys?.p256dh && json.keys?.auth) {
+					await subscribeMutation.mutateAsync({
+						endpoint: json.endpoint,
+						keys: {
+							p256dh: json.keys.p256dh,
+							auth: json.keys.auth,
+						},
+					});
 
-				if (!res.ok) {
-					throw new Error("Subscription sync failed");
+					setStatus("subscribed");
+					toast({
+						title: "Notifications enabled",
+						description: "You will now receive task updates.",
+					});
+					return;
 				}
-
-				setStatus("subscribed");
-				toast({
-					title: "Notifications enabled",
-					description: "You will now receive task updates.",
-				});
-				return;
 			}
 
 			const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
@@ -257,15 +283,18 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 
 			const subscription = await subscribeWithTimeout(activeRegistration, vapidPublicKey);
 
-			const res = await fetch("/api/push/subscribe", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(subscription.toJSON()),
-			});
-
-			if (!res.ok) {
-				throw new Error("Subscription rejected");
+			const json = subscription.toJSON();
+			if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+				throw new Error("Invalid subscription data");
 			}
+
+			await subscribeMutation.mutateAsync({
+				endpoint: json.endpoint,
+				keys: {
+					p256dh: json.keys.p256dh,
+					auth: json.keys.auth,
+				},
+			});
 
 			setStatus("subscribed");
 			toast({
@@ -301,11 +330,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 		try {
 			const subscription = await registration.pushManager.getSubscription();
 			if (subscription) {
-				await fetch("/api/push/subscribe", {
-					method: "DELETE",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ endpoint: subscription.endpoint }),
-				});
+				await unsubscribeMutation.mutateAsync({ endpoint: subscription.endpoint });
 				await subscription.unsubscribe();
 			}
 
@@ -329,22 +354,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 	const handleTest = async () => {
 		setIsTesting(true);
 		try {
-			const res = await fetch("/api/push/test", { method: "POST" });
-			if (!res.ok) {
-				throw new Error("Test push failed");
-			}
-
-			toast({
-				title: "Test notification sent",
-				description: "Check your device for the push alert.",
-			});
-		} catch (error) {
-			console.error("[push] test failed", error);
-			toast({
-				title: "Unable to send test",
-				description: "Please try again.",
-				variant: "destructive",
-			});
+			await testMutation.mutateAsync();
 		} finally {
 			setIsTesting(false);
 		}

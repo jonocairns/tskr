@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
-import { trpc } from "@/lib/trpc/react";
 import type { LogKind } from "@/lib/points";
+import { trpc } from "@/lib/trpc/react";
 
 export type AuditLogEntry = {
 	id: string;
