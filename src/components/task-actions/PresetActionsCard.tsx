@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
+import { trpc } from "@/lib/trpc/react";
 
 export const PresetActionsCard = () => {
 	const {
@@ -27,7 +28,6 @@ export const PresetActionsCard = () => {
 		defaultBucket,
 		isPending,
 		isPresetPending,
-		startTransition,
 		startPresetTransition,
 		logPreset,
 	} = useTaskActions();
@@ -35,9 +35,31 @@ export const PresetActionsCard = () => {
 
 	const router = useRouter();
 	const { toast } = useToast();
+	const utils = trpc.useUtils();
 	const canSharePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = currentUserRole !== "DOER";
 	const [searchQuery, setSearchQuery] = useState("");
+
+	const createLogMutation = trpc.logs.create.useMutation({
+		onSuccess: (data) => {
+			const isPending = data.entry.status === "PENDING";
+			toast({
+				title: isPending ? "Submitted for approval" : "Task logged",
+				description: isPending
+					? "Task logged and waiting for approval."
+					: "Time-based task recorded and points added.",
+			});
+			utils.logs.invalidate();
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to log task",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
 	const editablePresets = customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId);
 	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
@@ -160,43 +182,19 @@ export const PresetActionsCard = () => {
 			return false;
 		}
 
-		let success = false;
-		await new Promise<void>((resolve) =>
-			startTransition(async () => {
-				const res = await fetch("/api/logs", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						type: "timed",
-						bucket,
-						description: label.trim(),
-					}),
-				});
-
-				if (!res.ok) {
-					const body = await res.json().catch(() => ({}));
-					toast({
-						title: "Unable to log task",
-						description: body?.error ?? "Please try again.",
-						variant: "destructive",
-					});
-					return;
-				}
-
-				const body = await res.json().catch(() => ({}));
-				const isPending = body?.entry?.status === "PENDING";
-				toast({
-					title: isPending ? "Submitted for approval" : "Task logged",
-					description: isPending
-						? "Task logged and waiting for approval."
-						: "Time-based task recorded and points added.",
-				});
-				router.refresh();
-				success = true;
-				resolve();
-			}),
-		);
-		return success;
+		return new Promise<boolean>((resolve) => {
+			createLogMutation.mutate(
+				{
+					type: "timed",
+					bucket,
+					description: label.trim(),
+				},
+				{
+					onSuccess: () => resolve(true),
+					onError: () => resolve(false),
+				},
+			);
+		});
 	};
 
 	const closeEditDrawer = () => {

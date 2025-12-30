@@ -14,16 +14,39 @@ import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS } from "@/lib/points";
+import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
 export const TimedActionsCard = () => {
-	const { presetOptions, disabled, defaultBucket, isPending, startTransition, logPreset } = useTaskActions();
+	const { presetOptions, disabled, defaultBucket, logPreset } = useTaskActions();
 	const [selectedBucket, setSelectedBucket] = useState(defaultBucket);
 	const [description, setDescription] = useState("");
 	const [durationMinutes, setDurationMinutes] = useState("");
 
 	const router = useRouter();
 	const { toast } = useToast();
+	const utils = trpc.useUtils();
+
+	const createLogMutation = trpc.logs.create.useMutation({
+		onSuccess: (data) => {
+			const isPending = data.entry.status === "PENDING";
+			setDescription("");
+			setDurationMinutes("");
+			toast({
+				title: isPending ? "Submitted for approval" : "Task logged",
+				description: isPending ? "Task logged and waiting for approval." : "Time-based task recorded and points added.",
+			});
+			utils.logs.invalidate();
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to log task",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
 	const descriptionQuery = normalizeText(description);
 	const shouldSearchDescription = descriptionQuery.length >= 2;
@@ -35,37 +58,11 @@ export const TimedActionsCard = () => {
 		event.preventDefault();
 		const minutes = durationMinutes.trim().length > 0 ? Number(durationMinutes) : undefined;
 
-		startTransition(async () => {
-			const res = await fetch("/api/logs", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					type: "timed",
-					bucket: selectedBucket,
-					description: description.trim(),
-					durationMinutes: minutes,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to log task",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			const isPending = body?.entry?.status === "PENDING";
-			setDescription("");
-			setDurationMinutes("");
-			toast({
-				title: isPending ? "Submitted for approval" : "Task logged",
-				description: isPending ? "Task logged and waiting for approval." : "Time-based task recorded and points added.",
-			});
-			router.refresh();
+		createLogMutation.mutate({
+			type: "timed",
+			bucket: selectedBucket,
+			description: description.trim(),
+			durationMinutes: minutes,
 		});
 	};
 
@@ -155,9 +152,9 @@ export const TimedActionsCard = () => {
 						type="submit"
 						size="lg"
 						className="w-full sm:w-auto"
-						disabled={disabled || description.trim().length === 0}
+						disabled={disabled || createLogMutation.isPending || description.trim().length === 0}
 					>
-						{isPending ? (
+						{createLogMutation.isPending ? (
 							<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
 						) : (
 							<SparklesIcon className="mr-2 h-4 w-4" />

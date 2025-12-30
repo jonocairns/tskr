@@ -1,10 +1,14 @@
 import "server-only";
 
 import { router } from "@/server/trpc";
+import { adminRouter } from "./admin";
+import { assignedTasksRouter } from "./assignedTasks";
 import { householdsRouter } from "./households";
 import { logsRouter } from "./logs";
 
 export const appRouter = router({
+	admin: adminRouter,
+	assignedTasks: assignedTasksRouter,
 	households: householdsRouter,
 	logs: logsRouter,
 });

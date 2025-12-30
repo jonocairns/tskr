@@ -137,3 +137,25 @@ export const approverProcedure = t.procedure.use(isAuthed).use(
 		});
 	}),
 );
+
+const isSuperAdmin = t.middleware(({ ctx, next }) => {
+	if (!ctx.session?.user?.id) {
+		throw new TRPCError({ code: "UNAUTHORIZED" });
+	}
+
+	if (!ctx.session.user.isSuperAdmin) {
+		throw new TRPCError({ code: "FORBIDDEN", message: "Super admin access required" });
+	}
+
+	return next({
+		ctx: {
+			...ctx,
+			session: {
+				...ctx.session,
+				user: ctx.session.user,
+			},
+		},
+	});
+});
+
+export const superAdminProcedure = t.procedure.use(isAuthed).use(isSuperAdmin);
