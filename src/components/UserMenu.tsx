@@ -57,7 +57,7 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild className="cursor-pointer">
+			<DropdownMenuTrigger asChild>
 				<Button variant="ghost" className="group gap-2 py-6">
 					<Avatar className="h-9 w-9 ring-1  ring-ring/25 ring-black transition group-hover:ring-ring/50">
 						<AvatarImage src={resolvedUser?.image ?? undefined} alt={resolvedUser?.name ?? ""} />
@@ -72,14 +72,14 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 			<DropdownMenuContent className="w-56" align="end">
 				{resolvedUser?.hasHouseholdMembership ? (
 					<>
-						<DropdownMenuItem asChild className="cursor-pointer">
+						<DropdownMenuItem asChild>
 							<Link href="/household">
 								<HomeIcon className="mr-2 h-4 w-4" />
 								Household
 							</Link>
 						</DropdownMenuItem>
 						{resolvedUser?.householdRole !== "DOER" ? (
-							<DropdownMenuItem asChild className="cursor-pointer">
+							<DropdownMenuItem asChild>
 								<Link href="/assignments">
 									<ClipboardListIcon className="mr-2 h-4 w-4" />
 									Assignments
@@ -89,7 +89,7 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 					</>
 				) : null}
 				{resolvedUser?.isSuperAdmin ? (
-					<DropdownMenuItem asChild className="cursor-pointer">
+					<DropdownMenuItem asChild>
 						<Link href="/admin">
 							<ShieldIcon className="mr-2 h-4 w-4" />
 							Admin
@@ -98,7 +98,6 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 				) : null}
 				{googleEnabled && !resolvedUser?.hasGoogleAccount ? (
 					<DropdownMenuItem
-						className="cursor-pointer"
 						onSelect={() => {
 							const returnTo = window.location.pathname + window.location.search + window.location.hash;
 							signIn("google", {
@@ -112,7 +111,7 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 				) : null}
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
-					className="cursor-pointer text-red-600 font-semibold opacity-100 hover:text-red-600 focus:text-red-600"
+					className="text-red-600 font-semibold opacity-100 hover:text-red-600 focus:text-red-600"
 					onSelect={() => signOut()}
 				>
 					<LogOutIcon className="mr-2 h-4 w-4" />
