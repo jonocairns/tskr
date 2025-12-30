@@ -14,6 +14,12 @@ export type AssignedTaskState = {
 	nextResetAt: Date | null;
 };
 
+const startOfDay = (date: Date) => {
+	const start = new Date(date);
+	start.setHours(0, 0, 0, 0);
+	return start;
+};
+
 export function computeAssignedTaskState(
 	task: AssignedTaskConfig,
 	logs: AssignedTaskLog[],
@@ -46,7 +52,9 @@ export function computeAssignedTaskState(
 		return { progress: totalCount, isActive: true, nextResetAt: null };
 	}
 
-	const nextResetAt = new Date(lastCompletionLog.createdAt.getTime() + intervalMs);
+	const shouldRoundToDayBoundary = intervalMinutes >= 1440 && intervalMinutes % 1440 === 0;
+	const resetAnchor = shouldRoundToDayBoundary ? startOfDay(lastCompletionLog.createdAt) : lastCompletionLog.createdAt;
+	const nextResetAt = new Date(resetAnchor.getTime() + intervalMs);
 	if (now < nextResetAt) {
 		return { progress: target, isActive: false, nextResetAt };
 	}

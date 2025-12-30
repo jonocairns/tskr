@@ -1,6 +1,8 @@
 import { computeAssignedTaskState } from "../src/lib/assignedTasks";
 
 const at = (iso: string) => new Date(iso);
+const atLocal = (year: number, month: number, day: number, hour = 0, minute = 0, second = 0, ms = 0) =>
+	new Date(year, month - 1, day, hour, minute, second, ms);
 const addMinutes = (date: Date, minutes: number) => new Date(date.getTime() + minutes * 60_000);
 
 test("returns active state when no logs exist", () => {
@@ -113,4 +115,24 @@ test("recurring tasks activate at the exact reset time", () => {
 	expect(state.progress).toBe(0);
 	expect(state.isActive).toBe(true);
 	expect(state.nextResetAt?.toISOString()).toBe(resetAt.toISOString());
+});
+
+test("daily recurring tasks reset at local midnight", () => {
+	const completedAt = atLocal(2024, 1, 1, 23, 30);
+	const logs = [{ createdAt: completedAt }];
+	const beforeReset = atLocal(2024, 1, 1, 23, 45);
+	const expectedReset = atLocal(2024, 1, 2, 0, 0);
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 1440,
+			isRecurring: true,
+		},
+		logs,
+		beforeReset,
+	);
+
+	expect(state.isActive).toBe(false);
+	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
 });
