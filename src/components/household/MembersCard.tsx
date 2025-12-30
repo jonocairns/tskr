@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import {
 	AlertDialog,
@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Member = {
 	id: string;
@@ -34,8 +35,6 @@ type Props = {
 };
 
 export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" }: Props) => {
-	const [members, setMembers] = useState<Member[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
 	const [isPending, startTransition] = useTransition();
 	const [pendingRoleChange, setPendingRoleChange] = useState<{
 		memberId: string;
@@ -43,70 +42,30 @@ export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" 
 	} | null>(null);
 	const { toast } = useToast();
 	const isSection = variant === "section";
+	const utils = trpc.useUtils();
+
+	const { data, isLoading } = trpc.households.getMembers.useQuery();
+
+	const updateMemberMutation = trpc.households.updateMember.useMutation({
+		onSuccess: () => {
+			toast({ title: "Member updated" });
+			utils.households.getMembers.invalidate();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to update member",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const members = data?.members ?? [];
 	const dictatorCount = members.filter((member) => member.role === "DICTATOR").length;
-
-	useEffect(() => {
-		let isActive = true;
-
-		const load = async () => {
-			setIsLoading(true);
-			try {
-				const res = await fetch("/api/households/members");
-				if (!res.ok) {
-					throw new Error("Failed to load members");
-				}
-				const data = await res.json().catch(() => ({}));
-				if (!isActive) {
-					return;
-				}
-				setMembers(Array.isArray(data?.members) ? data.members : []);
-			} catch (_error) {
-				if (isActive) {
-					toast({
-						title: "Unable to load members",
-						description: "Please refresh and try again.",
-						variant: "destructive",
-					});
-				}
-			} finally {
-				if (isActive) {
-					setIsLoading(false);
-				}
-			}
-		};
-
-		load();
-
-		return () => {
-			isActive = false;
-		};
-	}, [toast]);
 
 	const updateMember = (memberId: string, payload: Partial<Pick<Member, "role" | "requiresApprovalDefault">>) => {
 		startTransition(async () => {
-			const res = await fetch(`/api/households/members/${memberId}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(payload),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to update member",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			if (body?.member) {
-				setMembers((prev) =>
-					prev.map((member) => (member.id === body.member.id ? { ...member, ...body.member } : member)),
-				);
-			}
-			toast({ title: "Member updated" });
+			await updateMemberMutation.mutateAsync({ id: memberId, ...payload });
 		});
 	};
 

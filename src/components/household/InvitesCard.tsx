@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Invite = {
 	id: string;
@@ -27,53 +28,45 @@ type Props = {
 };
 
 export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
-	const [invites, setInvites] = useState<Invite[]>([]);
 	const [role, setRole] = useState<Invite["role"]>("DOER");
-	const [isLoading, setIsLoading] = useState(true);
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const isSection = variant === "section";
+	const utils = trpc.useUtils();
 
-	useEffect(() => {
-		if (!canInvite) {
-			return;
-		}
+	const { data, isLoading } = trpc.households.getInvites.useQuery(undefined, {
+		enabled: canInvite,
+	});
 
-		let isActive = true;
+	const createInviteMutation = trpc.households.createInvite.useMutation({
+		onSuccess: () => {
+			toast({ title: "Invite code generated" });
+			utils.households.getInvites.invalidate();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to send invite",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
-		const load = async () => {
-			setIsLoading(true);
-			try {
-				const res = await fetch("/api/households/invites");
-				if (!res.ok) {
-					throw new Error("Failed to load invites");
-				}
-				const data = await res.json().catch(() => ({}));
-				if (!isActive) {
-					return;
-				}
-				setInvites(Array.isArray(data?.invites) ? data.invites : []);
-			} catch (_error) {
-				if (isActive) {
-					toast({
-						title: "Unable to load invites",
-						description: "Please refresh and try again.",
-						variant: "destructive",
-					});
-				}
-			} finally {
-				if (isActive) {
-					setIsLoading(false);
-				}
-			}
-		};
+	const manageInviteMutation = trpc.households.manageInvite.useMutation({
+		onSuccess: (_, variables) => {
+			toast({ title: variables.action === "revoke" ? "Invite revoked" : "Invite regenerated" });
+			utils.households.getInvites.invalidate();
+		},
+		onError: (error, variables) => {
+			toast({
+				title: variables.action === "revoke" ? "Unable to revoke invite" : "Unable to resend invite",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
-		load();
-
-		return () => {
-			isActive = false;
-		};
-	}, [canInvite, toast]);
+	const invites = data?.invites ?? [];
 
 	if (!canInvite) {
 		return null;
@@ -81,78 +74,19 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 
 	const handleInvite = () => {
 		startTransition(async () => {
-			const res = await fetch("/api/households/invites", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ role }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to send invite",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			if (body?.invite) {
-				setInvites((prev) => [body.invite, ...prev]);
-			}
-			toast({ title: "Invite code generated" });
+			await createInviteMutation.mutateAsync({ role });
 		});
 	};
 
 	const handleRevoke = (inviteId: string) => {
 		startTransition(async () => {
-			const res = await fetch(`/api/households/invites/${inviteId}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ action: "revoke" }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to revoke invite",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			setInvites((prev) => prev.filter((invite) => invite.id !== inviteId));
-			toast({ title: "Invite revoked" });
+			await manageInviteMutation.mutateAsync({ id: inviteId, action: "revoke" });
 		});
 	};
 
 	const handleResend = (inviteId: string) => {
 		startTransition(async () => {
-			const res = await fetch(`/api/households/invites/${inviteId}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ action: "resend" }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to resend invite",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			if (body?.invite) {
-				setInvites((prev) =>
-					prev.map((invite) => (invite.id === body.invite.id ? { ...invite, ...body.invite } : invite)),
-				);
-			}
-			toast({ title: "Invite regenerated" });
+			await manageInviteMutation.mutateAsync({ id: inviteId, action: "resend" });
 		});
 	};
 

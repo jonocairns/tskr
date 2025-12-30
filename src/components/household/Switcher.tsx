@@ -3,76 +3,44 @@
 import { CheckIcon, ChevronDownIcon, HomeIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/DropdownMenu";
 import { useToast } from "@/hooks/useToast";
-
-type Household = {
-	id: string;
-	name: string;
-	role: "DICTATOR" | "APPROVER" | "DOER";
-};
+import { trpc } from "@/lib/trpc/react";
 
 export const Switcher = () => {
-	const [households, setHouseholds] = useState<Household[]>([]);
-	const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
 	const { status, update } = useSession();
 
-	useEffect(() => {
-		if (status !== "authenticated") {
-			return;
-		}
+	const { data, isLoading } = trpc.households.list.useQuery(undefined, {
+		enabled: status === "authenticated",
+	});
 
-		let isActive = true;
-
-		const load = async () => {
-			if (isActive) {
-				setIsLoading(true);
-			}
-
-			try {
-				const res = await fetch("/api/households");
-				if (!res.ok) {
-					throw new Error("Failed to load households");
-				}
-				const data = await res.json().catch(() => ({}));
-				if (!isActive) {
-					return;
-				}
-				setHouseholds(Array.isArray(data?.households) ? data.households : []);
-				setActiveHouseholdId(typeof data?.activeHouseholdId === "string" ? data.activeHouseholdId : null);
-			} catch (_error) {
-				if (isActive) {
-					toast({
-						title: "Unable to load households",
-						description: "Please refresh and try again.",
-						variant: "destructive",
-					});
-				}
-			} finally {
-				if (isActive) {
-					setIsLoading(false);
-				}
-			}
-		};
-
-		load();
-
-		return () => {
-			isActive = false;
-		};
-	}, [status, toast]);
+	const households = data?.households ?? [];
+	const activeHouseholdId = data?.activeHouseholdId ?? null;
 
 	const activeHousehold = useMemo(
 		() => households.find((household) => household.id === activeHouseholdId) ?? households[0] ?? null,
 		[households, activeHouseholdId],
 	);
+
+	const selectMutation = trpc.households.select.useMutation({
+		onSuccess: async () => {
+			await update();
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to switch households",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
 	const handleSelect = (householdId: string) => {
 		if (householdId === activeHouseholdId || isPending) {
@@ -80,25 +48,7 @@ export const Switcher = () => {
 		}
 
 		startTransition(async () => {
-			const res = await fetch("/api/households/select", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ householdId }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to switch households",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			setActiveHouseholdId(householdId);
-			await update();
-			router.refresh();
+			await selectMutation.mutateAsync({ householdId });
 		});
 	};
 
