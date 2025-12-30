@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState } from "react";
 
 import {
 	AlertDialog,
@@ -17,14 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
-
-type Member = {
-	id: string;
-	userId: string;
-	role: "DICTATOR" | "APPROVER" | "DOER";
-	requiresApprovalDefault: boolean;
-	user: { name: string | null; email: string | null; image: string | null };
-};
+import { useMembers, useUpdateMember } from "@/lib/api/hooks";
+import type { Member, Role } from "@/lib/api/schemas";
 
 type Props = {
 	householdId: string;
@@ -34,80 +28,45 @@ type Props = {
 };
 
 export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" }: Props) => {
-	const [members, setMembers] = useState<Member[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isPending, startTransition] = useTransition();
 	const [pendingRoleChange, setPendingRoleChange] = useState<{
 		memberId: string;
-		role: Member["role"];
+		role: Role;
 	} | null>(null);
 	const { toast } = useToast();
 	const isSection = variant === "section";
+
+	// Use TanStack Query hooks
+	const { data, isLoading, error } = useMembers();
+	const updateMemberMutation = useUpdateMember();
+
+	const members = data?.members ?? [];
 	const dictatorCount = members.filter((member) => member.role === "DICTATOR").length;
 
-	useEffect(() => {
-		let isActive = true;
-
-		const load = async () => {
-			setIsLoading(true);
-			try {
-				const res = await fetch("/api/households/members");
-				if (!res.ok) {
-					throw new Error("Failed to load members");
-				}
-				const data = await res.json().catch(() => ({}));
-				if (!isActive) {
-					return;
-				}
-				setMembers(Array.isArray(data?.members) ? data.members : []);
-			} catch (_error) {
-				if (isActive) {
-					toast({
-						title: "Unable to load members",
-						description: "Please refresh and try again.",
-						variant: "destructive",
-					});
-				}
-			} finally {
-				if (isActive) {
-					setIsLoading(false);
-				}
-			}
-		};
-
-		load();
-
-		return () => {
-			isActive = false;
-		};
-	}, [toast]);
+	// Show error toast if query fails
+	if (error) {
+		toast({
+			title: "Unable to load members",
+			description: "Please refresh and try again.",
+			variant: "destructive",
+		});
+	}
 
 	const updateMember = (memberId: string, payload: Partial<Pick<Member, "role" | "requiresApprovalDefault">>) => {
-		startTransition(async () => {
-			const res = await fetch(`/api/households/members/${memberId}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(payload),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to update member",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			if (body?.member) {
-				setMembers((prev) =>
-					prev.map((member) => (member.id === body.member.id ? { ...member, ...body.member } : member)),
-				);
-			}
-			toast({ title: "Member updated" });
-		});
+		updateMemberMutation.mutate(
+			{ id: memberId, data: payload },
+			{
+				onSuccess: () => {
+					toast({ title: "Member updated" });
+				},
+				onError: (error: Error) => {
+					toast({
+						title: "Unable to update member",
+						description: error.message ?? "Please try again.",
+						variant: "destructive",
+					});
+				},
+			},
+		);
 	};
 
 	const handleConfirmRoleChange = () => {
@@ -147,7 +106,7 @@ export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" 
 						{members.map((member) => {
 							const isSelf = member.userId === currentUserId;
 							const isOnlyDictator = member.role === "DICTATOR" && dictatorCount === 1;
-							const roleSelectDisabled = isPending;
+							const roleSelectDisabled = updateMemberMutation.isPending;
 							return (
 								<TableRow key={member.id}>
 									<TableCell>
@@ -160,7 +119,7 @@ export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" 
 										{canManageMembers ? (
 											<Select
 												value={member.role}
-												onValueChange={(value: "DICTATOR" | "APPROVER" | "DOER") => {
+												onValueChange={(value: Role) => {
 													if (value === member.role) {
 														return;
 													}
@@ -209,7 +168,7 @@ export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" 
 														requiresApprovalDefault: value === "require",
 													})
 												}
-												disabled={isPending}
+												disabled={updateMemberMutation.isPending}
 											>
 												<SelectTrigger>
 													<SelectValue placeholder="Select default" />
@@ -252,7 +211,7 @@ export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" 
 						<AlertDialogAction
 							type="button"
 							onClick={handleConfirmRoleChange}
-							disabled={isPending}
+							disabled={updateMemberMutation.isPending}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
 							Confirm change
