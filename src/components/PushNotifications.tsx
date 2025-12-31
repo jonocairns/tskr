@@ -165,42 +165,6 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 		setIsKeyLoaded(true);
 	}, [keyData]);
 
-	useEffect(() => {
-		if (!registration || !hasVapidKey) {
-			return;
-		}
-
-		let active = true;
-
-		const syncSubscription = async () => {
-			const subscription = await registration.pushManager.getSubscription();
-			if (!subscription || !active) {
-				return;
-			}
-
-			const json = subscription.toJSON();
-			if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-				return;
-			}
-
-			await subscribeMutation.mutateAsync({
-				endpoint: json.endpoint,
-				keys: {
-					p256dh: json.keys.p256dh,
-					auth: json.keys.auth,
-				},
-			});
-		};
-
-		syncSubscription().catch((error) => {
-			console.error("[push] sync failed", error);
-		});
-
-		return () => {
-			active = false;
-		};
-	}, [registration, hasVapidKey, subscribeMutation]);
-
 	const helperText = useMemo(() => {
 		if (status === "unsupported") {
 			return "Your browser does not support Web Push.";

@@ -8,7 +8,7 @@ import { householdProcedure, protectedProcedure, publicProcedure, router } from 
 import { config } from "@/server-config";
 
 const subscriptionSchema = z.object({
-	endpoint: z.string().url(),
+	endpoint: z.url(),
 	keys: z.object({
 		p256dh: z.string(),
 		auth: z.string(),
@@ -16,7 +16,7 @@ const subscriptionSchema = z.object({
 });
 
 const unsubscribeSchema = z.object({
-	endpoint: z.string(),
+	endpoint: z.url(),
 });
 
 export const pushRouter = router({
@@ -34,9 +34,6 @@ export const pushRouter = router({
 		const userId = ctx.session.user.id;
 		const { endpoint, keys } = input;
 
-		// Get user agent from context if available
-		const userAgent = undefined; // tRPC doesn't expose headers by default
-
 		const existing = await prisma.pushSubscription.findUnique({
 			where: { endpoint },
 			select: { userId: true },
@@ -45,6 +42,8 @@ export const pushRouter = router({
 		if (existing && existing.userId !== userId) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Subscription is registered to another user" });
 		}
+
+		const userAgent = ctx.req?.headers.get("user-agent") ?? null;
 
 		await prisma.pushSubscription.upsert({
 			where: { endpoint },
