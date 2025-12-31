@@ -1,4 +1,3 @@
-// Simulate the resolveRequiresApproval logic from logs.ts
 const resolveRequiresApproval = (override: string | null | undefined, membershipDefault: boolean): boolean => {
 	if (override === "REQUIRE") {
 		return true;
@@ -9,7 +8,7 @@ const resolveRequiresApproval = (override: string | null | undefined, membership
 	return membershipDefault;
 };
 
-// Simulate the task completion logic from updateStatus
+
 const shouldCompleteTask = (
 	task: { isRecurring: boolean; status: string; cadenceTarget: number } | null,
 	approvedCount: number,
@@ -26,7 +25,7 @@ const shouldCompleteTask = (
 	return approvedCount >= task.cadenceTarget;
 };
 
-// Simulate permission checks for updateStatus actions
+
 type Role = "DICTATOR" | "APPROVER" | "DOER";
 type Action = "approve" | "reject" | "resubmit" | "revert";
 type LogStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -100,7 +99,7 @@ const checkUpdatePermission = (input: PermissionCheckInput): { allowed: boolean;
 	return { allowed: false, error: "Unsupported action" };
 };
 
-describe("logs router: resolveRequiresApproval", () => {
+describe("resolveRequiresApproval", () => {
 	describe("override behavior", () => {
 		test("returns true when override is REQUIRE", () => {
 			expect(resolveRequiresApproval("REQUIRE", false)).toBe(true);
@@ -166,7 +165,7 @@ describe("logs router: resolveRequiresApproval", () => {
 	});
 });
 
-describe("logs router: task completion logic", () => {
+describe("task completion logic", () => {
 	describe("basic completion conditions", () => {
 		test("completes non-recurring active task when target reached", () => {
 			const task = { isRecurring: false, status: "ACTIVE", cadenceTarget: 3 };
@@ -261,7 +260,7 @@ describe("logs router: task completion logic", () => {
 	});
 });
 
-describe("logs router: update permission checks", () => {
+describe("update permission checks", () => {
 	describe("approve action", () => {
 		test("DICTATOR can approve pending logs from others", () => {
 			const result = checkUpdatePermission({
@@ -308,7 +307,7 @@ describe("logs router: update permission checks", () => {
 				action: "approve",
 				userRole: "DICTATOR",
 				logOwnerId: "user-1",
-				actorId: "user-1", // Same user
+				actorId: "user-1",
 				logStatus: "PENDING",
 				logKind: "PRESET",
 				isReverted: false,
@@ -417,7 +416,7 @@ describe("logs router: update permission checks", () => {
 				action: "reject",
 				userRole: "DICTATOR",
 				logOwnerId: "user-1",
-				actorId: "user-1", // Same user
+				actorId: "user-1",
 				logStatus: "PENDING",
 				logKind: "PRESET",
 				isReverted: false,
@@ -459,7 +458,7 @@ describe("logs router: update permission checks", () => {
 				action: "resubmit",
 				userRole: "DOER",
 				logOwnerId: "user-1",
-				actorId: "user-1", // Same user
+				actorId: "user-1",
 				logStatus: "REJECTED",
 				logKind: "PRESET",
 				isReverted: false,
@@ -472,7 +471,7 @@ describe("logs router: update permission checks", () => {
 				action: "resubmit",
 				userRole: "DICTATOR",
 				logOwnerId: "user-1",
-				actorId: "user-2", // Different user
+				actorId: "user-2",
 				logStatus: "REJECTED",
 				logKind: "PRESET",
 				isReverted: false,
@@ -521,15 +520,13 @@ describe("logs router: update permission checks", () => {
 		});
 
 		test("can resubmit any log kind if rejected (including rewards)", () => {
-			// Note: Rewards can't normally be approved/rejected in first place,
-			// but if somehow a reward is rejected, resubmit doesn't block it
 			const result = checkUpdatePermission({
 				action: "resubmit",
 				userRole: "DOER",
 				logOwnerId: "user-1",
 				actorId: "user-1",
 				logStatus: "REJECTED",
-				logKind: "TIMED", // Use TIMED instead since rewards can't be rejected normally
+				logKind: "TIMED",
 				isReverted: false,
 			});
 			expect(result.allowed).toBe(true);
@@ -555,7 +552,7 @@ describe("logs router: update permission checks", () => {
 				action: "revert",
 				userRole: "DOER",
 				logOwnerId: "user-1",
-				actorId: "user-2", // Different user
+				actorId: "user-2",
 				logStatus: "APPROVED",
 				logKind: "PRESET",
 				isReverted: false,
@@ -677,7 +674,6 @@ describe("logs router: update permission checks", () => {
 		});
 
 		test("multiple permission failures return first error", () => {
-			// Both DOER and own task - should return DOER error first
 			const result = checkUpdatePermission({
 				action: "approve",
 				userRole: "DOER",
@@ -722,8 +718,6 @@ describe("logs router: update permission checks", () => {
 
 	describe("real-world scenarios", () => {
 		test("scenario: complete approval workflow", () => {
-			// User creates log (pending)
-			// Approver reviews and approves
 			const approve = checkUpdatePermission({
 				action: "approve",
 				userRole: "APPROVER",
@@ -735,7 +729,6 @@ describe("logs router: update permission checks", () => {
 			});
 			expect(approve.allowed).toBe(true);
 
-			// Later, dictator reverts it
 			const revert = checkUpdatePermission({
 				action: "revert",
 				userRole: "DICTATOR",
@@ -749,7 +742,6 @@ describe("logs router: update permission checks", () => {
 		});
 
 		test("scenario: rejection and resubmit workflow", () => {
-			// Approver rejects task
 			const reject = checkUpdatePermission({
 				action: "reject",
 				userRole: "APPROVER",
@@ -761,7 +753,6 @@ describe("logs router: update permission checks", () => {
 			});
 			expect(reject.allowed).toBe(true);
 
-			// User resubmits
 			const resubmit = checkUpdatePermission({
 				action: "resubmit",
 				userRole: "DOER",
@@ -779,7 +770,7 @@ describe("logs router: update permission checks", () => {
 				action: "approve",
 				userRole: "APPROVER",
 				logOwnerId: "user-1",
-				actorId: "user-1", // Same user
+				actorId: "user-1",
 				logStatus: "PENDING",
 				logKind: "PRESET",
 				isReverted: false,
