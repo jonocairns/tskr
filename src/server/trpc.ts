@@ -8,7 +8,7 @@ import { checkForSensitiveInfo, sanitizeErrorMessage } from "@/lib/errorSanitiza
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { validateSessionExpiry } from "@/lib/sessionValidation";
 
-export async function createTRPCContext() {
+export async function createTRPCContext(opts?: { req?: Request }) {
 	const session = await getAuthSession();
 
 	return {
@@ -17,6 +17,7 @@ export async function createTRPCContext() {
 			iat: session?.iat,
 			lastActivity: session?.lastActivity,
 		},
+		req: opts?.req,
 	};
 }
 
