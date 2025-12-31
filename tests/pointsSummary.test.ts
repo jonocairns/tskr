@@ -347,6 +347,266 @@ describe("getPointsSummaryMetrics", () => {
 		});
 	});
 
+	describe("extreme edge cases: Infinity and NaN", () => {
+		test("handles Infinity points with valid threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: Number.POSITIVE_INFINITY, threshold: 100 });
+			expect(metrics.progress).toBe(100); // Clamped by Math.min
+			expect(metrics.pointsToGo).toBe(0);
+			expect(metrics.rewardsAvailable).toBe(Number.POSITIVE_INFINITY);
+			expect(metrics.carryoverPoints).toBeNaN(); // Infinity % 100 = NaN
+			expect(metrics.canClaim).toBe(true);
+		});
+
+		test("handles negative Infinity points with valid threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: Number.NEGATIVE_INFINITY, threshold: 100 });
+			expect(metrics.progress).toBe(0); // Clamped by Math.max
+			expect(metrics.pointsToGo).toBe(Number.POSITIVE_INFINITY);
+			expect(metrics.rewardsAvailable).toBe(Number.NEGATIVE_INFINITY);
+			expect(metrics.carryoverPoints).toBeNaN(); // -Infinity % 100 = NaN
+			expect(metrics.canClaim).toBe(false);
+		});
+
+		test("handles valid points with Infinity threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: 100, threshold: Number.POSITIVE_INFINITY });
+			expect(metrics.progress).toBe(0); // 100 / Infinity rounds to 0
+			expect(metrics.pointsToGo).toBe(Number.POSITIVE_INFINITY);
+			expect(metrics.rewardsAvailable).toBe(0); // Math.floor(100 / Infinity) = 0
+			expect(metrics.carryoverPoints).toBe(100); // 100 % Infinity = 100 in JS
+			expect(metrics.canClaim).toBe(false);
+		});
+
+		test("handles Infinity points with Infinity threshold", () => {
+			const metrics = getPointsSummaryMetrics({
+				points: Number.POSITIVE_INFINITY,
+				threshold: Number.POSITIVE_INFINITY,
+			});
+			// Infinity / Infinity = NaN, Math.round(NaN * 100) = NaN
+			expect(metrics.progress).toBeNaN();
+			expect(metrics.pointsToGo).toBeNaN(); // Math.max(Infinity - Infinity, 0) = NaN
+			expect(metrics.rewardsAvailable).toBeNaN(); // Math.floor(Infinity / Infinity) = NaN
+			expect(metrics.carryoverPoints).toBeNaN(); // Infinity % Infinity = NaN
+			expect(metrics.canClaim).toBe(true); // Infinity >= Infinity is true
+		});
+
+		test("handles NaN points with valid threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: Number.NaN, threshold: 100 });
+			// Math.round(NaN / threshold * 100) = NaN, Math.min(100, Math.max(0, NaN)) = NaN
+			expect(metrics.progress).toBeNaN();
+			expect(metrics.pointsToGo).toBeNaN(); // Math.max(100 - NaN, 0) = NaN
+			expect(metrics.rewardsAvailable).toBeNaN(); // Math.floor(NaN / 100) = NaN
+			expect(metrics.carryoverPoints).toBeNaN(); // NaN % 100 = NaN
+			expect(metrics.canClaim).toBe(false); // NaN >= 100 is false
+		});
+
+		test("handles valid points with NaN threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: 100, threshold: Number.NaN });
+			expect(metrics.progress).toBe(100); // hasValidThreshold is false for NaN (NaN > 0 is false)
+			expect(metrics.pointsToGo).toBe(0);
+			expect(metrics.rewardsAvailable).toBe(0);
+			expect(metrics.carryoverPoints).toBe(0);
+			expect(metrics.canClaim).toBe(false); // 100 >= NaN is false
+		});
+
+		test("handles NaN points with NaN threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: Number.NaN, threshold: Number.NaN });
+			expect(metrics.progress).toBe(100);
+			expect(metrics.pointsToGo).toBe(0);
+			expect(metrics.rewardsAvailable).toBe(0);
+			expect(metrics.carryoverPoints).toBe(0);
+			expect(metrics.canClaim).toBe(false); // NaN >= NaN is false
+		});
+	});
+
+	describe("floating point precision edge cases", () => {
+		test("handles very small positive threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: 1, threshold: 0.0001 });
+			expect(metrics.rewardsAvailable).toBe(10000);
+			expect(metrics.progress).toBe(100);
+		});
+
+		test("handles very small decimal points", () => {
+			const metrics = getPointsSummaryMetrics({ points: 0.0001, threshold: 100 });
+			expect(metrics.progress).toBe(0); // Rounds to 0%
+			expect(metrics.pointsToGo).toBeCloseTo(99.9999, 4);
+		});
+
+		test("handles floating point arithmetic edge case", () => {
+			// Classic JS floating point issue: 0.1 + 0.2 = 0.30000000000000004
+			const metrics = getPointsSummaryMetrics({ points: 0.1 + 0.2, threshold: 1 });
+			expect(metrics.progress).toBe(30);
+			expect(metrics.carryoverPoints).toBeCloseTo(0.3, 10);
+		});
+
+		test("handles modulo with decimal threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: 10.5, threshold: 3.3 });
+			expect(metrics.rewardsAvailable).toBe(3); // Math.floor(10.5 / 3.3) = 3
+			expect(metrics.carryoverPoints).toBeCloseTo(0.6, 1); // 10.5 % 3.3 ≈ 0.6
+		});
+
+		test("handles very large numbers near MAX_SAFE_INTEGER", () => {
+			const nearMax = Number.MAX_SAFE_INTEGER - 1;
+			const metrics = getPointsSummaryMetrics({ points: nearMax, threshold: 1000 });
+			expect(metrics.rewardsAvailable).toBeGreaterThan(0);
+			expect(Number.isFinite(metrics.rewardsAvailable)).toBe(true);
+		});
+
+		test("handles very small numbers near MIN_VALUE", () => {
+			const metrics = getPointsSummaryMetrics({ points: Number.MIN_VALUE, threshold: 100 });
+			expect(metrics.progress).toBe(0);
+			expect(metrics.rewardsAvailable).toBe(0);
+			expect(metrics.pointsToGo).toBeCloseTo(100, 10);
+		});
+
+		test("handles denormalized numbers", () => {
+			const tiny = Number.MIN_VALUE * 2;
+			const metrics = getPointsSummaryMetrics({ points: tiny, threshold: 100 });
+			expect(metrics.progress).toBe(0);
+			expect(metrics.pointsToGo).toBeCloseTo(100, 50);
+		});
+
+		test("handles rounding near 0.5 boundaries", () => {
+			// Test Math.round behavior at exact 0.5
+			const metrics1 = getPointsSummaryMetrics({ points: 50.4999, threshold: 100 });
+			const metrics2 = getPointsSummaryMetrics({ points: 50.5, threshold: 100 });
+
+			expect(metrics1.progress).toBe(50);
+			expect(metrics2.progress).toBe(51); // Math.round rounds 0.5 up
+		});
+	});
+
+	describe("division and modulo edge cases", () => {
+		test("handles threshold of 1 correctly", () => {
+			const metrics = getPointsSummaryMetrics({ points: 7, threshold: 1 });
+			expect(metrics.rewardsAvailable).toBe(7);
+			expect(metrics.carryoverPoints).toBe(0);
+			expect(metrics.progress).toBe(100);
+		});
+
+		test("handles fractional threshold division", () => {
+			const metrics = getPointsSummaryMetrics({ points: 10, threshold: 3 });
+			expect(metrics.rewardsAvailable).toBe(3);
+			expect(metrics.carryoverPoints).toBe(1); // 10 % 3 = 1
+			expect(metrics.nextRewardProgress).toBe(33);
+		});
+
+		test("handles negative modulo correctly", () => {
+			// In JavaScript, -7 % 3 = -1 (not 2 like in some languages)
+			const metrics = getPointsSummaryMetrics({ points: -7, threshold: 3 });
+			expect(metrics.carryoverPoints).toBe(-1);
+			expect(metrics.rewardsAvailable).toBe(-3); // Math.floor(-7 / 3) = -3
+		});
+
+		test("handles threshold just above zero", () => {
+			const metrics = getPointsSummaryMetrics({ points: 100, threshold: 0.1 });
+			expect(metrics.rewardsAvailable).toBe(1000);
+			expect(metrics.progress).toBe(100);
+		});
+
+		test("handles points just below threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: 99.999, threshold: 100 });
+			expect(metrics.progress).toBe(100); // Rounds to 100%
+			expect(metrics.rewardsAvailable).toBe(0);
+			expect(metrics.canClaim).toBe(false);
+		});
+
+		test("handles points just above threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: 100.001, threshold: 100 });
+			expect(metrics.progress).toBe(100);
+			expect(metrics.rewardsAvailable).toBe(1);
+			expect(metrics.canClaim).toBe(true);
+			expect(metrics.carryoverPoints).toBeCloseTo(0.001, 3);
+		});
+	});
+
+	describe("progress percentage edge cases", () => {
+		test("handles progress exactly at 0.5%", () => {
+			const metrics = getPointsSummaryMetrics({ points: 0.5, threshold: 100 });
+			expect(metrics.progress).toBe(1); // Math.round(0.5) = 1 in JS
+		});
+
+		test("handles progress exactly at 99.5%", () => {
+			const metrics = getPointsSummaryMetrics({ points: 99.5, threshold: 100 });
+			expect(metrics.progress).toBe(100); // Math.round(99.5) = 100
+		});
+
+		test("handles progress at 100.5% (should clamp to 100%)", () => {
+			const metrics = getPointsSummaryMetrics({ points: 100.5, threshold: 100 });
+			expect(metrics.progress).toBe(100); // Math.min(100, ...) clamps it
+		});
+
+		test("handles progress calculation with very large ratio", () => {
+			const metrics = getPointsSummaryMetrics({ points: 1_000_000, threshold: 1 });
+			expect(metrics.progress).toBe(100); // Should be clamped
+		});
+
+		test("handles progress calculation with very small ratio", () => {
+			const metrics = getPointsSummaryMetrics({ points: 1, threshold: 1_000_000 });
+			expect(metrics.progress).toBe(0);
+		});
+	});
+
+	describe("nextRewardPointsToGo edge cases", () => {
+		test("nextRewardPointsToGo never goes negative with excess points", () => {
+			const metrics = getPointsSummaryMetrics({ points: 199, threshold: 100 });
+			expect(metrics.nextRewardPointsToGo).toBe(1); // Math.max(100 - 99, 0) = 1
+			expect(metrics.nextRewardPointsToGo).toBeGreaterThanOrEqual(0);
+		});
+
+		test("nextRewardPointsToGo at exact threshold multiple", () => {
+			const metrics = getPointsSummaryMetrics({ points: 500, threshold: 100 });
+			expect(metrics.nextRewardPointsToGo).toBe(100);
+			expect(metrics.carryoverPoints).toBe(0);
+		});
+
+		test("nextRewardPointsToGo with fractional carryover", () => {
+			const metrics = getPointsSummaryMetrics({ points: 123.456, threshold: 100 });
+			expect(metrics.nextRewardPointsToGo).toBeCloseTo(76.544, 3);
+		});
+	});
+
+	describe("consistency checks", () => {
+		test("progress and pointsToGo should sum correctly", () => {
+			const metrics = getPointsSummaryMetrics({ points: 45, threshold: 100 });
+			const progressPoints = (metrics.progress / 100) * 100;
+			// Due to rounding, this might not be exact
+			expect(progressPoints + metrics.pointsToGo).toBeCloseTo(100, 0);
+		});
+
+		test("carryoverPoints should always be less than threshold", () => {
+			const metrics = getPointsSummaryMetrics({ points: 175, threshold: 100 });
+			expect(metrics.carryoverPoints).toBeLessThan(100);
+			expect(metrics.carryoverPoints).toBeGreaterThanOrEqual(0);
+		});
+
+		test("rewardsAvailable matches floor division", () => {
+			const points = 273;
+			const threshold = 50;
+			const metrics = getPointsSummaryMetrics({ points, threshold });
+			expect(metrics.rewardsAvailable).toBe(Math.floor(points / threshold));
+		});
+
+		test("canClaim consistency with rewardsAvailable", () => {
+			const canClaim = getPointsSummaryMetrics({ points: 100, threshold: 100 });
+			const cannotClaim = getPointsSummaryMetrics({ points: 99, threshold: 100 });
+
+			expect(canClaim.canClaim).toBe(true);
+			expect(canClaim.rewardsAvailable).toBeGreaterThanOrEqual(1);
+
+			expect(cannotClaim.canClaim).toBe(false);
+			expect(cannotClaim.rewardsAvailable).toBe(0);
+		});
+
+		test("showCarryover only true when both canClaim and hasValidThreshold", () => {
+			const valid = getPointsSummaryMetrics({ points: 150, threshold: 100 });
+			const noThreshold = getPointsSummaryMetrics({ points: 150, threshold: 0 });
+			const noClaim = getPointsSummaryMetrics({ points: 50, threshold: 100 });
+
+			expect(valid.showCarryover).toBe(true);
+			expect(noThreshold.showCarryover).toBe(false);
+			expect(noClaim.showCarryover).toBe(false);
+		});
+	});
+
 	describe("real-world scenarios", () => {
 		test("scenario: user just starting out", () => {
 			const metrics = getPointsSummaryMetrics({ points: 0, threshold: 100 });
