@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useState } from "react";
 
 import type { UserRow } from "@/components/admin/UsersTable";
 import {
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -26,7 +27,6 @@ type Props = {
 
 export const CreateUserDialog = ({ onCreated }: Props) => {
 	const { toast } = useToast();
-	const [isPending, startTransition] = useTransition();
 	const [open, setOpen] = useState(false);
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -41,6 +41,25 @@ export const CreateUserDialog = ({ onCreated }: Props) => {
 		setConfirmPassword("");
 		setRequireReset(true);
 	};
+
+	const createMutation = trpc.admin.createUser.useMutation({
+		onSuccess: (result) => {
+			resetForm();
+			setOpen(false);
+			toast({ title: "User created" });
+
+			if (result.user && onCreated) {
+				onCreated(result.user);
+			}
+		},
+		onError: (error) => {
+			toast({
+				title: "Create failed",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
 	const canSubmit =
 		email.trim().length > 0 &&
@@ -78,40 +97,15 @@ export const CreateUserDialog = ({ onCreated }: Props) => {
 			return;
 		}
 
-		startTransition(async () => {
-			const res = await fetch("/api/admin/users", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					name: name.trim().length > 0 ? name.trim() : null,
-					email: email.trim(),
-					password,
-					passwordResetRequired: requireReset,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Create failed",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			const createdUser = body?.user as UserRow | undefined;
-
-			resetForm();
-			setOpen(false);
-			toast({ title: "User created" });
-
-			if (createdUser && onCreated) {
-				onCreated(createdUser);
-			}
+		createMutation.mutate({
+			name: name.trim().length > 0 ? name.trim() : null,
+			email: email.trim(),
+			password,
+			passwordResetRequired: requireReset,
 		});
 	};
+
+	const isPending = createMutation.isPending;
 
 	const handleOpenChange = (nextOpen: boolean) => {
 		if (!nextOpen) {

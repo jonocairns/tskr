@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useState, useTransition } from "r
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
+import { trpc } from "@/lib/trpc/react";
 
 type TaskActionsContextValue = {
 	presetOptions: PresetOption[];
@@ -44,11 +45,31 @@ export const TaskActionsProvider = ({
 	const defaultBucket = DURATION_BUCKETS.find((bucket) => bucket.key === "QUICK")?.key ?? DURATION_BUCKETS[0].key;
 	const [note, setNote] = useState("");
 	const [customPresets, setCustomPresets] = useState(presets);
-	const [isPending, startTransition] = useTransition();
 	const [isPresetPending, startPresetTransition] = useTransition();
 
 	const router = useRouter();
 	const { toast } = useToast();
+	const utils = trpc.useUtils();
+
+	const createLogMutation = trpc.logs.create.useMutation({
+		onSuccess: (data) => {
+			const isPending = data.entry.status === "PENDING";
+			setNote("");
+			toast({
+				title: isPending ? "Submitted for approval" : "Task logged",
+				description: isPending ? "Task logged and waiting for approval." : "Task recorded and points added.",
+			});
+			utils.logs.invalidate();
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to log task",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
 	useEffect(() => {
 		setCustomPresets(presets);
@@ -68,40 +89,15 @@ export const TaskActionsProvider = ({
 	}));
 
 	const logPreset = (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => {
-		startTransition(async () => {
-			const noteValue = overrideNote ?? note.trim();
-			const res = await fetch("/api/logs", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					type: "preset",
-					...payload,
-					description: noteValue || undefined,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to log task",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			const isPending = body?.entry?.status === "PENDING";
-			setNote("");
-			toast({
-				title: isPending ? "Submitted for approval" : "Task logged",
-				description: isPending ? "Task logged and waiting for approval." : "Preset task recorded and points added.",
-			});
-			router.refresh();
+		const noteValue = overrideNote ?? note.trim();
+		createLogMutation.mutate({
+			type: "preset",
+			...payload,
+			description: noteValue || undefined,
 		});
 	};
 
-	const disabled = isPending || isPresetPending;
+	const disabled = createLogMutation.isPending || isPresetPending;
 
 	return (
 		<TaskActionsContext.Provider
@@ -116,9 +112,9 @@ export const TaskActionsProvider = ({
 				setNote,
 				defaultBucket,
 				disabled,
-				isPending,
+				isPending: createLogMutation.isPending,
 				isPresetPending,
-				startTransition,
+				startTransition: startPresetTransition,
 				startPresetTransition,
 				logPreset,
 			}}

@@ -2,7 +2,6 @@
 
 import { CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/useToast";
 import { formatCadenceInterval } from "@/lib/assignedTasksCadence";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
-import { requestJson } from "@/lib/requestJson";
+import { trpc } from "@/lib/trpc/react";
 
 export type AssignedTaskEntry = {
 	id: string;
@@ -34,27 +33,12 @@ type Props = {
 };
 
 export const AssignedTaskQueue = ({ entries }: Props) => {
-	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
 	const { toast } = useToast();
 
-	const handleComplete = (taskId: string) => {
-		startTransition(async () => {
-			const { res, data } = await requestJson<{
-				entry?: { status?: string };
-				error?: string;
-			}>(`/api/assigned-tasks/${taskId}/complete`, { method: "POST" });
-
-			if (!res.ok) {
-				toast({
-					title: "Unable to complete task",
-					description: data?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const isPendingApproval = data?.entry?.status === "PENDING";
+	const completeMutation = trpc.assignedTasks.complete.useMutation({
+		onSuccess: (result) => {
+			const isPendingApproval = result.entry.status === "PENDING";
 			toast({
 				title: isPendingApproval ? "Submitted for approval" : "Task completed",
 				description: isPendingApproval
@@ -62,8 +46,21 @@ export const AssignedTaskQueue = ({ entries }: Props) => {
 					: "Completion logged and points added.",
 			});
 			router.refresh();
-		});
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to complete task",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const handleComplete = (taskId: string) => {
+		completeMutation.mutate({ id: taskId });
 	};
+
+	const isPending = completeMutation.isPending;
 
 	return (
 		<Card>

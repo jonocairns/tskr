@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	redirectTo?: string;
@@ -24,30 +25,8 @@ export const CreateCard = ({ redirectTo }: Props) => {
 	const trimmed = name.trim();
 	const canSubmit = trimmed.length === 0 || trimmed.length >= 2;
 
-	const handleCreate = () => {
-		if (!canSubmit) {
-			return;
-		}
-
-		startTransition(async () => {
-			const res = await fetch("/api/households", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					name: trimmed.length > 0 ? trimmed : undefined,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to create household",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
+	const createMutation = trpc.households.create.useMutation({
+		onSuccess: async () => {
 			setName("");
 			toast({ title: "Household created" });
 			await update();
@@ -56,6 +35,25 @@ export const CreateCard = ({ redirectTo }: Props) => {
 			} else {
 				router.refresh();
 			}
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to create household",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const handleCreate = () => {
+		if (!canSubmit) {
+			return;
+		}
+
+		startTransition(async () => {
+			await createMutation.mutateAsync({
+				name: trimmed.length > 0 ? trimmed : undefined,
+			});
 		});
 	};
 

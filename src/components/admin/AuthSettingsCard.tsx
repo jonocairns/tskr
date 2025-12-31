@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	initialAllowGoogleAccountCreation: boolean;
@@ -12,38 +13,29 @@ type Props = {
 
 export const AuthSettingsCard = ({ initialAllowGoogleAccountCreation }: Props) => {
 	const { toast } = useToast();
-	const [isPending, startTransition] = useTransition();
 	const [allowGoogleAccountCreation, setAllowGoogleAccountCreation] = useState(initialAllowGoogleAccountCreation);
 
-	const handleToggle = (value: boolean) => {
-		const previousValue = allowGoogleAccountCreation;
-		setAllowGoogleAccountCreation(value);
-
-		startTransition(async () => {
-			const res = await fetch("/api/admin/app-settings", {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ allowGoogleAccountCreation: value }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				setAllowGoogleAccountCreation(previousValue);
-				toast({
-					title: "Update failed",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			if (typeof body?.settings?.allowGoogleAccountCreation === "boolean") {
-				setAllowGoogleAccountCreation(body.settings.allowGoogleAccountCreation);
-			}
+	const updateMutation = trpc.admin.updateAppSettings.useMutation({
+		onSuccess: (result) => {
+			setAllowGoogleAccountCreation(result.settings.allowGoogleAccountCreation);
 			toast({ title: "Settings updated" });
-		});
+		},
+		onError: (error, variables) => {
+			setAllowGoogleAccountCreation(!variables.allowGoogleAccountCreation);
+			toast({
+				title: "Update failed",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const handleToggle = (value: boolean) => {
+		setAllowGoogleAccountCreation(value);
+		updateMutation.mutate({ allowGoogleAccountCreation: value });
 	};
+
+	const isPending = updateMutation.isPending;
 
 	return (
 		<Card>

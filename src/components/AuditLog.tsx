@@ -2,7 +2,7 @@
 
 import { Undo2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
 import type { LogKind } from "@/lib/points";
+import { trpc } from "@/lib/trpc/react";
 
 export type AuditLogEntry = {
 	id: string;
@@ -33,66 +34,66 @@ type Props = {
 export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 	const [items, setItems] = useState(entries);
 	const [hasMore, setHasMore] = useState(initialHasMore);
-	const [isLoadingMore, setIsLoadingMore] = useState(false);
-	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
 	const { toast } = useToast();
+	const utils = trpc.useUtils();
 
 	useEffect(() => {
 		setItems(entries);
 		setHasMore(initialHasMore);
 	}, [entries, initialHasMore]);
 
-	const undo = (id: string) => {
-		startTransition(async () => {
-			const res = await fetch(`/api/logs/${id}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ action: "revert" }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
+	const updateMutation = trpc.logs.updateStatus.useMutation({
+		onSuccess: (_, variables) => {
+			const action = variables.action;
+			if (action === "revert") {
+				toast({
+					title: "Entry reverted",
+					description: "The points from this entry were removed.",
+				});
+			} else if (action === "resubmit") {
+				toast({
+					title: "Resubmitted for approval",
+					description: "Your task is waiting for approval.",
+				});
+			}
+			utils.logs.invalidate();
+			router.refresh();
+		},
+		onError: (error, variables) => {
+			const action = variables.action;
+			if (action === "revert") {
 				toast({
 					title: "Unable to undo",
-					description: body?.error ?? "Try again shortly.",
+					description: error.message ?? "Try again shortly.",
 					variant: "destructive",
 				});
-				return;
+			} else if (action === "resubmit") {
+				toast({
+					title: "Unable to resubmit",
+					description: error.message ?? "Try again shortly.",
+					variant: "destructive",
+				});
 			}
+		},
+	});
 
-			toast({
-				title: "Entry reverted",
-				description: "The points from this entry were removed.",
-			});
-			router.refresh();
-		});
+	const { refetch: loadMoreQuery, isFetching: isLoadingMore } = trpc.logs.getHistory.useQuery(
+		{
+			offset: items.length,
+			limit: 10,
+		},
+		{
+			enabled: false,
+		},
+	);
+
+	const undo = (id: string) => {
+		updateMutation.mutate({ id, action: "revert" });
 	};
 
 	const resubmit = (id: string) => {
-		startTransition(async () => {
-			const res = await fetch(`/api/logs/${id}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ action: "resubmit" }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to resubmit",
-					description: body?.error ?? "Try again shortly.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			toast({
-				title: "Resubmitted for approval",
-				description: "Your task is waiting for approval.",
-			});
-			router.refresh();
-		});
+		updateMutation.mutate({ id, action: "resubmit" });
 	};
 
 	const loadMore = async () => {
@@ -100,18 +101,11 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 			return;
 		}
 
-		setIsLoadingMore(true);
 		try {
-			const res = await fetch(`/api/logs?offset=${items.length}&limit=10`);
-			if (!res.ok) {
-				throw new Error("Failed to load more");
-			}
-			const data = await res.json().catch(() => ({}));
-			if (Array.isArray(data?.entries)) {
-				setItems((prev) => [...prev, ...data.entries]);
-				setHasMore(Boolean(data?.hasMore));
-			} else {
-				setHasMore(false);
+			const result = await loadMoreQuery();
+			if (result.data) {
+				setItems((prev) => [...prev, ...result.data.entries]);
+				setHasMore(result.data.hasMore);
 			}
 		} catch (_error) {
 			toast({
@@ -119,10 +113,10 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 				description: "Please try again shortly.",
 				variant: "destructive",
 			});
-		} finally {
-			setIsLoadingMore(false);
 		}
 	};
+
+	const isPending = updateMutation.isPending;
 
 	return (
 		<Card>

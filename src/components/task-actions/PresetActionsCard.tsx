@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
+import { trpc } from "@/lib/trpc/react";
 
 export const PresetActionsCard = () => {
 	const {
@@ -27,7 +28,6 @@ export const PresetActionsCard = () => {
 		defaultBucket,
 		isPending,
 		isPresetPending,
-		startTransition,
 		startPresetTransition,
 		logPreset,
 	} = useTaskActions();
@@ -35,9 +35,117 @@ export const PresetActionsCard = () => {
 
 	const router = useRouter();
 	const { toast } = useToast();
+	const utils = trpc.useUtils();
 	const canSharePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = currentUserRole !== "DOER";
 	const [searchQuery, setSearchQuery] = useState("");
+
+	const createPresetMutation = trpc.presets.create.useMutation({
+		onSuccess: (data) => {
+			setCustomPresets((prev) => [
+				{
+					...data.preset,
+					bucket: data.preset.bucket as DurationKey,
+					createdAt: data.preset.createdAt.toISOString(),
+				},
+				...prev,
+			]);
+			toast({
+				title: "Preset added",
+				description: "Chore added to your presets.",
+			});
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to add preset",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const updatePresetMutation = trpc.presets.update.useMutation({
+		onMutate: async (variables) => {
+			const previousPresets = customPresets;
+			setCustomPresets((prev) =>
+				prev.map((preset) =>
+					preset.id === variables.id
+						? {
+								...preset,
+								label: variables.label ?? preset.label,
+								bucket: variables.bucket ?? preset.bucket,
+								approvalOverride: variables.approvalOverride ?? preset.approvalOverride,
+							}
+						: preset,
+				),
+			);
+			return { previousPresets };
+		},
+		onError: (error, _variables, context) => {
+			if (context?.previousPresets) {
+				setCustomPresets(context.previousPresets);
+			}
+			toast({
+				title: "Unable to update preset",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+		onSuccess: (data) => {
+			setCustomPresets((prev) =>
+				prev.map((preset) =>
+					preset.id === data.preset.id
+						? {
+								...data.preset,
+								bucket: data.preset.bucket as DurationKey,
+								createdAt: data.preset.createdAt.toISOString(),
+							}
+						: preset,
+				),
+			);
+			toast({ title: "Preset updated" });
+		},
+	});
+
+	const deletePresetMutation = trpc.presets.delete.useMutation({
+		onMutate: async (variables) => {
+			const previousPresets = customPresets;
+			setCustomPresets((prev) => prev.filter((item) => item.id !== variables.id));
+			return { previousPresets };
+		},
+		onError: (error, _variables, context) => {
+			if (context?.previousPresets) {
+				setCustomPresets(context.previousPresets);
+			}
+			toast({
+				title: "Unable to delete preset",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+		onSuccess: () => {
+			toast({ title: "Preset deleted" });
+		},
+	});
+
+	const createLogMutation = trpc.logs.create.useMutation({
+		onSuccess: (data) => {
+			const isPending = data.entry.status === "PENDING";
+			toast({
+				title: isPending ? "Submitted for approval" : "Task logged",
+				description: isPending ? "Task logged and waiting for approval." : "Time-based task recorded and points added.",
+			});
+			utils.logs.invalidate();
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to log task",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
 	const editablePresets = customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId);
 	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
@@ -70,36 +178,21 @@ export const PresetActionsCard = () => {
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
-				const res = await fetch("/api/presets", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
+				try {
+					await createPresetMutation.mutateAsync({
 						label: template.label,
 						bucket: template.bucket,
 						isShared: canSharePresets,
 						approvalOverride,
-					}),
-				});
-
-				if (!res.ok) {
-					const body = await res.json().catch(() => ({}));
-					toast({
-						title: "Unable to add preset",
-						description: body?.error ?? "Please try again.",
-						variant: "destructive",
 					});
-					return;
-				}
-
-				const body = await res.json().catch(() => ({}));
-				if (body?.preset) {
-					setCustomPresets((prev) => [body.preset, ...prev]);
 					success = true;
+					toast({
+						title: "Preset added",
+						description: "Template added to your presets.",
+					});
+				} catch {
+					// Error handled by mutation onError
 				}
-				toast({
-					title: "Preset added",
-					description: "Template added to your presets.",
-				});
 				resolve();
 			}),
 		);
@@ -118,36 +211,17 @@ export const PresetActionsCard = () => {
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
-				const res = await fetch("/api/presets", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
+				try {
+					await createPresetMutation.mutateAsync({
 						label: label.trim(),
 						bucket,
 						isShared: canSharePresets,
 						approvalOverride,
-					}),
-				});
-
-				if (!res.ok) {
-					const body = await res.json().catch(() => ({}));
-					toast({
-						title: "Unable to add preset",
-						description: body?.error ?? "Please try again.",
-						variant: "destructive",
 					});
-					return;
+					success = true;
+				} catch {
+					// Error handled by mutation onError
 				}
-
-				const body = await res.json().catch(() => ({}));
-				if (body?.preset) {
-					setCustomPresets((prev) => [body.preset, ...prev]);
-				}
-				toast({
-					title: "Preset added",
-					description: "Chore added to your presets.",
-				});
-				success = true;
 				resolve();
 			}),
 		);
@@ -160,43 +234,19 @@ export const PresetActionsCard = () => {
 			return false;
 		}
 
-		let success = false;
-		await new Promise<void>((resolve) =>
-			startTransition(async () => {
-				const res = await fetch("/api/logs", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						type: "timed",
-						bucket,
-						description: label.trim(),
-					}),
-				});
-
-				if (!res.ok) {
-					const body = await res.json().catch(() => ({}));
-					toast({
-						title: "Unable to log task",
-						description: body?.error ?? "Please try again.",
-						variant: "destructive",
-					});
-					return;
-				}
-
-				const body = await res.json().catch(() => ({}));
-				const isPending = body?.entry?.status === "PENDING";
-				toast({
-					title: isPending ? "Submitted for approval" : "Task logged",
-					description: isPending
-						? "Task logged and waiting for approval."
-						: "Time-based task recorded and points added.",
-				});
-				router.refresh();
-				success = true;
-				resolve();
-			}),
-		);
-		return success;
+		return new Promise<boolean>((resolve) => {
+			createLogMutation.mutate(
+				{
+					type: "timed",
+					bucket,
+					description: label.trim(),
+				},
+				{
+					onSuccess: () => resolve(true),
+					onError: () => resolve(false),
+				},
+			);
+		});
 	};
 
 	const closeEditDrawer = () => {
@@ -216,40 +266,17 @@ export const PresetActionsCard = () => {
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
-				const payload: {
-					label: string;
-					bucket: DurationKey;
-					approvalOverride?: "REQUIRE" | "SKIP" | null;
-				} = {
-					label: label.trim(),
-					bucket,
-				};
-				if (approvalOverride !== undefined) {
-					payload.approvalOverride = approvalOverride;
-				}
-
-				const res = await fetch(`/api/presets/${presetId}`, {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(payload),
-				});
-
-				if (!res.ok) {
-					const body = await res.json().catch(() => ({}));
-					toast({
-						title: "Unable to update preset",
-						description: body?.error ?? "Please try again.",
-						variant: "destructive",
+				try {
+					await updatePresetMutation.mutateAsync({
+						id: presetId,
+						label: label.trim(),
+						bucket,
+						approvalOverride,
 					});
-					return;
+					success = true;
+				} catch {
+					// Error handled by mutation onError
 				}
-
-				const body = await res.json().catch(() => ({}));
-				if (body?.preset) {
-					setCustomPresets((prev) => prev.map((preset) => (preset.id === presetId ? body.preset : preset)));
-				}
-				toast({ title: "Preset updated" });
-				success = true;
 				resolve();
 			}),
 		);
@@ -260,23 +287,12 @@ export const PresetActionsCard = () => {
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
-				const res = await fetch(`/api/presets/${presetId}`, {
-					method: "DELETE",
-				});
-
-				if (!res.ok) {
-					const body = await res.json().catch(() => ({}));
-					toast({
-						title: "Unable to delete preset",
-						description: body?.error ?? "Please try again.",
-						variant: "destructive",
-					});
-					return;
+				try {
+					await deletePresetMutation.mutateAsync({ id: presetId });
+					success = true;
+				} catch {
+					// Error handled by mutation onError
 				}
-
-				setCustomPresets((prev) => prev.filter((item) => item.id !== presetId));
-				toast({ title: "Preset deleted" });
-				success = true;
 				resolve();
 			}),
 		);

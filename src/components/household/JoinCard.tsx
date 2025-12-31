@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
-import { requestJson } from "@/lib/requestJson";
+import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	variant?: "card" | "section";
@@ -27,26 +27,8 @@ export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 	const trimmed = code.trim().toUpperCase();
 	const canSubmit = trimmed.length >= 4;
 
-	const handleJoin = () => {
-		if (!canSubmit) {
-			return;
-		}
-
-		startTransition(async () => {
-			const { res, data } = await requestJson<{ error?: string }>("/api/households/join", {
-				method: "POST",
-				body: { code: trimmed },
-			});
-
-			if (!res.ok) {
-				toast({
-					title: "Unable to join household",
-					description: data?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
+	const joinMutation = trpc.households.join.useMutation({
+		onSuccess: async () => {
 			setCode("");
 			toast({ title: "Joined household" });
 			await update();
@@ -55,6 +37,23 @@ export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 			} else {
 				router.refresh();
 			}
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to join household",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const handleJoin = () => {
+		if (!canSubmit) {
+			return;
+		}
+
+		startTransition(async () => {
+			await joinMutation.mutateAsync({ code: trimmed });
 		});
 	};
 

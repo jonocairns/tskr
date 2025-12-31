@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	canDelete: boolean;
@@ -30,28 +31,27 @@ export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: P
 	const router = useRouter();
 	const isSection = variant === "section";
 
+	const deleteMutation = trpc.households.deleteCurrent.useMutation({
+		onSuccess: () => {
+			toast({ title: "Household deleted" });
+			router.push("/landing");
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to delete household",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
 	if (!canDelete) {
 		return null;
 	}
 
 	const handleDelete = () => {
 		startTransition(async () => {
-			const res = await fetch("/api/households/current", {
-				method: "DELETE",
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to delete household",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			toast({ title: "Household deleted" });
-			router.push("/landing");
+			await deleteMutation.mutateAsync();
 		});
 	};
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	householdId: string;
@@ -29,71 +30,79 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 	const [progressBarColor, setProgressBarColor] = useState(DEFAULT_PROGRESS_BAR_COLOR);
 	const [initialProgressBarColor, setInitialProgressBarColor] = useState<string | null>(null);
 	const [useCustomProgressBarColor, setUseCustomProgressBarColor] = useState(false);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
 	const isSection = variant === "section";
 
-	useEffect(() => {
-		if (!canManage) {
-			return;
-		}
+	const { data, isLoading, error } = trpc.households.getCurrent.useQuery(undefined, {
+		enabled: canManage,
+	});
 
-		let isActive = true;
+	const utils = trpc.useUtils();
 
-		const load = async () => {
-			setIsLoading(true);
-			try {
-				const res = await fetch("/api/households/current");
-				if (!res.ok) {
-					throw new Error("Failed to load household");
-				}
-				const data = await res.json().catch(() => ({}));
-				if (!isActive) {
-					return;
-				}
-				const fetchedName = typeof data?.household?.name === "string" ? data.household.name : "";
-				const fetchedThreshold =
-					typeof data?.household?.rewardThreshold === "number" ? data.household.rewardThreshold : 50;
-				const fetchedProgressBarColor =
-					typeof data?.household?.progressBarColor === "string" &&
-					isValidProgressBarColor(data.household.progressBarColor)
-						? data.household.progressBarColor
-						: null;
-				setName(fetchedName);
-				setInitialName(fetchedName);
-				setThreshold(String(fetchedThreshold));
-				setInitialThreshold(fetchedThreshold);
-				setProgressBarColor(fetchedProgressBarColor ?? DEFAULT_PROGRESS_BAR_COLOR);
-				setInitialProgressBarColor(fetchedProgressBarColor);
-				setUseCustomProgressBarColor(Boolean(fetchedProgressBarColor));
-			} catch (_error) {
-				if (isActive) {
-					toast({
-						title: "Unable to load household settings",
-						description: "Please refresh and try again.",
-						variant: "destructive",
-					});
-				}
-			} finally {
-				if (isActive) {
-					setIsLoading(false);
-				}
+	const updateMutation = trpc.households.updateCurrent.useMutation({
+		onSuccess: (result) => {
+			const updatedName = result.household.name;
+			const updatedThreshold = result.household.rewardThreshold;
+			const updatedProgressBarColor = result.household.progressBarColor;
+
+			setName(updatedName);
+			setInitialName(updatedName);
+			setThreshold(String(updatedThreshold));
+			setInitialThreshold(updatedThreshold);
+			setInitialProgressBarColor(updatedProgressBarColor);
+			setUseCustomProgressBarColor(Boolean(updatedProgressBarColor));
+			if (updatedProgressBarColor) {
+				setProgressBarColor(updatedProgressBarColor);
 			}
-		};
 
-		load();
+			toast({ title: "Household updated" });
+			utils.households.getCurrent.invalidate();
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to update household",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
 
-		return () => {
-			isActive = false;
-		};
-	}, [canManage, toast]);
+	useEffect(() => {
+		if (data?.household) {
+			const fetchedName = data.household.name;
+			const fetchedThreshold = data.household.rewardThreshold;
+			const fetchedProgressBarColor =
+				data.household.progressBarColor && isValidProgressBarColor(data.household.progressBarColor)
+					? data.household.progressBarColor
+					: null;
+
+			setName(fetchedName);
+			setInitialName(fetchedName);
+			setThreshold(String(fetchedThreshold));
+			setInitialThreshold(fetchedThreshold);
+			setProgressBarColor(fetchedProgressBarColor ?? DEFAULT_PROGRESS_BAR_COLOR);
+			setInitialProgressBarColor(fetchedProgressBarColor);
+			setUseCustomProgressBarColor(Boolean(fetchedProgressBarColor));
+		}
+	}, [data]);
+
+	useEffect(() => {
+		if (error) {
+			toast({
+				title: "Unable to load household settings",
+				description: "Please refresh and try again.",
+				variant: "destructive",
+			});
+		}
+	}, [error, toast]);
 
 	if (!canManage) {
 		return null;
 	}
 
+	const isPending = updateMutation.isPending;
 	const isDirty = name.trim() !== initialName.trim();
 	const parsedThreshold = Number(threshold);
 	const thresholdValid = Number.isFinite(parsedThreshold) && parsedThreshold >= 1;
@@ -108,49 +117,10 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 			return;
 		}
 
-		startTransition(async () => {
-			const res = await fetch("/api/households/current", {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					name: name.trim(),
-					rewardThreshold: Math.floor(parsedThreshold),
-					progressBarColor: currentProgressBarColor,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to update household",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			const updatedName = typeof body?.household?.name === "string" ? body.household.name : name.trim();
-			const updatedThreshold =
-				typeof body?.household?.rewardThreshold === "number"
-					? body.household.rewardThreshold
-					: Math.floor(parsedThreshold);
-			const updatedProgressBarColor =
-				typeof body?.household?.progressBarColor === "string" &&
-				isValidProgressBarColor(body.household.progressBarColor)
-					? body.household.progressBarColor
-					: null;
-			setName(updatedName);
-			setInitialName(updatedName);
-			setThreshold(String(updatedThreshold));
-			setInitialThreshold(updatedThreshold);
-			setInitialProgressBarColor(updatedProgressBarColor);
-			setUseCustomProgressBarColor(Boolean(updatedProgressBarColor));
-			if (updatedProgressBarColor) {
-				setProgressBarColor(updatedProgressBarColor);
-			}
-			toast({ title: "Household updated" });
-			router.refresh();
+		updateMutation.mutate({
+			name: name.trim(),
+			rewardThreshold: Math.floor(parsedThreshold),
+			progressBarColor: currentProgressBarColor,
 		});
 	};
 

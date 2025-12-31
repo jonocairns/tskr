@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/useToast";
 import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
-import { requestJson } from "@/lib/requestJson";
+import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	points: number;
@@ -46,28 +46,28 @@ export const PointsSummary = ({
 	};
 	const progressLabel = canClaim ? `${nextRewardProgress}% toward another reward` : `${progress}% toward next reward`;
 
-	const handleClaim = () => {
-		setSubmitting(true);
-		startTransition(async () => {
-			const { res, data } = await requestJson<{ error?: string }>("/api/claim", {
-				method: "POST",
-			});
-			setSubmitting(false);
-
-			if (!res.ok) {
-				toast({
-					title: "Not quite there",
-					description: data?.error ?? `You need ${threshold - points} more points to claim a reward.`,
-					variant: "destructive",
-				});
-				return;
-			}
-
+	const claimMutation = trpc.claim.claimReward.useMutation({
+		onSuccess: () => {
 			toast({
 				title: "Reward claimed",
 				description: `We deducted ${threshold} points. Nice work!`,
 			});
 			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Not quite there",
+				description: error.message ?? `You need ${threshold - points} more points to claim a reward.`,
+				variant: "destructive",
+			});
+		},
+	});
+
+	const handleClaim = () => {
+		setSubmitting(true);
+		startTransition(async () => {
+			await claimMutation.mutateAsync();
+			setSubmitting(false);
 		});
 	};
 

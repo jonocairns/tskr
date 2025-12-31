@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
 	AlertDialog,
@@ -28,7 +28,7 @@ import {
 	DEFAULT_CADENCE_INTERVAL_MINUTES,
 	DEFAULT_CADENCE_TARGET,
 } from "@/lib/assignedTasksCadence";
-import { requestJson } from "@/lib/requestJson";
+import { trpc } from "@/lib/trpc/react";
 
 const ASSIGNEE_ALL_VALUE = "all";
 
@@ -51,7 +51,6 @@ type Props = {
 export const AssignedTasksManager = ({ initialTasks }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
-	const [isPending, startTransition] = useTransition();
 	const [tasks, setTasks] = useState(initialTasks);
 	const [assigneeFilter, setAssigneeFilter] = useState(ASSIGNEE_ALL_VALUE);
 
@@ -120,6 +119,47 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 		);
 	};
 
+	const updateMutation = trpc.assignedTasks.update.useMutation({
+		onSuccess: (result, variables) => {
+			updateTask(variables.id, {
+				cadenceTarget: result.assignedTask.cadenceTarget,
+				cadenceIntervalMinutes: result.assignedTask.cadenceIntervalMinutes,
+				isRecurring: result.assignedTask.isRecurring,
+			});
+			toast({ title: "Assigned task updated" });
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to update task",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const deleteMutation = trpc.assignedTasks.delete.useMutation({
+		onMutate: async (variables) => {
+			const previousTasks = tasks;
+			setTasks((prev) => prev.filter((task) => task.id !== variables.id));
+			return { previousTasks };
+		},
+		onError: (error, _variables, context) => {
+			if (context?.previousTasks) {
+				setTasks(context.previousTasks);
+			}
+			toast({
+				title: "Unable to delete task",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+		onSuccess: () => {
+			toast({ title: "Assigned task deleted" });
+			router.refresh();
+		},
+	});
+
 	const handleSave = (taskId: string) => {
 		const task = tasks.find((item) => item.id === taskId);
 		if (!task) {
@@ -131,65 +171,19 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 			? Math.max(1, task.cadenceIntervalMinutes || 1)
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
-		startTransition(async () => {
-			const { res, data } = await requestJson<{
-				assignedTask?: {
-					cadenceTarget: number;
-					cadenceIntervalMinutes: number;
-					isRecurring: boolean;
-				};
-				error?: string;
-			}>(`/api/assigned-tasks/${taskId}`, {
-				method: "PATCH",
-				body: {
-					cadenceTarget,
-					cadenceIntervalMinutes,
-					isRecurring: task.isRecurring,
-				},
-			});
-
-			if (!res.ok) {
-				toast({
-					title: "Unable to update task",
-					description: data?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			if (data?.assignedTask) {
-				updateTask(taskId, {
-					cadenceTarget: data.assignedTask.cadenceTarget,
-					cadenceIntervalMinutes: data.assignedTask.cadenceIntervalMinutes,
-					isRecurring: data.assignedTask.isRecurring,
-				});
-			}
-
-			toast({ title: "Assigned task updated" });
-			router.refresh();
+		updateMutation.mutate({
+			id: taskId,
+			cadenceTarget,
+			cadenceIntervalMinutes,
+			isRecurring: task.isRecurring,
 		});
 	};
 
 	const handleDelete = (taskId: string) => {
-		startTransition(async () => {
-			const { res, data } = await requestJson<{ error?: string }>(`/api/assigned-tasks/${taskId}`, {
-				method: "DELETE",
-			});
-
-			if (!res.ok) {
-				toast({
-					title: "Unable to delete task",
-					description: data?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			setTasks((prev) => prev.filter((task) => task.id !== taskId));
-			toast({ title: "Assigned task deleted" });
-			router.refresh();
-		});
+		deleteMutation.mutate({ id: taskId });
 	};
+
+	const isPending = updateMutation.isPending || deleteMutation.isPending;
 
 	return (
 		<Card>

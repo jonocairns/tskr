@@ -2,7 +2,7 @@
 
 import { ChromeIcon, XIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import {
 	AlertDialog,
 	AlertDialogContent,
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 export type UserRow = {
 	id: string;
@@ -55,7 +56,6 @@ type Props = {
 
 export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Props) => {
 	const { toast } = useToast();
-	const [isPending, startTransition] = useTransition();
 	const [draft, setDraft] = useState<Draft | null>(null);
 
 	const rowsById = useMemo(() => {
@@ -84,6 +84,110 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 		setDraft(null);
 	};
 
+	const updateUserMutation = trpc.admin.updateUser.useMutation({
+		onMutate: ({ id }) => {
+			setRow(id, (current) => ({ ...current, isSaving: true }));
+		},
+		onSuccess: (_, variables) => {
+			const name = draft?.name.trim() ?? "";
+			const email = draft?.email.trim().toLowerCase() ?? "";
+			setRow(variables.id, (current) => ({
+				...current,
+				name: name.length > 0 ? name : null,
+				email,
+				passwordResetRequired: draft?.passwordResetRequired ?? current.passwordResetRequired,
+				passwordLoginDisabled: draft?.passwordLoginDisabled ?? current.passwordLoginDisabled,
+				isSaving: false,
+			}));
+			closeEditor();
+			toast({ title: "User updated" });
+		},
+		onError: (error, variables) => {
+			toast({
+				title: "Update failed",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+			setRow(variables.id, (current) => ({ ...current, isSaving: false }));
+		},
+	});
+
+	const deleteUserMutation = trpc.admin.deleteUser.useMutation({
+		onMutate: ({ id }) => {
+			setRow(id, (current) => ({ ...current, isDeleting: true }));
+		},
+		onSuccess: (_, variables) => {
+			setRows((current) => current.filter((item) => item.id !== variables.id));
+			closeEditor();
+			toast({ title: "User deleted" });
+		},
+		onError: (error, variables) => {
+			toast({
+				title: "Delete failed",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+			setRow(variables.id, (current) => ({ ...current, isDeleting: false }));
+		},
+	});
+
+	const createPasswordResetMutation = trpc.admin.createPasswordReset.useMutation({
+		onMutate: ({ email }) => {
+			const row = Array.from(rowsById.values()).find((r) => r.email?.toLowerCase() === email.toLowerCase());
+			if (row) {
+				setRow(row.id, (current) => ({ ...current, isResetting: true }));
+			}
+		},
+		onSuccess: (result, variables) => {
+			const row = Array.from(rowsById.values()).find((r) => r.email?.toLowerCase() === variables.email.toLowerCase());
+			if (row) {
+				setRow(row.id, (current) => ({
+					...current,
+					isResetting: false,
+					resetUrl: result.resetUrl,
+					resetExpiresAt: result.expiresAt,
+				}));
+			}
+			toast({ title: "Reset link created" });
+		},
+		onError: (error, variables) => {
+			const row = Array.from(rowsById.values()).find((r) => r.email?.toLowerCase() === variables.email.toLowerCase());
+			if (row) {
+				setRow(row.id, (current) => ({ ...current, isResetting: false }));
+			}
+			toast({
+				title: "Reset link failed",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const deletePasswordResetsMutation = trpc.admin.deletePasswordResets.useMutation({
+		onMutate: ({ userId }) => {
+			setRow(userId, (current) => ({ ...current, isClearingReset: true }));
+		},
+		onSuccess: (result, variables) => {
+			setRow(variables.userId, (current) => ({
+				...current,
+				isClearingReset: false,
+				resetUrl: "",
+				resetExpiresAt: "",
+			}));
+			toast({
+				title: result.deleted && result.deleted > 0 ? "Reset links deleted" : "No reset links found",
+			});
+		},
+		onError: (error, variables) => {
+			toast({
+				title: "Unable to delete reset links",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+			setRow(variables.userId, (current) => ({ ...current, isClearingReset: false }));
+		},
+	});
+
 	const handleSave = () => {
 		if (!draft) {
 			return;
@@ -104,41 +208,12 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			return;
 		}
 
-		setRow(row.id, (current) => ({ ...current, isSaving: true }));
-
-		startTransition(async () => {
-			const res = await fetch(`/api/admin/users/${row.id}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					name: name.length > 0 ? name : null,
-					email,
-					passwordResetRequired: draft.passwordResetRequired,
-					passwordLoginDisabled: draft.passwordLoginDisabled,
-				}),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Update failed",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				setRow(row.id, (current) => ({ ...current, isSaving: false }));
-				return;
-			}
-
-			setRow(row.id, (current) => ({
-				...current,
-				name: name.length > 0 ? name : null,
-				email,
-				passwordResetRequired: draft.passwordResetRequired,
-				passwordLoginDisabled: draft.passwordLoginDisabled,
-				isSaving: false,
-			}));
-			closeEditor();
-			toast({ title: "User updated" });
+		updateUserMutation.mutate({
+			id: row.id,
+			name: name.length > 0 ? name : null,
+			email,
+			passwordResetRequired: draft.passwordResetRequired,
+			passwordLoginDisabled: draft.passwordLoginDisabled,
 		});
 	};
 
@@ -152,28 +227,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			return;
 		}
 
-		setRow(id, (current) => ({ ...current, isDeleting: true }));
-
-		startTransition(async () => {
-			const res = await fetch(`/api/admin/users/${id}`, {
-				method: "DELETE",
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Delete failed",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				setRow(id, (current) => ({ ...current, isDeleting: false }));
-				return;
-			}
-
-			setRows((current) => current.filter((item) => item.id !== id));
-			closeEditor();
-			toast({ title: "User deleted" });
-		});
+		deleteUserMutation.mutate({ id });
 	};
 
 	const handleResetLink = (id: string, draftEmail?: string) => {
@@ -203,38 +257,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			return;
 		}
 
-		setRow(id, (current) => ({ ...current, isResetting: true }));
-
-		startTransition(async () => {
-			const res = await fetch("/api/admin/password-resets", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email: savedEmail }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Reset link failed",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				setRow(id, (current) => ({ ...current, isResetting: false }));
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			const resetUrl = typeof body?.resetUrl === "string" ? body.resetUrl : "";
-			const expiresAt = typeof body?.expiresAt === "string" ? body.expiresAt : "";
-
-			setRow(id, (current) => ({
-				...current,
-				isResetting: false,
-				resetUrl,
-				resetExpiresAt: expiresAt,
-			}));
-			toast({ title: "Reset link created" });
-		});
+		createPasswordResetMutation.mutate({ email: savedEmail });
 	};
 
 	const handleClearResetLinks = (id: string) => {
@@ -247,39 +270,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			return;
 		}
 
-		setRow(id, (current) => ({ ...current, isClearingReset: true }));
-
-		startTransition(async () => {
-			const res = await fetch("/api/admin/password-resets", {
-				method: "DELETE",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userId: id }),
-			});
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				toast({
-					title: "Unable to delete reset links",
-					description: body?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				setRow(id, (current) => ({ ...current, isClearingReset: false }));
-				return;
-			}
-
-			const body = await res.json().catch(() => ({}));
-			const deleted = typeof body?.deleted === "number" ? body.deleted : undefined;
-
-			setRow(id, (current) => ({
-				...current,
-				isClearingReset: false,
-				resetUrl: "",
-				resetExpiresAt: "",
-			}));
-			toast({
-				title: deleted && deleted > 0 ? "Reset links deleted" : "No reset links found",
-			});
-		});
+		deletePasswordResetsMutation.mutate({ userId: id });
 	};
 
 	const handleCopy = async (url: string) => {
@@ -307,6 +298,11 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 	const resetRequiredDirty = Boolean(activeRow && draft?.passwordResetRequired !== activeRow.passwordResetRequired);
 	const passwordLoginDirty = Boolean(activeRow && draft?.passwordLoginDisabled !== activeRow.passwordLoginDisabled);
 	const hasChanges = nameDirty || emailDirty || resetRequiredDirty || passwordLoginDirty;
+	const isPending =
+		updateUserMutation.isPending ||
+		deleteUserMutation.isPending ||
+		createPasswordResetMutation.isPending ||
+		deletePasswordResetsMutation.isPending;
 	const isBusy =
 		(activeRow?.isSaving ?? false) ||
 		(activeRow?.isDeleting ?? false) ||

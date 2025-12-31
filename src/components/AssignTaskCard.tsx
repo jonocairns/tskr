@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useMemo, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import type { PresetSummary } from "@/components/task-actions/types";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +17,7 @@ import {
 	DEFAULT_CADENCE_INTERVAL_MINUTES,
 	DEFAULT_CADENCE_TARGET,
 } from "@/lib/assignedTasksCadence";
-import { requestJson } from "@/lib/requestJson";
+import { trpc } from "@/lib/trpc/react";
 
 type MemberOption = {
 	id: string;
@@ -34,7 +34,6 @@ type AssignTaskCardProps = {
 export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCardProps) => {
 	const router = useRouter();
 	const { toast } = useToast();
-	const [isPending, startTransition] = useTransition();
 
 	const sortedMembers = useMemo(
 		() => [...members].sort((a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")),
@@ -60,6 +59,23 @@ export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCa
 		}
 	}, [assigneeId, currentUserId, sortedMembers]);
 
+	const createMutation = trpc.assignedTasks.create.useMutation({
+		onSuccess: () => {
+			toast({
+				title: "Assigned task created",
+				description: "The task is now in the queue.",
+			});
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: "Unable to assign task",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
+	});
+
 	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		if (!presetId || !assigneeId) {
@@ -76,36 +92,16 @@ export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCa
 			? Math.max(1, Number.parseInt(cadenceInterval, 10) || 1)
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
-		startTransition(async () => {
-			const { res, data } = await requestJson<{ error?: string }>("/api/assigned-tasks", {
-				method: "POST",
-				body: {
-					presetId,
-					assigneeId,
-					cadenceTarget: cadenceTargetValue,
-					cadenceIntervalMinutes,
-					isRecurring,
-				},
-			});
-
-			if (!res.ok) {
-				toast({
-					title: "Unable to assign task",
-					description: data?.error ?? "Please try again.",
-					variant: "destructive",
-				});
-				return;
-			}
-
-			toast({
-				title: "Assigned task created",
-				description: "The task is now in the queue.",
-			});
-			router.refresh();
+		createMutation.mutate({
+			presetId,
+			assigneeId,
+			cadenceTarget: cadenceTargetValue,
+			cadenceIntervalMinutes,
+			isRecurring,
 		});
 	};
 
-	const disabled = isPending || sortedMembers.length === 0 || sortedPresets.length === 0;
+	const disabled = createMutation.isPending || sortedMembers.length === 0 || sortedPresets.length === 0;
 
 	return (
 		<Card>
