@@ -15,6 +15,8 @@ const adapter = new PrismaBetterSqlite3({
 const DASHBOARD_MODELS = new Set(["AssignedTask", "PointLog", "PresetTask"]);
 const DASHBOARD_ACTIONS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 
+const SLOW_QUERY_THRESHOLD_MS = 100;
+
 const createPrismaClient = () => {
 	const client = new PrismaClient({ adapter, log: ["warn", "error"] });
 
@@ -22,7 +24,20 @@ const createPrismaClient = () => {
 		query: {
 			$allModels: {
 				async $allOperations({ model, operation, args, query }) {
+					const startTime = performance.now();
 					const result = await query(args);
+					const duration = performance.now() - startTime;
+
+					if (duration > SLOW_QUERY_THRESHOLD_MS) {
+						console.warn(
+							`[prisma:slow-query] ${model}.${operation} took ${duration.toFixed(2)}ms`,
+							config.isDev ? { args } : {},
+						);
+					}
+
+					if (config.isDev) {
+						console.log(`[prisma:query] ${model}.${operation} (${duration.toFixed(2)}ms)`);
+					}
 
 					if (model && DASHBOARD_MODELS.has(model) && DASHBOARD_ACTIONS.has(operation)) {
 						const householdId =
