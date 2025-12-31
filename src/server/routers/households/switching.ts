@@ -15,12 +15,7 @@ const selectHouseholdSchema = z.object({
 	householdId: z.string().min(1),
 });
 
-/**
- * Household switching router.
- * Handles listing, creating, and selecting active households.
- */
 export const householdSwitchingRouter = router({
-	// List all households for the current user
 	list: protectedProcedure.query(async ({ ctx }) => {
 		const userId = ctx.session.user.id;
 		const activeHouseholdId = await resolveActiveHouseholdId(userId, ctx.session.user.householdId ?? null);

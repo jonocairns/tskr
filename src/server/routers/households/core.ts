@@ -15,10 +15,6 @@ const updateSchema = z.object({
 		.nullable(),
 });
 
-/**
- * Core household operations router.
- * Handles getting, updating, and deleting the current household.
- */
 export const householdCoreRouter = router({
 	getCurrent: householdProcedure.query(async ({ ctx }) => {
 		const household = await prisma.household.findUnique({

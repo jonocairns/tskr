@@ -26,12 +26,7 @@ const inviteActionSchema = z.object({
 	action: z.enum(["revoke", "resend"]),
 });
 
-/**
- * Household invite management router.
- * Handles creating, listing, and managing (revoking/resending) household invites.
- */
 export const householdInvitesRouter = router({
-	// Get invites
 	getInvites: dictatorProcedure.query(async ({ ctx }) => {
 		const now = new Date();
 		await prisma.householdInvite.updateMany({

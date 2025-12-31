@@ -16,12 +16,7 @@ const updateMemberSchema = z
 		message: "No updates provided",
 	});
 
-/**
- * Household member management router.
- * Handles listing and updating household members.
- */
 export const householdMembersRouter = router({
-	// Get household members
 	getMembers: householdProcedure.query(async ({ ctx }) => {
 		const members = await prisma.householdMember.findMany({
 			where: { householdId: ctx.household.id },

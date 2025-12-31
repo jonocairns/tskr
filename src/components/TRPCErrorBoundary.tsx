@@ -17,18 +17,7 @@ type State = {
 	error: Error | null;
 };
 
-/**
- * Error fallback component that displays error UI and provides recovery options.
- */
-function ErrorFallback({
-	error,
-	onReset,
-	onReload,
-}: {
-	error: Error;
-	onReset: () => void;
-	onReload: () => void;
-}) {
+function ErrorFallback({ error, onReset, onReload }: { error: Error; onReset: () => void; onReload: () => void }) {
 	const isTRPCError = error instanceof TRPCClientError;
 
 	let errorMessage = "An unexpected error occurred";
@@ -46,9 +35,7 @@ function ErrorFallback({
 			<Card className="w-full max-w-md">
 				<CardHeader>
 					<CardTitle className="text-destructive">Something went wrong</CardTitle>
-					<CardDescription>
-						{errorCode ? `Error: ${errorCode}` : "We encountered an unexpected error"}
-					</CardDescription>
+					<CardDescription>{errorCode ? `Error: ${errorCode}` : "We encountered an unexpected error"}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<p className="text-sm text-muted-foreground">{errorMessage}</p>
@@ -57,9 +44,7 @@ function ErrorFallback({
 							<summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
 								Error details (dev only)
 							</summary>
-							<pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">
-								{error.stack || error.toString()}
-							</pre>
+							<pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">{error.stack || error.toString()}</pre>
 						</details>
 					)}
 				</CardContent>
@@ -76,16 +61,6 @@ function ErrorFallback({
 	);
 }
 
-/**
- * Global error boundary for catching unhandled tRPC errors.
- * Displays a user-friendly error message and provides recovery options.
- *
- * When "Try again" is clicked, it:
- * 1. Invalidates all cached queries to refetch fresh data
- * 2. Resets the error boundary state
- *
- * This provides a better UX than just clearing the error state without refetching.
- */
 export class TRPCErrorBoundary extends Component<Props, State> {
 	constructor(props: Props) {
 		super(props);
@@ -103,9 +78,6 @@ export class TRPCErrorBoundary extends Component<Props, State> {
 			errorInfo,
 			isTRPCError: error instanceof TRPCClientError,
 		});
-
-		// You can also send error to monitoring service here
-		// e.g., Sentry, LogRocket, etc.
 	}
 
 	private handleReset = () => {
@@ -126,15 +98,10 @@ export class TRPCErrorBoundary extends Component<Props, State> {
 	}
 }
 
-/**
- * Wrapper component that provides query invalidation on error recovery.
- * This component has access to the query client via hooks.
- */
 export function TRPCErrorBoundaryWithQueryInvalidation({ children }: { children: ReactNode }) {
 	const queryClient = useQueryClient();
 
 	const handleReset = () => {
-		// Invalidate all queries to refetch fresh data when recovering from error
 		queryClient.invalidateQueries();
 	};
 

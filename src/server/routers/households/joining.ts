@@ -22,10 +22,6 @@ if (!globalThis.joinRateLimit) {
 	globalThis.joinRateLimit = rateLimitStore;
 }
 
-/**
- * Cleans up expired entries from the rate limit store to prevent unbounded memory growth.
- * This function removes all entries whose resetAt timestamp has passed.
- */
 const cleanupExpiredEntries = () => {
 	const now = Date.now();
 	let removedCount = 0;
@@ -42,8 +38,6 @@ const cleanupExpiredEntries = () => {
 	}
 };
 
-// Run cleanup every 5 minutes to prevent memory leaks
-// In production with multiple instances, consider using Redis instead
 if (typeof setInterval !== "undefined") {
 	setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
 }
@@ -69,16 +63,10 @@ const joinSchema = z.object({
 	code: z.string().trim().min(4),
 });
 
-/**
- * Household joining router.
- * Handles joining households via invite codes with rate limiting.
- */
 export const householdJoiningRouter = router({
-	// Join household with invite code
 	join: protectedProcedure.input(joinSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
 
-		// Rate limiting
 		const rateKey = `join:${userId}`;
 		const rateCheck = checkRateLimit(rateKey);
 		if (!rateCheck.ok) {
