@@ -136,3 +136,213 @@ test("daily recurring tasks reset at local midnight", () => {
 	expect(state.isActive).toBe(false);
 	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
 });
+
+test("weekly recurring tasks reset at midnight 7 days after completion", () => {
+	const completedAt = atLocal(2024, 1, 1, 15, 30);
+	const logs = [{ createdAt: completedAt }];
+	const expectedReset = atLocal(2024, 1, 8, 0, 0);
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 10080, // 7 * 1440
+			isRecurring: true,
+		},
+		logs,
+		atLocal(2024, 1, 5, 12, 0),
+	);
+
+	expect(state.isActive).toBe(false);
+	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
+});
+
+test("handles cadenceTarget of zero by treating it as 1", () => {
+	const logs = [{ createdAt: at("2024-01-01T00:00:00.000Z") }];
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 0,
+			cadenceIntervalMinutes: 60,
+			isRecurring: true,
+		},
+		logs,
+		at("2024-01-01T00:30:00.000Z"),
+	);
+
+	expect(state.progress).toBe(1);
+	expect(state.isActive).toBe(false);
+});
+
+test("handles cadenceIntervalMinutes of zero by treating it as 1", () => {
+	const t0 = at("2024-01-01T00:00:00.000Z");
+	const logs = [{ createdAt: t0 }];
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 0,
+			isRecurring: true,
+		},
+		logs,
+		addMinutes(t0, 2), // 2 minutes later (after 1 minute reset)
+	);
+
+	expect(state.isActive).toBe(true);
+	expect(state.progress).toBe(0);
+	expect(state.nextResetAt?.getTime()).toBe(t0.getTime() + 60_000); // 1 minute later
+});
+
+test("handles unsorted logs correctly", () => {
+	const t0 = at("2024-01-01T00:00:00.000Z");
+	const t1 = at("2024-01-01T00:30:00.000Z");
+	const t2 = at("2024-01-01T00:15:00.000Z");
+	const logs = [{ createdAt: t1 }, { createdAt: t0 }, { createdAt: t2 }];
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 3,
+			cadenceIntervalMinutes: 60,
+			isRecurring: true,
+		},
+		logs,
+		at("2024-01-01T00:45:00.000Z"),
+	);
+
+	expect(state.progress).toBe(3);
+	expect(state.isActive).toBe(false);
+	expect(state.nextResetAt?.toISOString()).toBe(addMinutes(t1, 60).toISOString());
+});
+
+test("non-recurring task with logs beyond target counts only up to target", () => {
+	const logs = [
+		{ createdAt: at("2024-01-01T00:00:00.000Z") },
+		{ createdAt: at("2024-01-01T00:10:00.000Z") },
+		{ createdAt: at("2024-01-01T00:20:00.000Z") },
+		{ createdAt: at("2024-01-01T00:30:00.000Z") },
+		{ createdAt: at("2024-01-01T00:40:00.000Z") },
+	];
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 3,
+			cadenceIntervalMinutes: 60,
+			isRecurring: false,
+		},
+		logs,
+		at("2024-01-01T01:00:00.000Z"),
+	);
+
+	expect(state.progress).toBe(3);
+	expect(state.isActive).toBe(false);
+	expect(state.nextResetAt).toBeNull();
+});
+
+test("hourly tasks do not reset at day boundaries", () => {
+	const completedAt = atLocal(2024, 1, 1, 23, 30);
+	const logs = [{ createdAt: completedAt }];
+	const afterMidnight = atLocal(2024, 1, 2, 0, 15); // 45 minutes later, before 60-min reset
+	const afterReset = atLocal(2024, 1, 2, 0, 35); // 65 minutes later, after reset
+
+	const stateBefore = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 60,
+			isRecurring: true,
+		},
+		logs,
+		afterMidnight,
+	);
+
+	const stateAfter = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 60,
+			isRecurring: true,
+		},
+		logs,
+		afterReset,
+	);
+
+	expect(stateBefore.isActive).toBe(false);
+	expect(stateBefore.nextResetAt?.getTime()).toBe(addMinutes(completedAt, 60).getTime());
+
+	expect(stateAfter.isActive).toBe(true);
+	expect(stateAfter.nextResetAt?.getTime()).toBe(addMinutes(completedAt, 60).getTime());
+});
+
+test("monthly recurring tasks reset at midnight after 30 days", () => {
+	const completedAt = atLocal(2024, 1, 15, 10, 30);
+	const logs = [{ createdAt: completedAt }];
+	const expectedReset = atLocal(2024, 2, 14, 0, 0); // 30 days from midnight of completion day
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 43200, // 30 * 1440
+			isRecurring: true,
+		},
+		logs,
+		atLocal(2024, 2, 1, 12, 0),
+	);
+
+	expect(state.isActive).toBe(false);
+	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
+});
+
+test("task becomes active at exact reset time with progress reset", () => {
+	const t0 = at("2024-01-01T00:00:00.000Z");
+	const t1 = at("2024-01-01T00:10:00.000Z");
+	const t2 = at("2024-01-01T00:20:00.000Z");
+	const logs = [{ createdAt: t0 }, { createdAt: t1 }, { createdAt: t2 }];
+	const resetTime = addMinutes(t1, 60);
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 2,
+			cadenceIntervalMinutes: 60,
+			isRecurring: true,
+		},
+		logs,
+		resetTime,
+	);
+
+	expect(state.progress).toBe(1);
+	expect(state.isActive).toBe(true);
+	expect(state.nextResetAt?.toISOString()).toBe(resetTime.toISOString());
+});
+
+test("non-recurring task remains active when below target", () => {
+	const logs = [{ createdAt: at("2024-01-01T00:00:00.000Z") }];
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 5,
+			cadenceIntervalMinutes: 60,
+			isRecurring: false,
+		},
+		logs,
+		at("2024-01-01T01:00:00.000Z"),
+	);
+
+	expect(state.progress).toBe(1);
+	expect(state.isActive).toBe(true);
+	expect(state.nextResetAt).toBeNull();
+});
+
+test("handles fractional cadence intervals (90 minutes)", () => {
+	const t0 = at("2024-01-01T00:00:00.000Z");
+	const logs = [{ createdAt: t0 }];
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 90,
+			isRecurring: true,
+		},
+		logs,
+		addMinutes(t0, 45),
+	);
+
+	expect(state.isActive).toBe(false);
+	expect(state.nextResetAt?.toISOString()).toBe(addMinutes(t0, 90).toISOString());
+});

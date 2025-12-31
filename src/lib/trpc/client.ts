@@ -10,10 +10,5 @@ function getBaseUrl() {
 }
 
 export const trpcClient = createTRPCClient<AppRouter>({
-	links: [
-		httpBatchLink({
-			url: `${getBaseUrl()}/api/trpc`,
-			transformer: superjson,
-		}),
-	],
+	links: [httpBatchLink({ url: `${getBaseUrl()}/api/trpc`, transformer: superjson })],
 });

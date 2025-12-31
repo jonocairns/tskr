@@ -5,6 +5,7 @@ module.exports = {
 		"^.+\\.(ts|tsx)$": ["ts-jest", { tsconfig: { module: "CommonJS" } }],
 	},
 	moduleNameMapper: {
+		"^@/server-config$": "<rootDir>/server-config.ts",
 		"^@/(.*)$": "<rootDir>/src/$1",
 		"^server-only$": "<rootDir>/tests/__mocks__/server-only.ts",
 	},

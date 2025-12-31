@@ -20,24 +20,14 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
 		() =>
 			new QueryClient({
 				defaultOptions: {
-					queries: {
-						staleTime: 30 * 1000,
-						refetchOnWindowFocus: false,
-						retry: 3,
-						retryDelay: 1000,
-					},
+					queries: { staleTime: 30 * 1000, refetchOnWindowFocus: false, retry: 3, retryDelay: 1000 },
 				},
 			}),
 	);
 
 	const [trpcClient] = useState(() =>
 		trpc.createClient({
-			links: [
-				httpBatchLink({
-					url: `${getBaseUrl()}/api/trpc`,
-					transformer: superjson,
-				}),
-			],
+			links: [httpBatchLink({ url: `${getBaseUrl()}/api/trpc`, transformer: superjson })],
 		}),
 	);
 

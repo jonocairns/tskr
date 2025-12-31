@@ -33,3 +33,202 @@ test("returns / on invalid encoding", () => {
 test("accepts encoded relative paths", () => {
 	expect(resolveReturnTo("/dashboard%3Ftab%3D1")).toBe("/dashboard?tab=1");
 });
+
+describe("Multiple encoding layer attacks", () => {
+	test("blocks double-encoded protocol-relative URLs", () => {
+		expect(resolveReturnTo("%252F%252Fevil.com")).toBe("/");
+	});
+
+	test("blocks triple-encoded protocol-relative URLs", () => {
+		expect(resolveReturnTo("%25252F%25252Fevil.com")).toBe("/");
+	});
+
+	test("allows double-encoded backslash (single decode only)", () => {
+		expect(resolveReturnTo("/%255Cevil.com")).toBe("/%5Cevil.com");
+	});
+
+	test("allows double-encoded null byte (single decode only)", () => {
+		expect(resolveReturnTo("/%2500")).toBe("/%00");
+	});
+
+	test("allows double-encoded newline (single decode only)", () => {
+		expect(resolveReturnTo("/%250A")).toBe("/%0A");
+	});
+});
+
+describe("Unicode normalization attacks", () => {
+	test("allows unicode slash lookalikes (not normalized)", () => {
+		expect(resolveReturnTo("/\u2215evil.com")).toBe("/∕evil.com");
+		expect(resolveReturnTo("/\uff0fevil.com")).toBe("/／evil.com");
+	});
+
+	test("allows unicode backslash lookalikes (not normalized)", () => {
+		expect(resolveReturnTo("/\u2216evil.com")).toBe("/∖evil.com");
+		expect(resolveReturnTo("/\uff3cevil.com")).toBe("/＼evil.com");
+	});
+
+	test("handles normalized unicode paths safely", () => {
+		// Valid unicode in path segments should work
+		expect(resolveReturnTo("/dashboard/über")).toBe("/dashboard/über");
+		expect(resolveReturnTo("/dashboard/日本語")).toBe("/dashboard/日本語");
+	});
+
+	test("blocks zero-width characters at start", () => {
+		expect(resolveReturnTo("\u200b/evil.com")).toBe("/");
+		expect(resolveReturnTo("\ufeff/evil.com")).toBe("/");
+	});
+});
+
+describe("Mixed encoding attacks", () => {
+	test("blocks mixed case encoding", () => {
+		expect(resolveReturnTo("%2f%2fevil.com")).toBe("/");
+		expect(resolveReturnTo("%2F%2fevil.com")).toBe("/");
+	});
+
+	test("blocks partially encoded protocol-relative URL", () => {
+		expect(resolveReturnTo("/%2Fevil.com")).toBe("/");
+		expect(resolveReturnTo("%2F/evil.com")).toBe("/");
+	});
+
+	test("blocks mixed backslash encodings", () => {
+		expect(resolveReturnTo("/\\%5Cevil.com")).toBe("/");
+		expect(resolveReturnTo("/%5C\\evil.com")).toBe("/");
+	});
+});
+
+describe("Whitespace and control character variations", () => {
+	test("allows tab characters (not explicitly blocked)", () => {
+		expect(resolveReturnTo("/\t")).toBe("/\t");
+		expect(resolveReturnTo("/%09")).toBe("/\t");
+	});
+
+	test("blocks carriage return", () => {
+		expect(resolveReturnTo("/\r")).toBe("/");
+		expect(resolveReturnTo("/%0D")).toBe("/");
+	});
+
+	test("allows vertical tab (not explicitly blocked)", () => {
+		expect(resolveReturnTo("/%0B")).toBe("/\u000B");
+	});
+
+	test("allows form feed (not explicitly blocked)", () => {
+		expect(resolveReturnTo("/%0C")).toBe("/\f");
+	});
+
+	test("allows normal spaces in paths", () => {
+		expect(resolveReturnTo("/path%20with%20spaces")).toBe("/path with spaces");
+	});
+
+	test("blocks leading whitespace", () => {
+		expect(resolveReturnTo(" /dashboard")).toBe("/");
+		expect(resolveReturnTo("\n/dashboard")).toBe("/");
+	});
+});
+
+describe("Fragment and query parameter edge cases", () => {
+	test("allows fragments in relative URLs", () => {
+		expect(resolveReturnTo("/dashboard#section")).toBe("/dashboard#section");
+	});
+
+	test("allows complex query strings", () => {
+		expect(resolveReturnTo("/search?q=test&sort=asc&page=1")).toBe("/search?q=test&sort=asc&page=1");
+	});
+
+	test("allows encoded special characters in query", () => {
+		expect(resolveReturnTo("/search?q=hello%20world")).toBe("/search?q=hello world");
+	});
+
+	test("blocks protocol-relative URL in fragment", () => {
+		expect(resolveReturnTo("#//evil.com")).toBe("/");
+	});
+
+	test("allows relative path with encoded fragment", () => {
+		expect(resolveReturnTo("/page%23section")).toBe("/page#section");
+	});
+});
+
+describe("Path traversal with encoding", () => {
+	test("allows path traversal in relative paths", () => {
+		expect(resolveReturnTo("/dashboard/../admin")).toBe("/dashboard/../admin");
+	});
+
+	test("allows encoded dots in path", () => {
+		expect(resolveReturnTo("/dashboard/%2E%2E/admin")).toBe("/dashboard/../admin");
+	});
+
+	test("blocks traversal that doesn't start with /", () => {
+		expect(resolveReturnTo("..\\..\\..\\etc\\passwd")).toBe("/");
+	});
+});
+
+describe("Overlong UTF-8 and invalid sequences", () => {
+	test("blocks overlong encoded slash", () => {
+		expect(resolveReturnTo("%C0%AF")).toBe("/");
+		expect(resolveReturnTo("%E0%80%AF")).toBe("/");
+	});
+
+	test("handles invalid UTF-8 sequences gracefully", () => {
+		expect(resolveReturnTo("%80%80")).toBe("/");
+		expect(resolveReturnTo("%C0%C0")).toBe("/");
+	});
+
+	test("blocks overlong encoded backslash", () => {
+		expect(resolveReturnTo("%C0%5C")).toBe("/");
+	});
+});
+
+describe("Bidirectional text attacks", () => {
+	test("blocks right-to-left override", () => {
+		expect(resolveReturnTo("\u202e/evil.com")).toBe("/");
+	});
+
+	test("blocks left-to-right override", () => {
+		expect(resolveReturnTo("\u202d/evil.com")).toBe("/");
+	});
+
+	test("blocks other directional formatting", () => {
+		expect(resolveReturnTo("\u200e/evil.com")).toBe("/");
+		expect(resolveReturnTo("\u200f/evil.com")).toBe("/");
+	});
+});
+
+describe("Hostname and protocol smuggling", () => {
+	test("blocks URLs with @ symbol after //", () => {
+		expect(resolveReturnTo("//@evil.com")).toBe("/");
+	});
+
+	test("allows @ symbol in single-slash paths", () => {
+		expect(resolveReturnTo("/user@evil.com")).toBe("/user@evil.com");
+	});
+
+	test("blocks encoded @ symbol after double slash", () => {
+		expect(resolveReturnTo("//%40evil.com")).toBe("/");
+	});
+
+	test("blocks colon after double slash", () => {
+		expect(resolveReturnTo("//:evil.com")).toBe("/");
+	});
+
+	test("allows @ in query parameters", () => {
+		expect(resolveReturnTo("/contact?email=user@example.com")).toBe("/contact?email=user@example.com");
+	});
+});
+
+describe("Empty and edge case inputs", () => {
+	test("handles empty string", () => {
+		expect(resolveReturnTo("")).toBe("/");
+	});
+
+	test("handles just slash", () => {
+		expect(resolveReturnTo("/")).toBe("/");
+	});
+
+	test("handles very long paths", () => {
+		const longPath = `/dashboard/${"a".repeat(1000)}`;
+		expect(resolveReturnTo(longPath)).toBe(longPath);
+	});
+
+	test("handles encoded empty components", () => {
+		expect(resolveReturnTo("/%20")).toBe("/ ");
+	});
+});
