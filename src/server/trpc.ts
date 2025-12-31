@@ -4,13 +4,27 @@ import type { HouseholdRole } from "@prisma/client";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { getAuthSession } from "@/lib/auth";
+import { checkForSensitiveInfo, sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getActiveHouseholdMembership } from "@/lib/households";
+import { validateSessionExpiry } from "@/lib/sessionValidation";
 
 export async function createTRPCContext() {
 	const session = await getAuthSession();
 
+	// Extract session timestamps for validation
+	let sessionTimestamps: { iat?: number; lastActivity?: number } = {};
+	if (session) {
+		// NextAuth stores custom JWT claims at the root level
+		// We need to access them through the session object
+		sessionTimestamps = {
+			iat: (session as unknown as { iat?: number }).iat,
+			lastActivity: (session as unknown as { lastActivity?: number }).lastActivity,
+		};
+	}
+
 	return {
 		session,
+		sessionTimestamps,
 	};
 }
 
@@ -45,8 +59,26 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
  */
 const t = initTRPC.context<Context>().create({
 	transformer: superjson,
-	errorFormatter({ shape }) {
-		return shape;
+	errorFormatter({ shape, error }) {
+		// In development, check for potential information leakage
+		if (process.env.NODE_ENV !== "production" && error.message) {
+			const warnings = checkForSensitiveInfo(error.message);
+			if (warnings.length > 0) {
+				console.warn(`[Security Warning] Error message may leak sensitive info: ${warnings.join(", ")}`);
+				console.warn(`Original message: ${error.message}`);
+			}
+		}
+
+		// Sanitize error messages for production
+		const sanitizedMessage = sanitizeErrorMessage(
+			shape.message,
+			shape.data?.code || "INTERNAL_SERVER_ERROR",
+		);
+
+		return {
+			...shape,
+			message: sanitizedMessage,
+		};
 	},
 });
 
@@ -56,6 +88,18 @@ export const publicProcedure = t.procedure;
 const isAuthed = t.middleware(({ ctx, next }) => {
 	if (!ctx.session?.user?.id) {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
+	}
+
+	// Validate session expiry and idle timeout
+	const validation = validateSessionExpiry(ctx.sessionTimestamps);
+	if (!validation.valid) {
+		const message = validation.reason === "idle_timeout"
+			? "Session expired due to inactivity"
+			: "Session expired";
+		throw new TRPCError({
+			code: "UNAUTHORIZED",
+			message,
+		});
 	}
 
 	return next({

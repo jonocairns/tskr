@@ -15,6 +15,8 @@ export const baseConfig = {
 	googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
 	appUrl: process.env.NEXTAUTH_URL ?? "http://localhost:3000",
 	passwordResetTtlHours: 24,
+	sessionMaxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+	sessionIdleTimeout: 24 * 60 * 60, // 24 hours in seconds
 
 	// ADMIN
 	superAdminEmail: process.env.SUPER_ADMIN_EMAIL,
@@ -24,4 +26,7 @@ export const baseConfig = {
 	inviteExpiryDays: 14,
 	joinRateLimitWindowMs: 60_000, // 1 minute
 	joinRateLimitMax: 5,
+
+	// SECURITY
+	maxRequestBodySize: 1024 * 1024, // 1MB - should be enough for all operations
 };
