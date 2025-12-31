@@ -96,7 +96,6 @@ test("recurring tasks reset progress after the interval elapses", () => {
 	expect(state.nextResetAt?.toISOString()).toBe(addMinutes(t1, 60).toISOString());
 });
 
-
 test("recurring tasks activate at the exact reset time", () => {
 	const t0 = at("2024-01-01T00:00:00.000Z");
 	const t1 = at("2024-01-01T00:10:00.000Z");

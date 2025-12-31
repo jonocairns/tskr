@@ -8,7 +8,6 @@ const resolveRequiresApproval = (override: string | null | undefined, membership
 	return membershipDefault;
 };
 
-
 const shouldCompleteTask = (
 	task: { isRecurring: boolean; status: string; cadenceTarget: number } | null,
 	approvedCount: number,
@@ -24,7 +23,6 @@ const shouldCompleteTask = (
 	}
 	return approvedCount >= task.cadenceTarget;
 };
-
 
 type Role = "DICTATOR" | "APPROVER" | "DOER";
 type Action = "approve" | "reject" | "resubmit" | "revert";
