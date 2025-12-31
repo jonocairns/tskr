@@ -19,4 +19,9 @@ export const baseConfig = {
 	// ADMIN
 	superAdminEmail: process.env.SUPER_ADMIN_EMAIL,
 	superAdminPassword: process.env.SUPER_ADMIN_PASSWORD,
+
+	// HOUSEHOLDS
+	inviteExpiryDays: 14,
+	joinRateLimitWindowMs: 60_000, // 1 minute
+	joinRateLimitMax: 5,
 };

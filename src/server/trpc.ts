@@ -16,6 +16,33 @@ export async function createTRPCContext() {
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
+/**
+ * tRPC instance configured with SuperJSON transformer.
+ *
+ * SuperJSON automatically serializes/deserializes:
+ * - Date objects (from Prisma timestamps like createdAt, updatedAt, expiresAt)
+ * - undefined values (JSON doesn't support undefined)
+ * - BigInt values (if used in the future)
+ * - Map, Set (if used in the future)
+ * - Regular expressions (if used)
+ *
+ * This means you can return Date objects from procedures and they'll
+ * be properly serialized across the network and deserialized on the client.
+ *
+ * Example:
+ * ```ts
+ * // Server procedure
+ * getCurrent: householdProcedure.query(async ({ ctx }) => {
+ *   const household = await prisma.household.findUnique({ ... });
+ *   return { household }; // createdAt is a Date object
+ * });
+ *
+ * // Client usage
+ * const { data } = trpc.households.getCurrent.useQuery();
+ * // data.household.createdAt is still a Date object, not a string!
+ * console.log(data.household.createdAt.getFullYear());
+ * ```
+ */
 const t = initTRPC.context<Context>().create({
 	transformer: superjson,
 	errorFormatter({ shape }) {
@@ -105,37 +132,43 @@ export const householdProcedure = t.procedure.use(isAuthed).use(hasHousehold);
 
 export const dictatorProcedure = t.procedure.use(isAuthed).use(hasRole("DICTATOR"));
 
-export const approverProcedure = t.procedure.use(isAuthed).use(
-	t.middleware(async ({ ctx, next }) => {
-		if (!ctx.session?.user?.id) {
-			throw new TRPCError({ code: "UNAUTHORIZED" });
-		}
+/**
+ * Combined middleware that checks both household membership AND approver/dictator role.
+ * This is more efficient than chaining hasHousehold + role check as it only
+ * fetches the household membership once.
+ */
+const hasApproverRole = t.middleware(async ({ ctx, next }) => {
+	if (!ctx.session?.user?.id) {
+		throw new TRPCError({ code: "UNAUTHORIZED" });
+	}
 
-		const active = await getActiveHouseholdMembership(ctx.session.user.id, ctx.session.user.householdId ?? null);
+	const active = await getActiveHouseholdMembership(ctx.session.user.id, ctx.session.user.householdId ?? null);
 
-		if (!active) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });
-		}
+	if (!active) {
+		throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });
+	}
 
-		if (active.membership.role !== "APPROVER" && active.membership.role !== "DICTATOR") {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
-		}
+	const role = active.membership.role;
+	if (role !== "APPROVER" && role !== "DICTATOR") {
+		throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
+	}
 
-		return next({
-			ctx: {
-				...ctx,
-				session: {
-					...ctx.session,
-					user: ctx.session.user,
-				},
-				household: {
-					id: active.householdId,
-					role: active.membership.role,
-				},
+	return next({
+		ctx: {
+			...ctx,
+			session: {
+				...ctx.session,
+				user: ctx.session.user,
 			},
-		});
-	}),
-);
+			household: {
+				id: active.householdId,
+				role: active.membership.role,
+			},
+		},
+	});
+});
+
+export const approverProcedure = t.procedure.use(isAuthed).use(hasApproverRole);
 
 const isSuperAdmin = t.middleware(({ ctx, next }) => {
 	if (!ctx.session?.user?.id) {

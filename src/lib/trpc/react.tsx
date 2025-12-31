@@ -10,6 +10,21 @@ import type { AppRouter } from "@/server/routers/_app";
 
 export const trpc = createTRPCReact<AppRouter>();
 
+/**
+ * Stale time recommendations for different query types:
+ * - Static/rarely changing data (app settings, presets): 5-10 minutes or Infinity
+ * - User data (profile, household info): 30-60 seconds (default)
+ * - Real-time data (logs, assigned tasks): 0-5 seconds
+ * - List data with pagination: 30 seconds
+ *
+ * Override per-query:
+ * ```tsx
+ * const { data } = trpc.households.getCurrent.useQuery(undefined, {
+ *   staleTime: 60 * 1000, // 1 minute
+ * });
+ * ```
+ */
+
 function getBaseUrl() {
 	if (typeof window !== "undefined") return "";
 	return "";
@@ -21,8 +36,13 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
 			new QueryClient({
 				defaultOptions: {
 					queries: {
-						staleTime: 5 * 1000,
+						// Default stale time: 30 seconds for most data
+						// This balances freshness with performance
+						staleTime: 30 * 1000,
 						refetchOnWindowFocus: false,
+						// Retry failed queries once after a short delay
+						retry: 1,
+						retryDelay: 1000,
 					},
 				},
 			}),

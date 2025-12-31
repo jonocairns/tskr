@@ -8,10 +8,7 @@ import { z } from "zod";
 import { resolveActiveHouseholdId } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
 import { dictatorProcedure, householdProcedure, protectedProcedure, router } from "@/server/trpc";
-
-const INVITE_EXPIRY_DAYS = 14;
-const JOIN_RATE_LIMIT_WINDOW_MS = 60_000;
-const JOIN_RATE_LIMIT_MAX = 5;
+import { config } from "@/server-config";
 
 type RateLimitEntry = {
 	count: number;
@@ -32,12 +29,12 @@ const checkRateLimit = (key: string) => {
 	const now = Date.now();
 	const entry = rateLimitStore.get(key);
 	if (!entry || entry.resetAt <= now) {
-		const resetAt = now + JOIN_RATE_LIMIT_WINDOW_MS;
+		const resetAt = now + config.joinRateLimitWindowMs;
 		rateLimitStore.set(key, { count: 1, resetAt });
 		return { ok: true, resetAt };
 	}
 
-	if (entry.count >= JOIN_RATE_LIMIT_MAX) {
+	if (entry.count >= config.joinRateLimitMax) {
 		return { ok: false, resetAt: entry.resetAt };
 	}
 
@@ -47,7 +44,7 @@ const checkRateLimit = (key: string) => {
 
 const addExpiry = () => {
 	const expiresAt = new Date();
-	expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+	expiresAt.setDate(expiresAt.getDate() + config.inviteExpiryDays);
 	return expiresAt;
 };
 
@@ -114,16 +111,22 @@ export const householdsRouter = router({
 	}),
 
 	updateCurrent: dictatorProcedure.input(updateSchema.partial()).mutation(async ({ ctx, input }) => {
-		if (!input.name && input.rewardThreshold === undefined && input.progressBarColor === undefined) {
+		const hasNameUpdate = input.name !== undefined && input.name.trim().length > 0;
+		const hasThresholdUpdate = input.rewardThreshold !== undefined;
+		const hasColorUpdate = input.progressBarColor !== undefined;
+
+		if (!hasNameUpdate && !hasThresholdUpdate && !hasColorUpdate) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "No updates provided" });
 		}
 
 		const household = await prisma.household.update({
 			where: { id: ctx.household.id },
 			data: {
-				...(input.name ? { name: input.name.trim() } : {}),
-				...(input.rewardThreshold !== undefined ? { rewardThreshold: input.rewardThreshold } : {}),
-				...(input.progressBarColor !== undefined ? { progressBarColor: input.progressBarColor } : {}),
+				...(hasNameUpdate && input.name ? { name: input.name.trim() } : {}),
+				...(hasThresholdUpdate && input.rewardThreshold !== undefined
+					? { rewardThreshold: input.rewardThreshold }
+					: {}),
+				...(hasColorUpdate && input.progressBarColor !== undefined ? { progressBarColor: input.progressBarColor } : {}),
 			},
 			select: {
 				id: true,
