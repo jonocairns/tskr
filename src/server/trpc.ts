@@ -11,20 +11,13 @@ import { validateSessionExpiry } from "@/lib/sessionValidation";
 export async function createTRPCContext() {
 	const session = await getAuthSession();
 
-	// Extract session timestamps for validation
-	let sessionTimestamps: { iat?: number; lastActivity?: number } = {};
-	if (session) {
-		// NextAuth stores custom JWT claims at the root level
-		// We need to access them through the session object
-		sessionTimestamps = {
-			iat: (session as unknown as { iat?: number }).iat,
-			lastActivity: (session as unknown as { lastActivity?: number }).lastActivity,
-		};
-	}
-
 	return {
 		session,
-		sessionTimestamps,
+		// Session timestamps are now properly typed in next-auth.d.ts
+		sessionTimestamps: {
+			iat: session?.iat,
+			lastActivity: session?.lastActivity,
+		},
 	};
 }
 

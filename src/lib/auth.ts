@@ -248,7 +248,14 @@ export const authOptions: NextAuthOptions = {
 				session.user.hasGoogleAccount = isGoogleAuthEnabled && dbUser.accounts.length > 0;
 				session.user.hasHouseholdMembership = dbUser.memberships.length > 0;
 			}
-			return session;
+
+			// Pass JWT timestamps to session for validation in tRPC middleware
+			// These are used for session expiry and idle timeout checks
+			return {
+				...session,
+				iat: token.iat,
+				lastActivity: token.lastActivity,
+			};
 		},
 	},
 };

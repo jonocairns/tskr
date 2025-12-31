@@ -5,7 +5,7 @@ import { adminRouter } from "./admin";
 import { assignedTasksRouter } from "./assignedTasks";
 import { claimRouter } from "./claim";
 import { healthRouter } from "./health";
-import { householdsRouter } from "./households";
+import { householdsRouter } from "./households/index";
 import { logsRouter } from "./logs";
 import { passwordResetRouter } from "./passwordReset";
 import { presetsRouter } from "./presets";
