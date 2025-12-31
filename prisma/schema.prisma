@@ -105,6 +105,7 @@ model HouseholdMember {
   @@unique([householdId, userId])
   @@index([householdId])
   @@index([userId])
+  @@index([householdId, role])
 }
 
 model HouseholdInvite {
@@ -124,6 +125,8 @@ model HouseholdInvite {
 
   @@index([householdId])
   @@index([status])
+  @@index([invitedById])
+  @@index([expiresAt])
 }
 
 model Account {
@@ -142,6 +145,7 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -150,6 +154,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -212,6 +218,10 @@ model PointLog {
   @@index([userId, revertedAt])
   @@index([presetId])
   @@index([assignedTaskId])
+  @@index([householdId, status, kind])
+  @@index([householdId, revertedAt, status])
+  @@index([userId, householdId, revertedAt, status])
+  @@index([assignedTaskId, status, revertedAt])
 }
 
 model PushSubscription {
