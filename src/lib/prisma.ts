@@ -16,6 +16,7 @@ const DASHBOARD_MODELS = new Set(["AssignedTask", "PointLog", "PresetTask"]);
 const DASHBOARD_ACTIONS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 
 const SLOW_QUERY_THRESHOLD_MS = 100;
+const SHOW_QUERIES = false && config.isDev;
 
 const createPrismaClient = () => {
 	const client = new PrismaClient({ adapter, log: ["warn", "error"] });
@@ -35,7 +36,7 @@ const createPrismaClient = () => {
 						);
 					}
 
-					if (config.isDev) {
+					if (SHOW_QUERIES) {
 						console.log(`[prisma:query] ${model}.${operation} (${duration.toFixed(2)}ms)`);
 					}
 
