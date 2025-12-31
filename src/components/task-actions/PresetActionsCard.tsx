@@ -65,6 +65,32 @@ export const PresetActionsCard = () => {
 	});
 
 	const updatePresetMutation = trpc.presets.update.useMutation({
+		onMutate: async (variables) => {
+			const previousPresets = customPresets;
+			setCustomPresets((prev) =>
+				prev.map((preset) =>
+					preset.id === variables.id
+						? {
+								...preset,
+								label: variables.label ?? preset.label,
+								bucket: variables.bucket ?? preset.bucket,
+								approvalOverride: variables.approvalOverride ?? preset.approvalOverride,
+							}
+						: preset,
+				),
+			);
+			return { previousPresets };
+		},
+		onError: (error, _variables, context) => {
+			if (context?.previousPresets) {
+				setCustomPresets(context.previousPresets);
+			}
+			toast({
+				title: "Unable to update preset",
+				description: error.message ?? "Please try again.",
+				variant: "destructive",
+			});
+		},
 		onSuccess: (data) => {
 			setCustomPresets((prev) =>
 				prev.map((preset) =>
@@ -79,26 +105,26 @@ export const PresetActionsCard = () => {
 			);
 			toast({ title: "Preset updated" });
 		},
-		onError: (error) => {
-			toast({
-				title: "Unable to update preset",
-				description: error.message ?? "Please try again.",
-				variant: "destructive",
-			});
-		},
 	});
 
 	const deletePresetMutation = trpc.presets.delete.useMutation({
-		onSuccess: (_, variables) => {
+		onMutate: async (variables) => {
+			const previousPresets = customPresets;
 			setCustomPresets((prev) => prev.filter((item) => item.id !== variables.id));
-			toast({ title: "Preset deleted" });
+			return { previousPresets };
 		},
-		onError: (error) => {
+		onError: (error, _variables, context) => {
+			if (context?.previousPresets) {
+				setCustomPresets(context.previousPresets);
+			}
 			toast({
 				title: "Unable to delete preset",
 				description: error.message ?? "Please try again.",
 				variant: "destructive",
 			});
+		},
+		onSuccess: () => {
+			toast({ title: "Preset deleted" });
 		},
 	});
 

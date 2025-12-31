@@ -53,16 +53,45 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 	});
 
 	const manageInviteMutation = trpc.households.manageInvite.useMutation({
-		onSuccess: (_, variables) => {
-			toast({ title: variables.action === "revoke" ? "Invite revoked" : "Invite regenerated" });
-			utils.households.getInvites.invalidate();
+		onMutate: async (variables) => {
+			await utils.households.getInvites.cancel();
+			const previousInvites = utils.households.getInvites.getData();
+
+			if (variables.action === "revoke") {
+				utils.households.getInvites.setData(undefined, (old) => {
+					if (!old) return old;
+					return {
+						invites: old.invites.filter((invite) => invite.id !== variables.id),
+					};
+				});
+			} else if (variables.action === "resend") {
+				utils.households.getInvites.setData(undefined, (old) => {
+					if (!old) return old;
+					return {
+						invites: old.invites.map((invite) =>
+							invite.id === variables.id ? { ...invite, status: "PENDING" as const } : invite,
+						),
+					};
+				});
+			}
+
+			return { previousInvites };
 		},
-		onError: (error, variables) => {
+		onError: (error, variables, context) => {
+			if (context?.previousInvites) {
+				utils.households.getInvites.setData(undefined, context.previousInvites);
+			}
 			toast({
 				title: variables.action === "revoke" ? "Unable to revoke invite" : "Unable to resend invite",
 				description: error.message ?? "Please try again.",
 				variant: "destructive",
 			});
+		},
+		onSuccess: (_, variables) => {
+			toast({ title: variables.action === "revoke" ? "Invite revoked" : "Invite regenerated" });
+		},
+		onSettled: () => {
+			utils.households.getInvites.invalidate();
 		},
 	});
 

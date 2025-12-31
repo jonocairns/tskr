@@ -29,14 +29,6 @@ export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
 	const utils = trpc.useUtils();
 
 	const updateMutation = trpc.logs.updateStatus.useMutation({
-		onSuccess: (_, variables) => {
-			const action = variables.action;
-			toast({
-				title: action === "approve" ? "Task approved" : "Task rejected",
-			});
-			utils.logs.invalidate();
-			router.refresh();
-		},
 		onError: (error, variables) => {
 			const action = variables.action;
 			toast({
@@ -44,6 +36,16 @@ export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
 				description: error.message ?? "Please try again.",
 				variant: "destructive",
 			});
+		},
+		onSuccess: (_, variables) => {
+			const action = variables.action;
+			toast({
+				title: action === "approve" ? "Task approved" : "Task rejected",
+			});
+		},
+		onSettled: () => {
+			utils.logs.invalidate();
+			router.refresh();
 		},
 	});
 

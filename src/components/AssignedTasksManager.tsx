@@ -139,17 +139,24 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 	});
 
 	const deleteMutation = trpc.assignedTasks.delete.useMutation({
-		onSuccess: (_, variables) => {
+		onMutate: async (variables) => {
+			const previousTasks = tasks;
 			setTasks((prev) => prev.filter((task) => task.id !== variables.id));
-			toast({ title: "Assigned task deleted" });
-			router.refresh();
+			return { previousTasks };
 		},
-		onError: (error) => {
+		onError: (error, _variables, context) => {
+			if (context?.previousTasks) {
+				setTasks(context.previousTasks);
+			}
 			toast({
 				title: "Unable to delete task",
 				description: error.message ?? "Please try again.",
 				variant: "destructive",
 			});
+		},
+		onSuccess: () => {
+			toast({ title: "Assigned task deleted" });
+			router.refresh();
 		},
 	});
 
