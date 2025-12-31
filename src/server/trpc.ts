@@ -63,10 +63,7 @@ const t = initTRPC.context<Context>().create({
 		}
 
 		// Sanitize error messages for production
-		const sanitizedMessage = sanitizeErrorMessage(
-			shape.message,
-			shape.data?.code || "INTERNAL_SERVER_ERROR",
-		);
+		const sanitizedMessage = sanitizeErrorMessage(shape.message, shape.data?.code || "INTERNAL_SERVER_ERROR");
 
 		return {
 			...shape,
@@ -86,9 +83,7 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 	// Validate session expiry and idle timeout
 	const validation = validateSessionExpiry(ctx.sessionTimestamps);
 	if (!validation.valid) {
-		const message = validation.reason === "idle_timeout"
-			? "Session expired due to inactivity"
-			: "Session expired";
+		const message = validation.reason === "idle_timeout" ? "Session expired due to inactivity" : "Session expired";
 		throw new TRPCError({
 			code: "UNAUTHORIZED",
 			message,

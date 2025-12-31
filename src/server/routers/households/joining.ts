@@ -22,6 +22,32 @@ if (!globalThis.joinRateLimit) {
 	globalThis.joinRateLimit = rateLimitStore;
 }
 
+/**
+ * Cleans up expired entries from the rate limit store to prevent unbounded memory growth.
+ * This function removes all entries whose resetAt timestamp has passed.
+ */
+const cleanupExpiredEntries = () => {
+	const now = Date.now();
+	let removedCount = 0;
+
+	for (const [key, entry] of rateLimitStore.entries()) {
+		if (entry.resetAt <= now) {
+			rateLimitStore.delete(key);
+			removedCount++;
+		}
+	}
+
+	if (removedCount > 0) {
+		console.log(`[RateLimit] Cleaned up ${removedCount} expired rate limit entries`);
+	}
+};
+
+// Run cleanup every 5 minutes to prevent memory leaks
+// In production with multiple instances, consider using Redis instead
+if (typeof setInterval !== "undefined") {
+	setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
+}
+
 const checkRateLimit = (key: string) => {
 	const now = Date.now();
 	const entry = rateLimitStore.get(key);
