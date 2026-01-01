@@ -8,10 +8,11 @@ import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
-import { householdProcedure, protectedProcedure, router } from "@/server/trpc";
+import { householdFromInputProcedure, protectedProcedure, router } from "@/server/trpc";
 
 const presetSchema = z
 	.object({
+		householdId: z.string().min(1),
 		type: z.literal("preset"),
 		presetKey: z.string().min(1).optional(),
 		presetId: z.string().min(1).optional(),
@@ -23,6 +24,7 @@ const presetSchema = z
 	});
 
 const timedSchema = z.object({
+	householdId: z.string().min(1),
 	type: z.literal("timed"),
 	bucket: z.enum(DURATION_KEYS),
 	description: z.string().min(1, "Describe what you did").max(160, "Keep the note short"),
@@ -32,17 +34,19 @@ const timedSchema = z.object({
 const createLogSchema = z.union([presetSchema, timedSchema]);
 
 const historyQuerySchema = z.object({
+	householdId: z.string().min(1),
 	offset: z.number().int().min(0).default(0),
 	limit: z.number().int().min(1).max(50).default(10),
 });
 
 const updateLogSchema = z.object({
+	householdId: z.string().min(1),
 	id: z.string(),
 	action: z.enum(["approve", "reject", "resubmit", "revert"]),
 });
 
 export const logsRouter = router({
-	getHistory: householdProcedure.input(historyQuerySchema).query(async ({ ctx, input }) => {
+	getHistory: householdFromInputProcedure.input(historyQuerySchema).query(async ({ ctx, input }) => {
 		const take = input.limit + 1;
 		const logs = await prisma.pointLog.findMany({
 			where: { householdId: ctx.household.id },
@@ -63,7 +67,7 @@ export const logsRouter = router({
 		};
 	}),
 
-	create: householdProcedure.input(createLogSchema).mutation(async ({ ctx, input }) => {
+	create: householdFromInputProcedure.input(createLogSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
 		const actorLabel = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
 		const householdId = ctx.household.id;

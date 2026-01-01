@@ -209,6 +209,85 @@ const withHouseholdFromInput = t.middleware(async ({ ctx, input, next }) => {
 
 export const householdFromInputProcedure = t.procedure.use(isAuthed).use(withHouseholdFromInput);
 
+const withApproverRoleFromInput = t.middleware(async ({ ctx, input, next }) => {
+	if (!ctx.session?.user?.id) {
+		throw new TRPCError({ code: "UNAUTHORIZED" });
+	}
+
+	const result = withHouseholdIdInput.safeParse(input);
+	if (!result.success) {
+		throw new TRPCError({ code: "BAD_REQUEST", message: "householdId is required" });
+	}
+
+	const { householdId } = result.data;
+	const membership = await getHouseholdMembership(ctx.session.user.id, householdId);
+
+	if (!membership) {
+		throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
+	}
+
+	const role = membership.role;
+	if (role !== "APPROVER" && role !== "DICTATOR") {
+		throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
+	}
+
+	return next({
+		ctx: {
+			...ctx,
+			session: {
+				...ctx.session,
+				user: ctx.session.user,
+			},
+			household: {
+				id: householdId,
+				role: membership.role,
+				requiresApprovalDefault: membership.requiresApprovalDefault,
+			},
+		},
+	});
+});
+
+export const approverFromInputProcedure = t.procedure.use(isAuthed).use(withApproverRoleFromInput);
+
+const withDictatorRoleFromInput = t.middleware(async ({ ctx, input, next }) => {
+	if (!ctx.session?.user?.id) {
+		throw new TRPCError({ code: "UNAUTHORIZED" });
+	}
+
+	const result = withHouseholdIdInput.safeParse(input);
+	if (!result.success) {
+		throw new TRPCError({ code: "BAD_REQUEST", message: "householdId is required" });
+	}
+
+	const { householdId } = result.data;
+	const membership = await getHouseholdMembership(ctx.session.user.id, householdId);
+
+	if (!membership) {
+		throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
+	}
+
+	if (membership.role !== "DICTATOR") {
+		throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
+	}
+
+	return next({
+		ctx: {
+			...ctx,
+			session: {
+				...ctx.session,
+				user: ctx.session.user,
+			},
+			household: {
+				id: householdId,
+				role: membership.role,
+				requiresApprovalDefault: membership.requiresApprovalDefault,
+			},
+		},
+	});
+});
+
+export const dictatorFromInputProcedure = t.procedure.use(isAuthed).use(withDictatorRoleFromInput);
+
 const isSuperAdmin = t.middleware(({ ctx, next }) => {
 	if (!ctx.session?.user?.id) {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
