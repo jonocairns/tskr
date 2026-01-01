@@ -21,12 +21,10 @@ export default async function HouseholdLayout({
 	const userId = session.user.id;
 	const { householdId: requestedHouseholdId } = await params;
 
-	// Validate user has access to requested household
 	const membership = await getHouseholdMembership(userId, requestedHouseholdId);
 
 	if (!membership) {
-		// Not a member - redirect to their actual household or landing
-		const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
+		const active = await getActiveHouseholdMembership(userId);
 
 		if (active) {
 			redirect(`/${active.householdId}`);

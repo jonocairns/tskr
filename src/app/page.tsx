@@ -19,7 +19,6 @@ export default async function RootPage({ searchParams }: Props) {
 	const session = await getServerSession(authOptions);
 
 	if (!session?.user?.id) {
-		// Not logged in - show login inline
 		const resolvedSearchParams = searchParams ? await searchParams : {};
 		const authError = resolvedSearchParams.error ? getAuthErrorMessage(resolvedSearchParams.error) : null;
 
@@ -30,14 +29,11 @@ export default async function RootPage({ searchParams }: Props) {
 		);
 	}
 
-	// Try to resolve household (uses lastHouseholdId with fallback)
-	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
+	const active = await getActiveHouseholdMembership(session.user.id);
 
 	if (!active) {
-		// No household membership - go to landing
 		redirect("/landing");
 	}
 
-	// Has household - redirect to their dashboard
 	redirect(`/${active.householdId}`);
 }

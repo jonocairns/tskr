@@ -7,7 +7,6 @@ import GoogleProvider from "next-auth/providers/google";
 import { getAppSettings } from "@/lib/appSettings";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getProfileEmail, getProfileImage, getProfileName } from "@/lib/authProfile";
-import { getActiveHouseholdMembership } from "@/lib/households";
 import { isLoginRateLimited } from "@/lib/loginRateLimit";
 import { createPasswordResetToken } from "@/lib/passwordReset";
 import { verifyPassword } from "@/lib/passwords";
@@ -215,12 +214,7 @@ export const authOptions: NextAuthOptions = {
 						name: true,
 						email: true,
 						image: true,
-						lastHouseholdId: true,
 						isSuperAdmin: true,
-						memberships: {
-							select: { id: true },
-							take: 1,
-						},
 						accounts: {
 							where: { provider: "google" },
 							select: { id: true },
@@ -234,19 +228,12 @@ export const authOptions: NextAuthOptions = {
 					return session;
 				}
 
-				const active = await getActiveHouseholdMembership(token.sub, dbUser.lastHouseholdId);
-				const resolvedHouseholdId = active?.householdId ?? null;
-				const membershipRole = active?.membership.role ?? null;
-
 				session.user.id = token.sub;
 				session.user.name = dbUser.name;
 				session.user.email = dbUser.email;
 				session.user.image = dbUser.image;
-				session.user.householdId = resolvedHouseholdId;
-				session.user.householdRole = membershipRole;
 				session.user.isSuperAdmin = dbUser.isSuperAdmin ?? false;
 				session.user.hasGoogleAccount = isGoogleAuthEnabled && dbUser.accounts.length > 0;
-				session.user.hasHouseholdMembership = dbUser.memberships.length > 0;
 			}
 
 			// Pass JWT timestamps to session for validation in tRPC middleware

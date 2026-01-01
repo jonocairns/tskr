@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
-	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
+	const active = await getActiveHouseholdMembership(session.user.id);
 	if (!active) {
 		return new Response("Household not found", { status: 403 });
 	}

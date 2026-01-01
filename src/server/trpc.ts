@@ -79,7 +79,7 @@ const hasHousehold = t.middleware(async ({ ctx, next }) => {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
 	}
 
-	const active = await getActiveHouseholdMembership(ctx.session.user.id, ctx.session.user.householdId ?? null);
+	const active = await getActiveHouseholdMembership(ctx.session.user.id);
 
 	if (!active) {
 		throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });
@@ -106,7 +106,7 @@ const hasRole = (requiredRole: HouseholdRole) =>
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}
 
-		const active = await getActiveHouseholdMembership(ctx.session.user.id, ctx.session.user.householdId ?? null);
+		const active = await getActiveHouseholdMembership(ctx.session.user.id);
 
 		if (!active) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });
@@ -142,7 +142,7 @@ const hasApproverRole = t.middleware(async ({ ctx, next }) => {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
 	}
 
-	const active = await getActiveHouseholdMembership(ctx.session.user.id, ctx.session.user.householdId ?? null);
+	const active = await getActiveHouseholdMembership(ctx.session.user.id);
 
 	if (!active) {
 		throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });

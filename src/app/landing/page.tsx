@@ -24,7 +24,7 @@ export default async function LandingPage() {
 		);
 	}
 
-	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
+	const active = await getActiveHouseholdMembership(session.user.id);
 	if (active) {
 		redirect(`/${active.householdId}`);
 	}

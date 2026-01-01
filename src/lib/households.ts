@@ -26,16 +26,22 @@ const store: HouseholdStore = {
 		}),
 };
 
-export async function resolveActiveHouseholdId(
-	userId: string,
-	lastHouseholdId?: string | null,
-): Promise<string | null> {
-	return resolveActiveHouseholdIdCore(store, userId, lastHouseholdId);
+export async function resolveActiveHouseholdId(userId: string): Promise<string | null> {
+	const user = await prisma.user.findUnique({
+		where: { id: userId },
+		select: { lastHouseholdId: true },
+	});
+
+	return resolveActiveHouseholdIdCore(store, userId, user?.lastHouseholdId);
 }
 
 export async function getActiveHouseholdMembership(
 	userId: string,
-	lastHouseholdId?: string | null,
 ): Promise<{ householdId: string; membership: HouseholdMembership } | null> {
-	return getActiveHouseholdMembershipCore(store, userId, lastHouseholdId);
+	const user = await prisma.user.findUnique({
+		where: { id: userId },
+		select: { lastHouseholdId: true },
+	});
+
+	return getActiveHouseholdMembershipCore(store, userId, user?.lastHouseholdId);
 }

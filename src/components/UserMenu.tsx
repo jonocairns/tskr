@@ -16,27 +16,32 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { useToast } from "@/hooks/useToast";
+import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	user: {
 		name?: string | null;
 		email?: string | null;
 		image?: string | null;
-		householdRole?: "DICTATOR" | "APPROVER" | "DOER" | null;
 		isSuperAdmin?: boolean;
 		hasGoogleAccount?: boolean;
-		hasHouseholdMembership?: boolean;
 	};
 	googleEnabled: boolean;
 };
 
 export const UserMenu = ({ user, googleEnabled }: Props) => {
-	const { data: session } = useSession();
+	const { data: session, status } = useSession();
 	const { toast } = useToast();
 	const params = useParams<{ householdId?: string }>();
-	const householdId = params.householdId ?? session?.user?.householdId;
+	const householdId = params.householdId;
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
+
+	const { data: householdData } = trpc.households.list.useQuery(undefined, {
+		enabled: status === "authenticated" && !!householdId,
+	});
+
+	const currentHouseholdRole = householdData?.households.find((h) => h.id === householdId)?.role;
 	const initials =
 		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
 
@@ -73,7 +78,7 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="w-56" align="end">
-				{resolvedUser?.hasHouseholdMembership && householdId ? (
+				{householdId ? (
 					<>
 						<DropdownMenuItem asChild>
 							<Link href={`/${householdId}/household`}>
@@ -81,7 +86,7 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 								Household
 							</Link>
 						</DropdownMenuItem>
-						{resolvedUser?.householdRole !== "DOER" ? (
+						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (
 							<DropdownMenuItem asChild>
 								<Link href={`/${householdId}/assignments`}>
 									<ClipboardListIcon className="mr-2 h-4 w-4" />
