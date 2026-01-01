@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckIcon, ChevronDownIcon, HomeIcon, Loader2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useTransition } from "react";
 
@@ -13,8 +12,7 @@ import { trpc } from "@/lib/trpc/react";
 export const Switcher = () => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
-	const router = useRouter();
-	const { status, update } = useSession();
+	const { status } = useSession();
 
 	const { data, isLoading } = trpc.households.list.useQuery(undefined, {
 		enabled: status === "authenticated",
@@ -29,9 +27,9 @@ export const Switcher = () => {
 	);
 
 	const selectMutation = trpc.households.select.useMutation({
-		onSuccess: async () => {
-			await update();
-			router.refresh();
+		onSuccess: () => {
+			// Force a full page reload to ensure all data is refreshed with the new household context
+			window.location.href = "/";
 		},
 		onError: (error) => {
 			toast({

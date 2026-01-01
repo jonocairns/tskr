@@ -62,6 +62,8 @@ model User {
   assignedTasks     AssignedTask[] @relation("AssignedTo")
   createdAssignedTasks AssignedTask[] @relation("AssignedBy")
   pushSubscriptions PushSubscription[]
+  reminderOverrides UserReminderOverride[]
+  reminderSendLogs  ReminderSendLog[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }
@@ -86,6 +88,7 @@ model Household {
   presetTasks       PresetTask[]
   assignedTasks     AssignedTask[]
   pointLogs         PointLog[]
+  reminderConfig    HouseholdReminderConfig?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -280,4 +283,69 @@ model AssignedTask {
   @@index([assignedToId])
   @@index([presetId])
   @@index([status])
+}
+
+model HouseholdReminderConfig {
+  id                       String    @id @default(cuid())
+  householdId              String    @unique
+  household                Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  dailyReminderEnabled     Boolean   @default(false)
+  dailyReminderTime        String?
+  weeklyReminderEnabled    Boolean   @default(false)
+  weeklyReminderDay        Int?
+  weeklyReminderTime       String?
+  intervalReminderEnabled  Boolean   @default(false)
+  intervalReminderDays     Int?
+  eventReminderEnabled     Boolean   @default(false)
+  eventReminderDays        Int?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@index([householdId])
+}
+
+model UserReminderOverride {
+  id                       String    @id @default(cuid())
+  userId                   String
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  householdId              String
+  isPaused                 Boolean   @default(false)
+  pausedUntil              DateTime?
+  dailyReminderEnabled     Boolean?
+  dailyReminderTime        String?
+  weeklyReminderEnabled    Boolean?
+  weeklyReminderDay        Int?
+  weeklyReminderTime       String?
+  intervalReminderEnabled  Boolean?
+  intervalReminderDays     Int?
+  eventReminderEnabled     Boolean?
+  eventReminderDays        Int?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@unique([userId, householdId])
+  @@index([userId])
+  @@index([householdId])
+}
+
+model ReminderSendLog {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  householdId      String
+  reminderType     String
+  sentAt           DateTime  @default(now())
+  nextSendAt       DateTime?
+  status           String
+  dismissedAt      DateTime?
+  snoozedUntil     DateTime?
+  schedulerLockKey String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId, householdId])
+  @@index([nextSendAt])
+  @@index([schedulerLockKey])
+  @@index([userId, reminderType, sentAt])
+  @@index([status, nextSendAt])
 }

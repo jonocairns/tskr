@@ -79,7 +79,8 @@ export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: P
 				<AlertDialogHeader>
 					<AlertDialogTitle>Delete household?</AlertDialogTitle>
 					<AlertDialogDescription>
-						This action cannot be undone. All members and history will be removed.
+						This action cannot be undone. This will permanently delete the household and remove all members, tasks,
+						points, and history.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
@@ -90,7 +91,7 @@ export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: P
 						disabled={isPending}
 						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 					>
-						{isPending ? "Deleting..." : "Delete"}
+						{isPending ? "Deleting..." : "Delete household"}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
