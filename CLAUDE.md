@@ -122,9 +122,8 @@ tests/                    # Jest unit tests
 **Household Routing**:
 - **Fully URL-based routing**: All household context derived from URL, no session-based fallbacks
 - Route pattern: `/[householdId]/*` for all household-scoped pages
-- Layout at `app/[householdId]/layout.tsx` validates membership before rendering
 - Server pages use `getHouseholdContext(householdId)` helper for auth + membership validation
-- Invalid household access redirects to active household with error toast
+- `getHouseholdContext` handles redirects: invalid access → active household, no membership → landing page
 - **tRPC procedures**:
   - All household-scoped procedures use `protectedProcedure` (authenticated user only)
   - **CRITICAL**: Procedures do NOT automatically validate household membership

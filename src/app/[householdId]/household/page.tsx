@@ -19,13 +19,7 @@ type Props = {
 export default async function HouseholdPage({ params }: Props) {
 	const googleEnabled = isGoogleAuthEnabled;
 	const { householdId } = await params;
-	const ctx = await getHouseholdContext(householdId);
-
-	if (!ctx) {
-		throw new Error("Unauthorized or membership not found");
-	}
-
-	const { session, userId, membership } = ctx;
+	const { session, userId, membership } = await getHouseholdContext(householdId);
 
 	return (
 		<PageShell size="lg">
