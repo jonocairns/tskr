@@ -5,9 +5,14 @@ import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { householdProcedure, router } from "@/server/trpc";
+import { householdFromInputProcedure, router } from "@/server/trpc";
+
+const listPresetsSchema = z.object({
+	householdId: z.string().min(1),
+});
 
 const presetSchema = z.object({
+	householdId: z.string().min(1),
 	label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 	bucket: z.enum(DURATION_KEYS),
 	isShared: z.boolean().optional(),
@@ -16,6 +21,7 @@ const presetSchema = z.object({
 
 const updatePresetSchema = z
 	.object({
+		householdId: z.string().min(1),
 		id: z.string(),
 		label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short").optional(),
 		bucket: z.enum(DURATION_KEYS).optional(),
@@ -27,11 +33,12 @@ const updatePresetSchema = z
 	});
 
 const deletePresetSchema = z.object({
+	householdId: z.string().min(1),
 	id: z.string(),
 });
 
 export const presetsRouter = router({
-	list: householdProcedure.query(async ({ ctx }) => {
+	list: householdFromInputProcedure.input(listPresetsSchema).query(async ({ ctx }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 
@@ -56,7 +63,7 @@ export const presetsRouter = router({
 		return { presets };
 	}),
 
-	create: householdProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
+	create: householdFromInputProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 		const role = ctx.household.role;
@@ -87,7 +94,7 @@ export const presetsRouter = router({
 		return { preset };
 	}),
 
-	update: householdProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
+	update: householdFromInputProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
 		const { id, ...updates } = input;
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
@@ -142,7 +149,7 @@ export const presetsRouter = router({
 		return { preset: updated };
 	}),
 
-	delete: householdProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
+	delete: householdFromInputProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 

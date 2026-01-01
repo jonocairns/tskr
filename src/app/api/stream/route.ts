@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import { subscribeToDashboardUpdates } from "@/lib/events";
-import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
+import { getHouseholdMembership } from "@/lib/households";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,22 +16,15 @@ export async function GET(req: Request) {
 	}
 
 	const url = new URL(req.url);
-	const requestedHouseholdId = url.searchParams.get("householdId");
+	const householdId = url.searchParams.get("householdId");
 
-	let householdId: string;
+	if (!householdId) {
+		return new Response("householdId query parameter is required", { status: 400 });
+	}
 
-	if (requestedHouseholdId) {
-		const membership = await getHouseholdMembership(session.user.id, requestedHouseholdId);
-		if (!membership) {
-			return new Response("Access denied to household", { status: 403 });
-		}
-		householdId = requestedHouseholdId;
-	} else {
-		const active = await getActiveHouseholdMembership(session.user.id);
-		if (!active) {
-			return new Response("Household not found", { status: 403 });
-		}
-		householdId = active.householdId;
+	const membership = await getHouseholdMembership(session.user.id, householdId);
+	if (!membership) {
+		return new Response("Access denied to household", { status: 403 });
 	}
 	const encoder = new TextEncoder();
 	let isClosed = false;

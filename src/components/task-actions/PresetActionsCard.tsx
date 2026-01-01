@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
+import type { HouseholdRouteParams } from "@/types/routes";
 
 export const PresetActionsCard = () => {
 	const {
@@ -33,6 +34,8 @@ export const PresetActionsCard = () => {
 	} = useTaskActions();
 	const [isEditDrawerOpen, setEditDrawerOpen] = useState(false);
 
+	const params = useParams<HouseholdRouteParams>();
+	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
@@ -180,6 +183,7 @@ export const PresetActionsCard = () => {
 			startPresetTransition(async () => {
 				try {
 					await createPresetMutation.mutateAsync({
+						householdId,
 						label: template.label,
 						bucket: template.bucket,
 						isShared: canSharePresets,
@@ -213,6 +217,7 @@ export const PresetActionsCard = () => {
 			startPresetTransition(async () => {
 				try {
 					await createPresetMutation.mutateAsync({
+						householdId,
 						label: label.trim(),
 						bucket,
 						isShared: canSharePresets,
@@ -237,6 +242,7 @@ export const PresetActionsCard = () => {
 		return new Promise<boolean>((resolve) => {
 			createLogMutation.mutate(
 				{
+					householdId,
 					type: "timed",
 					bucket,
 					description: label.trim(),
@@ -268,6 +274,7 @@ export const PresetActionsCard = () => {
 			startPresetTransition(async () => {
 				try {
 					await updatePresetMutation.mutateAsync({
+						householdId,
 						id: presetId,
 						label: label.trim(),
 						bucket,
@@ -288,7 +295,7 @@ export const PresetActionsCard = () => {
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
 				try {
-					await deletePresetMutation.mutateAsync({ id: presetId });
+					await deletePresetMutation.mutateAsync({ householdId, id: presetId });
 					success = true;
 				} catch {
 					// Error handled by mutation onError

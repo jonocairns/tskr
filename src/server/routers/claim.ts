@@ -1,12 +1,17 @@
 import "server-only";
 
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { householdProcedure, router } from "@/server/trpc";
+import { householdFromInputProcedure, router } from "@/server/trpc";
+
+const claimRewardSchema = z.object({
+	householdId: z.string().min(1),
+});
 
 export const claimRouter = router({
-	claimReward: householdProcedure.mutation(async ({ ctx }) => {
+	claimReward: householdFromInputProcedure.input(claimRewardSchema).mutation(async ({ ctx }) => {
 		const userId = ctx.session.user.id;
 		const householdId = ctx.household.id;
 

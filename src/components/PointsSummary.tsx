@@ -1,7 +1,7 @@
 "use client";
 
 import { GiftIcon, TrophyIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -30,6 +30,8 @@ export const PointsSummary = ({
 	lastTaskAt,
 	currentStreak,
 }: Props) => {
+	const params = useParams<{ householdId: string }>();
+	const householdId = params.householdId;
 	const [isPending, startTransition] = useTransition();
 	const [isSubmitting, setSubmitting] = useState(false);
 	const router = useRouter();
@@ -66,7 +68,7 @@ export const PointsSummary = ({
 	const handleClaim = () => {
 		setSubmitting(true);
 		startTransition(async () => {
-			await claimMutation.mutateAsync();
+			await claimMutation.mutateAsync({ householdId });
 			setSubmitting(false);
 		});
 	};

@@ -50,7 +50,7 @@ export default async function HouseholdPage({ params }: Props) {
 
 					<PushNotifications variant="section" />
 
-					<DangerZone canDelete={membership.role === "DICTATOR"} variant="section" />
+					<DangerZone householdId={householdId} canDelete={membership.role === "DICTATOR"} variant="section" />
 				</CardContent>
 			</Card>
 

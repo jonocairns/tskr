@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -49,6 +49,8 @@ type Props = {
 };
 
 export const AssignedTasksManager = ({ initialTasks }: Props) => {
+	const params = useParams<{ householdId: string }>();
+	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 	const [tasks, setTasks] = useState(initialTasks);
@@ -172,6 +174,7 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
 		updateMutation.mutate({
+			householdId,
 			id: taskId,
 			cadenceTarget,
 			cadenceIntervalMinutes,
@@ -180,7 +183,7 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 	};
 
 	const handleDelete = (taskId: string) => {
-		deleteMutation.mutate({ id: taskId });
+		deleteMutation.mutate({ householdId, id: taskId });
 	};
 
 	const isPending = updateMutation.isPending || deleteMutation.isPending;

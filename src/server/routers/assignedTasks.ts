@@ -7,9 +7,10 @@ import { z } from "zod";
 import { computeAssignedTaskState } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { approverProcedure, householdProcedure, router } from "@/server/trpc";
+import { approverFromInputProcedure, householdFromInputProcedure, router } from "@/server/trpc";
 
 const createAssignedTaskSchema = z.object({
+	householdId: z.string().min(1),
 	presetId: z.string().min(1),
 	assigneeId: z.string().min(1),
 	cadenceTarget: z.number().int().min(1),
@@ -19,6 +20,7 @@ const createAssignedTaskSchema = z.object({
 
 const updateAssignedTaskSchema = z
 	.object({
+		householdId: z.string().min(1),
 		id: z.string(),
 		cadenceTarget: z.number().int().min(1).optional(),
 		cadenceIntervalMinutes: z.number().int().min(1).optional(),
@@ -31,17 +33,19 @@ const updateAssignedTaskSchema = z
 	);
 
 const completeAssignedTaskSchema = z.object({
+	householdId: z.string().min(1),
 	id: z.string(),
 });
 
 const deleteAssignedTaskSchema = z.object({
+	householdId: z.string().min(1),
 	id: z.string(),
 });
 
 const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
 export const assignedTasksRouter = router({
-	create: approverProcedure.input(createAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+	create: approverFromInputProcedure.input(createAssignedTaskSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const { presetId, assigneeId, cadenceTarget, cadenceIntervalMinutes, isRecurring } = input;
 		const normalizedCadenceTarget = isRecurring ? cadenceTarget : 1;
@@ -86,7 +90,7 @@ export const assignedTasksRouter = router({
 		}
 	}),
 
-	update: approverProcedure.input(updateAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+	update: approverFromInputProcedure.input(updateAssignedTaskSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const { id, ...updates } = input;
 
@@ -120,7 +124,7 @@ export const assignedTasksRouter = router({
 		}
 	}),
 
-	delete: approverProcedure.input(deleteAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+	delete: approverFromInputProcedure.input(deleteAssignedTaskSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const { id } = input;
 
@@ -142,7 +146,7 @@ export const assignedTasksRouter = router({
 		}
 	}),
 
-	complete: householdProcedure.input(completeAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+	complete: householdFromInputProcedure.input(completeAssignedTaskSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
 		const householdId = ctx.household.id;
 		const { id } = input;

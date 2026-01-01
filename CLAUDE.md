@@ -120,20 +120,22 @@ tests/                    # Jest unit tests
 - **Household context is NOT stored in session** - see Household Routing below
 
 **Household Routing**:
-- URL-based routing pattern: `/[householdId]/*` for all household-scoped pages
+- **Fully URL-based routing**: All household context derived from URL, no session-based fallbacks
+- Route pattern: `/[householdId]/*` for all household-scoped pages
 - Layout at `app/[householdId]/layout.tsx` validates membership before rendering
 - Server pages use `getHouseholdContext(householdId)` helper for auth + membership validation
 - Invalid household access redirects to active household with error toast
-- **Mixed pattern (stable architecture)**:
-  - **Page routes**: Use URL-based household context (explicit `householdId` param)
-  - **tRPC procedures**: Use session-based active household (`getActiveHouseholdMembership()`)
-    - This works because tRPC calls are made from pages that already have validated household access
-    - The user's "active household" matches the URL householdId when they switch households
-    - Avoids requiring householdId in every tRPC call signature
-  - **New procedures needing explicit household**: Use `householdFromInputProcedure` for procedures that accept `householdId` in input
-  - **SSE stream**: Accepts optional `householdId` query param, falls back to active household
-- Client components can access `householdId` from URL params via `useParams()`
-- **Future consolidation**: To fully move to URL-based pattern, all tRPC procedures would need householdId input (breaking API change)
+- **tRPC procedures**:
+  - All household procedures use `*FromInputProcedure` variants
+  - `householdFromInputProcedure` - requires householdId in input, validates membership
+  - `approverFromInputProcedure` - requires householdId + APPROVER or DICTATOR role
+  - `dictatorFromInputProcedure` - requires householdId + DICTATOR role
+  - All input schemas include `householdId: z.string().min(1)` field
+- **Client components**:
+  - Get `householdId` from `useParams<{ householdId: string }>()` or from props
+  - Pass `householdId` to all tRPC mutation/query calls
+- **SSE stream**: Requires `householdId` query parameter, validates membership
+- **Session**: Only stores user identity (`id`, `isSuperAdmin`), not household context
 
 **Database Patterns**:
 - Prisma singleton in `src/lib/prisma.ts` with better-sqlite3 adapter

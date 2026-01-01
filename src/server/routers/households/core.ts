@@ -4,9 +4,14 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { dictatorProcedure, householdProcedure, router } from "@/server/trpc";
+import { dictatorFromInputProcedure, householdFromInputProcedure, router } from "@/server/trpc";
+
+const getCurrentSchema = z.object({
+	householdId: z.string().min(1),
+});
 
 const updateSchema = z.object({
+	householdId: z.string().min(1),
 	name: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 	rewardThreshold: z.number().int().min(1, "Threshold must be at least 1").max(10000, "Threshold is too high"),
 	progressBarColor: z
@@ -15,8 +20,12 @@ const updateSchema = z.object({
 		.nullable(),
 });
 
+const deleteCurrentSchema = z.object({
+	householdId: z.string().min(1),
+});
+
 export const householdCoreRouter = router({
-	getCurrent: householdProcedure.query(async ({ ctx }) => {
+	getCurrent: householdFromInputProcedure.input(getCurrentSchema).query(async ({ ctx }) => {
 		const household = await prisma.household.findUnique({
 			where: { id: ctx.household.id },
 			select: {
@@ -35,7 +44,7 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	updateCurrent: dictatorProcedure.input(updateSchema.partial()).mutation(async ({ ctx, input }) => {
+	updateCurrent: dictatorFromInputProcedure.input(updateSchema.partial()).mutation(async ({ ctx, input }) => {
 		const hasNameUpdate = input.name !== undefined && input.name.trim().length > 0;
 		const hasThresholdUpdate = input.rewardThreshold !== undefined;
 		const hasColorUpdate = input.progressBarColor !== undefined;
@@ -64,7 +73,7 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	deleteCurrent: dictatorProcedure.mutation(async ({ ctx }) => {
+	deleteCurrent: dictatorFromInputProcedure.input(deleteCurrentSchema).mutation(async ({ ctx }) => {
 		await prisma.$transaction(async (tx) => {
 			await tx.user.updateMany({
 				where: { lastHouseholdId: ctx.household.id },

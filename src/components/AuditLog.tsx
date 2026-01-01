@@ -1,7 +1,7 @@
 "use client";
 
 import { Undo2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -32,6 +32,8 @@ type Props = {
 };
 
 export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
+	const params = useParams<{ householdId: string }>();
+	const householdId = params.householdId;
 	const [items, setItems] = useState(entries);
 	const [hasMore, setHasMore] = useState(initialHasMore);
 	const router = useRouter();
@@ -80,6 +82,7 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 
 	const { refetch: loadMoreQuery, isFetching: isLoadingMore } = trpc.logs.getHistory.useQuery(
 		{
+			householdId,
 			offset: items.length,
 			limit: 10,
 		},
@@ -89,11 +92,11 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 	);
 
 	const undo = (id: string) => {
-		updateMutation.mutate({ id, action: "revert" });
+		updateMutation.mutate({ householdId, id, action: "revert" });
 	};
 
 	const resubmit = (id: string) => {
-		updateMutation.mutate({ id, action: "resubmit" });
+		updateMutation.mutate({ householdId, id, action: "resubmit" });
 	};
 
 	const loadMore = async () => {

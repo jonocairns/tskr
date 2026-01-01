@@ -20,12 +20,13 @@ import { useToast } from "@/hooks/useToast";
 import { trpc } from "@/lib/trpc/react";
 
 type Props = {
+	householdId: string;
 	canDelete: boolean;
 	variant?: "card" | "section";
 	showTitle?: boolean;
 };
 
-export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: Props) => {
+export const DangerZone = ({ householdId, canDelete, variant = "card", showTitle = false }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
@@ -51,7 +52,7 @@ export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: P
 
 	const handleDelete = () => {
 		startTransition(async () => {
-			await deleteMutation.mutateAsync();
+			await deleteMutation.mutateAsync({ householdId });
 		});
 	};
 

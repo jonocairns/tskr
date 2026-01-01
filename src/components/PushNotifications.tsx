@@ -1,5 +1,6 @@
 "use client";
 
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -52,6 +53,8 @@ type Props = {
 };
 
 export const PushNotifications = ({ variant = "card" }: Props) => {
+	const params = useParams<{ householdId: string }>();
+	const householdId = params.householdId;
 	const [status, setStatus] = useState<Status>("loading");
 	const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
@@ -318,7 +321,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 	const handleTest = async () => {
 		setIsTesting(true);
 		try {
-			await testMutation.mutateAsync();
+			await testMutation.mutateAsync({ householdId });
 		} finally {
 			setIsTesting(false);
 		}

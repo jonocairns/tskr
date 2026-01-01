@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 type Props = {
-	householdId?: string;
+	householdId: string;
 	enabled?: boolean;
 	debounceMs?: number;
 };
@@ -18,7 +18,7 @@ export const LiveRefresh = ({ householdId, enabled = true, debounceMs = 300 }: P
 			return undefined;
 		}
 
-		const streamUrl = householdId ? `/api/stream?householdId=${encodeURIComponent(householdId)}` : "/api/stream";
+		const streamUrl = `/api/stream?householdId=${encodeURIComponent(householdId)}`;
 		const source = new EventSource(streamUrl);
 
 		const scheduleRefresh = () => {

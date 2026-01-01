@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -33,6 +33,8 @@ type Props = {
 };
 
 export const AssignedTaskQueue = ({ entries }: Props) => {
+	const params = useParams<{ householdId: string }>();
+	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 
@@ -57,7 +59,7 @@ export const AssignedTaskQueue = ({ entries }: Props) => {
 	});
 
 	const handleComplete = (taskId: string) => {
-		completeMutation.mutate({ id: taskId });
+		completeMutation.mutate({ householdId, id: taskId });
 	};
 
 	const isPending = completeMutation.isPending;

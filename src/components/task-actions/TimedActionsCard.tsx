@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2Icon, SparklesIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
+import type { HouseholdRouteParams } from "@/types/routes";
 
 export const TimedActionsCard = () => {
 	const { presetOptions, disabled, defaultBucket, logPreset } = useTaskActions();
@@ -23,6 +24,8 @@ export const TimedActionsCard = () => {
 	const [description, setDescription] = useState("");
 	const [durationMinutes, setDurationMinutes] = useState("");
 
+	const params = useParams<HouseholdRouteParams>();
+	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
@@ -59,6 +62,7 @@ export const TimedActionsCard = () => {
 		const minutes = durationMinutes.trim().length > 0 ? Number(durationMinutes) : undefined;
 
 		createLogMutation.mutate({
+			householdId,
 			type: "timed",
 			bucket: selectedBucket,
 			description: description.trim(),

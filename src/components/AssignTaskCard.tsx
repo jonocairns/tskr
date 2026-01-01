@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import type { PresetSummary } from "@/components/task-actions/types";
@@ -32,6 +32,8 @@ type AssignTaskCardProps = {
 };
 
 export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCardProps) => {
+	const params = useParams<{ householdId: string }>();
+	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 
@@ -93,6 +95,7 @@ export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCa
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
 		createMutation.mutate({
+			householdId,
 			presetId,
 			assigneeId,
 			cadenceTarget: cadenceTargetValue,

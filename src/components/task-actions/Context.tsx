@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState, useTransition } from "react";
 
@@ -8,6 +8,7 @@ import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/t
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
+import type { HouseholdRouteParams } from "@/types/routes";
 
 type TaskActionsContextValue = {
 	presetOptions: PresetOption[];
@@ -47,6 +48,8 @@ export const TaskActionsProvider = ({
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [isPresetPending, startPresetTransition] = useTransition();
 
+	const params = useParams<HouseholdRouteParams>();
+	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
@@ -91,6 +94,7 @@ export const TaskActionsProvider = ({
 	const logPreset = (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => {
 		const noteValue = overrideNote ?? note.trim();
 		createLogMutation.mutate({
+			householdId,
 			type: "preset",
 			...payload,
 			description: noteValue || undefined,
