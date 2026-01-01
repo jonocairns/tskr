@@ -1,5 +1,8 @@
 -- Replace hardcoded 'default-household' ID with a generated ID
 -- This migration updates the household ID and all foreign key references
+--
+-- WARNING: This is a ONE-WAY migration. The original 'default-household' ID
+-- cannot be recovered after this migration runs. Rollback is not possible.
 
 -- First, store the new ID in a temporary table
 CREATE TEMPORARY TABLE "_new_household_id" (
