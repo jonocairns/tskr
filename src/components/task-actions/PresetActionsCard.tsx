@@ -169,6 +169,7 @@ export const PresetActionsCard = () => {
 
 	const handleCreatePresetFromTemplate = async (
 		template: PresetTemplate,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	) => {
 		const key = `${normalizeText(template.label)}|${template.bucket}`;
@@ -193,7 +194,7 @@ export const PresetActionsCard = () => {
 						householdId,
 						label: template.label,
 						bucket: template.bucket,
-						isShared: true,
+						isShared,
 						approvalOverride,
 					});
 					success = true;
@@ -213,6 +214,7 @@ export const PresetActionsCard = () => {
 	const handleCreatePreset = async (
 		label: string,
 		bucket: DurationKey,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	): Promise<boolean> => {
 		if (label.trim().length < 2) {
@@ -236,7 +238,7 @@ export const PresetActionsCard = () => {
 						householdId,
 						label: label.trim(),
 						bucket,
-						isShared: true,
+						isShared,
 						approvalOverride,
 					});
 					success = true;
@@ -288,6 +290,7 @@ export const PresetActionsCard = () => {
 		presetId: string,
 		label: string,
 		bucket: DurationKey,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	): Promise<boolean> => {
 		if (label.trim().length < 2) {
@@ -312,6 +315,7 @@ export const PresetActionsCard = () => {
 						id: presetId,
 						label: label.trim(),
 						bucket,
+						isShared,
 						approvalOverride,
 					});
 					success = true;

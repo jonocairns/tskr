@@ -35,16 +35,19 @@ type Props = {
 	onCreatePreset: (
 		label: string,
 		bucket: DurationKey,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	) => Promise<boolean>;
 	onCreatePresetFromTemplate: (
 		template: PresetTemplate,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	) => Promise<boolean>;
 	onUpdatePreset: (
 		presetId: string,
 		label: string,
 		bucket: DurationKey,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	) => Promise<boolean>;
 	onDeletePreset: (presetId: string) => Promise<boolean>;
@@ -79,20 +82,24 @@ export function PresetActionsDrawer({
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
 	const [customApprovalOverride, setCustomApprovalOverride] = useState<"DEFAULT" | "REQUIRE" | "SKIP">("DEFAULT");
+	const [customIsShared, setCustomIsShared] = useState(true);
 	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
 	const [editLabel, setEditLabel] = useState("");
 	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
 	const [editApprovalOverride, setEditApprovalOverride] = useState<"DEFAULT" | "REQUIRE" | "SKIP">("DEFAULT");
+	const [editIsShared, setEditIsShared] = useState(true);
 
 	useEffect(() => {
 		if (!isOpen) {
 			setCustomLabel("");
 			setCustomBucket(defaultBucket);
 			setCustomApprovalOverride("DEFAULT");
+			setCustomIsShared(true);
 			setEditingPresetId(null);
 			setEditLabel("");
 			setEditBucket(defaultBucket);
 			setEditApprovalOverride("DEFAULT");
+			setEditIsShared(true);
 		}
 	}, [isOpen, defaultBucket]);
 
@@ -109,11 +116,12 @@ export function PresetActionsDrawer({
 				? null
 				: customApprovalOverride
 			: undefined;
-		const success = await onCreatePreset(customLabel, customBucket, approvalOverride);
+		const success = await onCreatePreset(customLabel, customBucket, customIsShared, approvalOverride);
 		if (success) {
 			setCustomLabel("");
 			setCustomBucket(defaultBucket);
 			setCustomApprovalOverride("DEFAULT");
+			setCustomIsShared(true);
 		}
 	};
 
@@ -123,11 +131,12 @@ export function PresetActionsDrawer({
 				? null
 				: customApprovalOverride
 			: undefined;
-		const success = await onCreatePresetFromTemplate(template, approvalOverride);
+		const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride);
 		if (success) {
 			setCustomLabel("");
 			setCustomBucket(defaultBucket);
 			setCustomApprovalOverride("DEFAULT");
+			setCustomIsShared(true);
 		}
 	};
 
@@ -146,6 +155,7 @@ export function PresetActionsDrawer({
 		setEditLabel(preset.label);
 		setEditBucket(preset.bucket);
 		setEditApprovalOverride(preset.approvalOverride ?? "DEFAULT");
+		setEditIsShared(preset.isShared);
 	};
 
 	const cancelEdit = () => {
@@ -153,6 +163,7 @@ export function PresetActionsDrawer({
 		setEditLabel("");
 		setEditBucket(defaultBucket);
 		setEditApprovalOverride("DEFAULT");
+		setEditIsShared(true);
 	};
 
 	const handleUpdatePreset = async (event: FormEvent<HTMLFormElement>, presetId: string) => {
@@ -163,7 +174,7 @@ export function PresetActionsDrawer({
 				? null
 				: editApprovalOverride
 			: undefined;
-		const success = await onUpdatePreset(presetId, editLabel, editBucket, approvalOverride);
+		const success = await onUpdatePreset(presetId, editLabel, editBucket, editIsShared, approvalOverride);
 		if (success) {
 			setEditingPresetId(null);
 		}
@@ -248,6 +259,7 @@ export function PresetActionsDrawer({
 										})}
 									</div>
 								</div>
+
 								{canEditApprovalOverride ? (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">Approval override</p>
@@ -265,6 +277,23 @@ export function PresetActionsDrawer({
 												<SelectItem value="SKIP">Skip approval</SelectItem>
 											</SelectContent>
 										</Select>
+									</div>
+								) : null}
+								{canManagePresets ? (
+									<div className="space-y-2">
+										<label className="flex items-center gap-2">
+											<input
+												type="checkbox"
+												checked={customIsShared}
+												onChange={(e) => setCustomIsShared(e.target.checked)}
+												disabled={disabled}
+												className="h-4 w-4"
+											/>
+											<span className="text-sm">Share with household</span>
+										</label>
+										<p className="text-xs text-muted-foreground">
+											{customIsShared ? "Everyone can see and use this task" : "Only you can see and use this task"}
+										</p>
 									</div>
 								) : null}
 								<div className="grid gap-2 sm:grid-cols-2">
@@ -329,6 +358,8 @@ export function PresetActionsDrawer({
 											onEditBucketChange={setEditBucket}
 											editApprovalOverride={editApprovalOverride}
 											onEditApprovalOverrideChange={setEditApprovalOverride}
+											editIsShared={editIsShared}
+											onEditIsSharedChange={setEditIsShared}
 											canUpdatePreset={canUpdate}
 											onUpdatePreset={handleUpdatePreset}
 											onCancelEdit={cancelEdit}
@@ -336,6 +367,7 @@ export function PresetActionsDrawer({
 											onDeletePreset={handleDeletePreset}
 											canDelete={preset.createdById === currentUserId}
 											canEditApprovalOverride={canEditApprovalOverride}
+											canManagePresets={canManagePresets}
 											disabled={disabled}
 										/>
 									))

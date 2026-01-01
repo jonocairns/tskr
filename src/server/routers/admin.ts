@@ -17,7 +17,7 @@ const updateAppSettingsSchema = z.object({
 });
 
 const createUserSchema = z.object({
-	email: z.string().trim().email(),
+	email: z.email(),
 	name: z.string().trim().max(80).nullable().optional(),
 	password: z.string().min(8),
 	passwordResetRequired: z.boolean().optional(),
@@ -25,7 +25,7 @@ const createUserSchema = z.object({
 
 const updateUserSchema = z.object({
 	id: z.string(),
-	email: z.string().trim().email().optional(),
+	email: z.email().optional(),
 	name: z.string().trim().max(80).nullable().optional(),
 	passwordLoginDisabled: z.boolean().optional(),
 	passwordResetRequired: z.boolean().optional(),
@@ -36,7 +36,7 @@ const deleteUserSchema = z.object({
 });
 
 const createPasswordResetSchema = z.object({
-	email: z.string().trim().email(),
+	email: z.email(),
 });
 
 const deletePasswordResetsSchema = z.object({

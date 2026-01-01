@@ -21,7 +21,7 @@ const presetSchema = z.object({
 	label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 	bucket: z.enum(DURATION_KEYS),
 	isShared: z.boolean().optional(),
-	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullable().optional(),
+	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
 });
 
 const updatePresetSchema = z
@@ -31,7 +31,7 @@ const updatePresetSchema = z
 		label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short").optional(),
 		bucket: z.enum(DURATION_KEYS).optional(),
 		isShared: z.boolean().optional(),
-		approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullable().optional(),
+		approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
 	})
 	.refine((data) => data.label || data.bucket || data.isShared !== undefined || data.approvalOverride !== undefined, {
 		message: "No updates provided",
