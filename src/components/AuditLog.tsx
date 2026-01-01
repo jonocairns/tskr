@@ -44,7 +44,7 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 		setHasMore(initialHasMore);
 	}, [entries, initialHasMore]);
 
-	const updateMutation = trpc.logs.updateStatus.useMutation({
+	const { mutate: updateStatus, isPending } = trpc.logs.updateStatus.useMutation({
 		onSuccess: (_, variables) => {
 			const action = variables.action;
 			if (action === "revert") {
@@ -91,11 +91,11 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 	);
 
 	const undo = (id: string) => {
-		updateMutation.mutate({ householdId, id, action: "revert" });
+		updateStatus({ id, action: "revert" });
 	};
 
 	const resubmit = (id: string) => {
-		updateMutation.mutate({ householdId, id, action: "resubmit" });
+		updateStatus({ id, action: "resubmit" });
 	};
 
 	const loadMore = async () => {
@@ -117,8 +117,6 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 			});
 		}
 	};
-
-	const isPending = updateMutation.isPending;
 
 	return (
 		<Card>

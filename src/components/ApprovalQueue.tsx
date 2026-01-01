@@ -19,17 +19,16 @@ export type ApprovalEntry = {
 };
 
 type Props = {
-	householdId: string;
 	entries: ApprovalEntry[];
 	currentUserId: string;
 };
 
-export const ApprovalQueue = ({ householdId, entries, currentUserId }: Props) => {
+export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
 
-	const updateMutation = trpc.logs.updateStatus.useMutation({
+	const { mutate, isPending } = trpc.logs.updateStatus.useMutation({
 		onError: (error, variables) => {
 			const action = variables.action;
 			toast({
@@ -51,10 +50,8 @@ export const ApprovalQueue = ({ householdId, entries, currentUserId }: Props) =>
 	});
 
 	const actOnEntry = (id: string, action: "approve" | "reject") => {
-		updateMutation.mutate({ householdId, id, action });
+		mutate({ id, action });
 	};
-
-	const isPending = updateMutation.isPending;
 
 	return (
 		<Card>

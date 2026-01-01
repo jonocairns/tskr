@@ -15,7 +15,7 @@ export const AuthSettingsCard = ({ initialAllowGoogleAccountCreation }: Props) =
 	const { toast } = useToast();
 	const [allowGoogleAccountCreation, setAllowGoogleAccountCreation] = useState(initialAllowGoogleAccountCreation);
 
-	const updateMutation = trpc.admin.updateAppSettings.useMutation({
+	const { mutate: updateSettings, isPending } = trpc.admin.updateAppSettings.useMutation({
 		onSuccess: (result) => {
 			setAllowGoogleAccountCreation(result.settings.allowGoogleAccountCreation);
 			toast({ title: "Settings updated" });
@@ -32,10 +32,8 @@ export const AuthSettingsCard = ({ initialAllowGoogleAccountCreation }: Props) =
 
 	const handleToggle = (value: boolean) => {
 		setAllowGoogleAccountCreation(value);
-		updateMutation.mutate({ allowGoogleAccountCreation: value });
+		updateSettings({ allowGoogleAccountCreation: value });
 	};
-
-	const isPending = updateMutation.isPending;
 
 	return (
 		<Card>

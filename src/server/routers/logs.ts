@@ -40,7 +40,6 @@ const historyQuerySchema = z.object({
 });
 
 const updateLogSchema = z.object({
-	householdId: z.string().min(1),
 	id: z.string(),
 	action: z.enum(["approve", "reject", "resubmit", "revert"]),
 });
