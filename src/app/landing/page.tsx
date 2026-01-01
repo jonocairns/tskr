@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { AuthCta } from "@/components/AuthCta";
+import { HouseholdErrorToast } from "@/components/HouseholdErrorToast";
 import { CreateCard } from "@/components/household/CreateCard";
 import { JoinCard } from "@/components/household/JoinCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -31,6 +32,8 @@ export default async function LandingPage() {
 
 	return (
 		<PageShell size="sm">
+			<HouseholdErrorToast />
+
 			<PageHeader
 				eyebrow="tskr"
 				title="Welcome"

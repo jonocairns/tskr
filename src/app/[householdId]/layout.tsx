@@ -27,9 +27,9 @@ export default async function HouseholdLayout({
 		const active = await getActiveHouseholdMembership(userId);
 
 		if (active) {
-			redirect(`/${active.householdId}`);
+			redirect(`/${active.householdId}?error=HouseholdAccessDenied`);
 		}
-		redirect("/landing");
+		redirect("/landing?error=NoHouseholdMembership");
 	}
 	return children;
 }

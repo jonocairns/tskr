@@ -19,6 +19,10 @@ type Props = {
 		hasGoogleAccount?: boolean;
 	};
 	googleEnabled: boolean;
+	household?: {
+		id: string;
+		role: "DICTATOR" | "APPROVER" | "DOER";
+	};
 };
 
 export const PageHeader = ({
@@ -29,6 +33,7 @@ export const PageHeader = ({
 	backLabel = "Back",
 	user,
 	googleEnabled,
+	household,
 }: Props) => (
 	<header className="flex items-start justify-between">
 		<div className="flex items-center gap-3 flex-1">
@@ -44,7 +49,7 @@ export const PageHeader = ({
 		<div className="flex items-center gap-2">
 			<ModeToggle />
 			<Switcher />
-			<UserMenu user={user} googleEnabled={googleEnabled} />
+			<UserMenu user={user} googleEnabled={googleEnabled} household={household} />
 		</div>
 	</header>
 );

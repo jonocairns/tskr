@@ -1,6 +1,7 @@
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";
 import { AuditLog } from "@/components/AuditLog";
+import { HouseholdErrorToast } from "@/components/HouseholdErrorToast";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { PageHeader } from "@/components/PageHeader";
@@ -69,12 +70,15 @@ export default async function DashboardPage({ params }: Props) {
 
 	return (
 		<PageShell>
+			<HouseholdErrorToast />
+
 			<PageHeader
 				eyebrow="tskr"
 				title="Dashboard"
 				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
 				user={session.user}
 				googleEnabled={googleEnabled}
+				household={{ id: householdId, role: membership.role }}
 			/>
 
 			<PointsSummary
@@ -97,7 +101,7 @@ export default async function DashboardPage({ params }: Props) {
 
 			<AuditLog entries={auditEntries} currentUserId={userId} initialHasMore={hasMoreHistory} />
 
-			<LiveRefresh key={householdId} />
+			<LiveRefresh householdId={householdId} />
 		</PageShell>
 	);
 }

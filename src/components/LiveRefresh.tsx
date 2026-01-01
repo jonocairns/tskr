@@ -4,11 +4,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 type Props = {
+	householdId?: string;
 	enabled?: boolean;
 	debounceMs?: number;
 };
 
-export const LiveRefresh = ({ enabled = true, debounceMs = 300 }: Props) => {
+export const LiveRefresh = ({ householdId, enabled = true, debounceMs = 300 }: Props) => {
 	const router = useRouter();
 	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -17,7 +18,8 @@ export const LiveRefresh = ({ enabled = true, debounceMs = 300 }: Props) => {
 			return undefined;
 		}
 
-		const source = new EventSource("/api/stream");
+		const streamUrl = householdId ? `/api/stream?householdId=${encodeURIComponent(householdId)}` : "/api/stream";
+		const source = new EventSource(streamUrl);
 
 		const scheduleRefresh = () => {
 			if (refreshTimerRef.current) {
@@ -39,7 +41,7 @@ export const LiveRefresh = ({ enabled = true, debounceMs = 300 }: Props) => {
 				refreshTimerRef.current = null;
 			}
 		};
-	}, [debounceMs, enabled, router]);
+	}, [debounceMs, enabled, router, householdId]);
 
 	return null;
 };

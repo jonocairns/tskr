@@ -90,6 +90,7 @@ export default async function AssignmentsPage({ params }: Props) {
 				backLabel="Back to dashboard"
 				user={session.user}
 				googleEnabled={googleEnabled}
+				household={{ id: householdId, role: membership.role }}
 			/>
 
 			<AssignTaskCard members={members} presets={presetSummaries} currentUserId={userId} />

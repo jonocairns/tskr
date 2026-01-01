@@ -114,9 +114,26 @@ tests/                    # Jest unit tests
 - Client reconnects automatically on disconnect
 
 **Session Management**:
-- NextAuth sessions extended with `householdId` and `isSuperAdmin`
+- NextAuth sessions contain user identity and auth status only (`id`, `isSuperAdmin`, `hasGoogleAccount`)
 - Session validation includes idle timeout (24hr) and max age (30 days)
 - Session tokens validated via `validateSessionExpiry()` in tRPC middleware
+- **Household context is NOT stored in session** - see Household Routing below
+
+**Household Routing**:
+- URL-based routing pattern: `/[householdId]/*` for all household-scoped pages
+- Layout at `app/[householdId]/layout.tsx` validates membership before rendering
+- Server pages use `getHouseholdContext(householdId)` helper for auth + membership validation
+- Invalid household access redirects to active household with error toast
+- **Mixed pattern (stable architecture)**:
+  - **Page routes**: Use URL-based household context (explicit `householdId` param)
+  - **tRPC procedures**: Use session-based active household (`getActiveHouseholdMembership()`)
+    - This works because tRPC calls are made from pages that already have validated household access
+    - The user's "active household" matches the URL householdId when they switch households
+    - Avoids requiring householdId in every tRPC call signature
+  - **New procedures needing explicit household**: Use `householdFromInputProcedure` for procedures that accept `householdId` in input
+  - **SSE stream**: Accepts optional `householdId` query param, falls back to active household
+- Client components can access `householdId` from URL params via `useParams()`
+- **Future consolidation**: To fully move to URL-based pattern, all tRPC procedures would need householdId input (breaking API change)
 
 **Database Patterns**:
 - Prisma singleton in `src/lib/prisma.ts` with better-sqlite3 adapter

@@ -27,21 +27,28 @@ type Props = {
 		hasGoogleAccount?: boolean;
 	};
 	googleEnabled: boolean;
+	household?: {
+		id: string;
+		role: "DICTATOR" | "APPROVER" | "DOER";
+	};
 };
 
-export const UserMenu = ({ user, googleEnabled }: Props) => {
+export const UserMenu = ({ user, googleEnabled, household: propsHousehold }: Props) => {
 	const { data: session, status } = useSession();
 	const { toast } = useToast();
 	const params = useParams<{ householdId?: string }>();
-	const householdId = params.householdId;
+	const paramsHouseholdId = params.householdId;
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
 
+	const householdId = propsHousehold?.id ?? paramsHouseholdId;
+
 	const { data: householdData } = trpc.households.list.useQuery(undefined, {
-		enabled: status === "authenticated" && !!householdId,
+		enabled: status === "authenticated" && !!householdId && !propsHousehold,
 	});
 
-	const currentHouseholdRole = householdData?.households.find((h) => h.id === householdId)?.role;
+	const currentHouseholdRole =
+		propsHousehold?.role ?? householdData?.households.find((h) => h.id === householdId)?.role;
 	const initials =
 		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
 
