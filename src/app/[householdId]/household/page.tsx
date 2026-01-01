@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
-import { AuthCta } from "@/components/AuthCta";
 import { DangerZone } from "@/components/household/DangerZone";
 import { InvitesCard } from "@/components/household/InvitesCard";
 import { JoinCard } from "@/components/household/JoinCard";
@@ -13,29 +11,32 @@ import { PushNotifications } from "@/components/PushNotifications";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
-import { getActiveHouseholdMembership } from "@/lib/households";
+import { getHouseholdMembership } from "@/lib/households";
 
 export const dynamic = "force-dynamic";
 
-export default async function HouseholdPage() {
+type Props = {
+	params: Promise<{ householdId: string }>;
+};
+
+export default async function HouseholdPage({ params }: Props) {
 	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
 
+	// Layout handles auth check - session will always exist here
 	if (!session?.user?.id) {
-		return (
-			<PageShell layout="centered" size="lg">
-				<AuthCta googleEnabled={googleEnabled} />
-			</PageShell>
-		);
+		throw new Error("Unauthorized");
 	}
 
 	const userId = session.user.id;
-	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
-	if (!active) {
-		redirect("/landing");
-	}
+	const { householdId } = await params;
 
-	const { householdId, membership } = active;
+	// Get membership for role info
+	const membership = await getHouseholdMembership(userId, householdId);
+
+	if (!membership) {
+		throw new Error("Membership not found");
+	}
 
 	return (
 		<PageShell size="lg">
@@ -43,7 +44,7 @@ export default async function HouseholdPage() {
 				eyebrow="tskr"
 				title="Household"
 				description="Manage settings, members, and invite codes."
-				backHref="/"
+				backHref={`/${householdId}`}
 				backLabel="Back to dashboard"
 				user={session.user}
 				googleEnabled={googleEnabled}

@@ -26,7 +26,7 @@ export default async function LandingPage() {
 
 	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
 	if (active) {
-		redirect("/");
+		redirect(`/${active.householdId}`);
 	}
 
 	return (
@@ -39,8 +39,8 @@ export default async function LandingPage() {
 				googleEnabled={googleEnabled}
 			/>
 
-			<JoinCard redirectTo="/" />
-			<CreateCard redirectTo="/" />
+			<JoinCard />
+			<CreateCard />
 		</PageShell>
 	);
 }

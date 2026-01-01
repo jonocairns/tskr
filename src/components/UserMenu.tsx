@@ -32,6 +32,7 @@ type Props = {
 export const UserMenu = ({ user, googleEnabled }: Props) => {
 	const { data: session } = useSession();
 	const { toast } = useToast();
+	const householdId = session?.user?.householdId;
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
 	const initials =
@@ -70,17 +71,17 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="w-56" align="end">
-				{resolvedUser?.hasHouseholdMembership ? (
+				{resolvedUser?.hasHouseholdMembership && householdId ? (
 					<>
 						<DropdownMenuItem asChild>
-							<Link href="/household">
+							<Link href={`/${householdId}/household`}>
 								<HomeIcon className="mr-2 h-4 w-4" />
 								Household
 							</Link>
 						</DropdownMenuItem>
 						{resolvedUser?.householdRole !== "DOER" ? (
 							<DropdownMenuItem asChild>
-								<Link href="/assignments">
+								<Link href={`/${householdId}/assignments`}>
 									<ClipboardListIcon className="mr-2 h-4 w-4" />
 									Assignments
 								</Link>

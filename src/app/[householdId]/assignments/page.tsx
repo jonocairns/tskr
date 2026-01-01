@@ -1,41 +1,44 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+
 import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignTaskCard } from "@/components/AssignTaskCard";
-import { AuthCta } from "@/components/AuthCta";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
-import { getActiveHouseholdMembership } from "@/lib/households";
+import { getHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export default async function AssignmentsPage() {
+type Props = {
+	params: Promise<{ householdId: string }>;
+};
+
+export default async function AssignmentsPage({ params }: Props) {
 	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
 
+	// Layout handles auth check - session will always exist here
 	if (!session?.user?.id) {
-		return (
-			<PageShell layout="centered" size="lg">
-				<AuthCta googleEnabled={googleEnabled} />
-			</PageShell>
-		);
+		throw new Error("Unauthorized");
 	}
 
 	const userId = session.user.id;
-	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
-	if (!active) {
-		redirect("/landing");
+	const { householdId } = await params;
+
+	// Get membership for role info
+	const membership = await getHouseholdMembership(userId, householdId);
+
+	if (!membership) {
+		throw new Error("Membership not found");
 	}
 
-	if (active.membership.role === "DOER") {
-		redirect("/");
+	if (membership.role === "DOER") {
+		redirect(`/${householdId}`);
 	}
-
-	const { householdId } = active;
 
 	const [members, presets, assignedTasks] = await Promise.all([
 		prisma.user.findMany({
@@ -93,7 +96,7 @@ export default async function AssignmentsPage() {
 				eyebrow="tskr"
 				title="Assignments"
 				description="Assign tasks and adjust cadence or recurrence."
-				backHref="/"
+				backHref={`/${householdId}`}
 				backLabel="Back to dashboard"
 				user={session.user}
 				googleEnabled={googleEnabled}

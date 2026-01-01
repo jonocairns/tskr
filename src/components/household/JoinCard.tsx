@@ -13,10 +13,9 @@ import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	variant?: "card" | "section";
-	redirectTo?: string;
 };
 
-export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
+export const JoinCard = ({ variant = "card" }: Props) => {
 	const [code, setCode] = useState("");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
@@ -31,11 +30,16 @@ export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 		onSuccess: async () => {
 			setCode("");
 			toast({ title: "Joined household" });
-			await update();
-			if (redirectTo) {
-				router.push(redirectTo);
+
+			// Update session - it will include the new householdId
+			const session = await update();
+
+			// Navigate to the new household
+			if (session?.user?.householdId) {
+				router.push(`/${session.user.householdId}`);
 			} else {
-				router.refresh();
+				// Fallback to root which will redirect appropriately
+				router.push("/");
 			}
 		},
 		onError: (error) => {

@@ -1,54 +1,41 @@
 "use client";
 
 import { CheckIcon, ChevronDownIcon, HomeIcon, Loader2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/DropdownMenu";
-import { useToast } from "@/hooks/useToast";
 import { trpc } from "@/lib/trpc/react";
 
 export const Switcher = () => {
 	const [isPending, startTransition] = useTransition();
-	const { toast } = useToast();
 	const router = useRouter();
-	const { status, update } = useSession();
+	const params = useParams();
+	const { status } = useSession();
 
 	const { data, isLoading } = trpc.households.list.useQuery(undefined, {
 		enabled: status === "authenticated",
 	});
 
 	const households = data?.households ?? [];
-	const activeHouseholdId = data?.activeHouseholdId ?? null;
+	// Use URL params as source of truth for active household
+	const activeHouseholdId = (params.householdId as string | undefined) ?? data?.activeHouseholdId ?? null;
 
 	const activeHousehold = useMemo(
 		() => households.find((household) => household.id === activeHouseholdId) ?? households[0] ?? null,
 		[households, activeHouseholdId],
 	);
 
-	const selectMutation = trpc.households.select.useMutation({
-		onSuccess: async () => {
-			await update();
-			router.refresh();
-		},
-		onError: (error) => {
-			toast({
-				title: "Unable to switch households",
-				description: error.message ?? "Please try again.",
-				variant: "destructive",
-			});
-		},
-	});
-
 	const handleSelect = (householdId: string) => {
 		if (householdId === activeHouseholdId || isPending) {
 			return;
 		}
 
-		startTransition(async () => {
-			await selectMutation.mutateAsync({ householdId });
+		startTransition(() => {
+			// Just navigate - layout will handle validation and sync
+			router.push(`/${householdId}`);
 		});
 	};
 
