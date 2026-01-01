@@ -178,6 +178,15 @@ export const PresetActionsCard = () => {
 			return false;
 		}
 
+		if (!householdId) {
+			toast({
+				title: "Unable to add preset",
+				description: "Household context not available",
+				variant: "destructive",
+			});
+			return false;
+		}
+
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
@@ -212,6 +221,15 @@ export const PresetActionsCard = () => {
 			return false;
 		}
 
+		if (!householdId) {
+			toast({
+				title: "Unable to add preset",
+				description: "Household context not available",
+				variant: "destructive",
+			});
+			return false;
+		}
+
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
@@ -236,6 +254,15 @@ export const PresetActionsCard = () => {
 
 	const handleLogTimed = async (label: string, bucket: DurationKey): Promise<boolean> => {
 		if (label.trim().length < 2) {
+			return false;
+		}
+
+		if (!householdId) {
+			toast({
+				title: "Unable to log task",
+				description: "Household context not available",
+				variant: "destructive",
+			});
 			return false;
 		}
 
@@ -269,6 +296,15 @@ export const PresetActionsCard = () => {
 			return false;
 		}
 
+		if (!householdId) {
+			toast({
+				title: "Unable to update preset",
+				description: "Household context not available",
+				variant: "destructive",
+			});
+			return false;
+		}
+
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
@@ -291,6 +327,15 @@ export const PresetActionsCard = () => {
 	};
 
 	const handleDeletePreset = async (presetId: string): Promise<boolean> => {
+		if (!householdId) {
+			toast({
+				title: "Unable to delete preset",
+				description: "Household context not available",
+				variant: "destructive",
+			});
+			return false;
+		}
+
 		let success = false;
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {

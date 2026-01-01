@@ -46,7 +46,7 @@ const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.i
 
 export const assignedTasksRouter = router({
 	create: approverFromInputProcedure.input(createAssignedTaskSchema).mutation(async ({ ctx, input }) => {
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 		const { presetId, assigneeId, cadenceTarget, cadenceIntervalMinutes, isRecurring } = input;
 		const normalizedCadenceTarget = isRecurring ? cadenceTarget : 1;
 		const normalizedCadenceIntervalMinutes = Math.max(1, cadenceIntervalMinutes);
@@ -91,7 +91,7 @@ export const assignedTasksRouter = router({
 	}),
 
 	update: approverFromInputProcedure.input(updateAssignedTaskSchema).mutation(async ({ ctx, input }) => {
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 		const { id, ...updates } = input;
 
 		const task = await prisma.assignedTask.findFirst({
@@ -125,7 +125,7 @@ export const assignedTasksRouter = router({
 	}),
 
 	delete: approverFromInputProcedure.input(deleteAssignedTaskSchema).mutation(async ({ ctx, input }) => {
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 		const { id } = input;
 
 		const task = await prisma.assignedTask.findFirst({
@@ -148,7 +148,7 @@ export const assignedTasksRouter = router({
 
 	complete: householdFromInputProcedure.input(completeAssignedTaskSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 		const { id } = input;
 
 		const task = await prisma.assignedTask.findFirst({

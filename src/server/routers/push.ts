@@ -79,7 +79,7 @@ export const pushRouter = router({
 		return { ok: true };
 	}),
 
-	test: householdFromInputProcedure.input(testPushSchema).mutation(async ({ ctx }) => {
+	test: householdFromInputProcedure.input(testPushSchema).mutation(async ({ ctx, input }) => {
 		if (!isPushConfigured()) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Push is not configured" });
 		}

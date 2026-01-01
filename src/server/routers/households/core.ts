@@ -25,9 +25,9 @@ const deleteCurrentSchema = z.object({
 });
 
 export const householdCoreRouter = router({
-	getCurrent: householdFromInputProcedure.input(getCurrentSchema).query(async ({ ctx }) => {
+	getCurrent: householdFromInputProcedure.input(getCurrentSchema).query(async ({ ctx, input }) => {
 		const household = await prisma.household.findUnique({
-			where: { id: ctx.household.id },
+			where: { id: input.householdId },
 			select: {
 				id: true,
 				name: true,
@@ -54,7 +54,7 @@ export const householdCoreRouter = router({
 		}
 
 		const household = await prisma.household.update({
-			where: { id: ctx.household.id },
+			where: { id: input.householdId },
 			data: {
 				...(hasNameUpdate && input.name ? { name: input.name.trim() } : {}),
 				...(hasThresholdUpdate && input.rewardThreshold !== undefined
@@ -73,15 +73,15 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	deleteCurrent: dictatorFromInputProcedure.input(deleteCurrentSchema).mutation(async ({ ctx }) => {
+	deleteCurrent: dictatorFromInputProcedure.input(deleteCurrentSchema).mutation(async ({ ctx, input }) => {
 		await prisma.$transaction(async (tx) => {
 			await tx.user.updateMany({
-				where: { lastHouseholdId: ctx.household.id },
+				where: { lastHouseholdId: input.householdId },
 				data: { lastHouseholdId: null },
 			});
 
 			await tx.household.delete({
-				where: { id: ctx.household.id },
+				where: { id: input.householdId },
 			});
 		});
 

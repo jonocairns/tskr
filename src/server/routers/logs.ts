@@ -49,7 +49,7 @@ export const logsRouter = router({
 	getHistory: householdFromInputProcedure.input(historyQuerySchema).query(async ({ ctx, input }) => {
 		const take = input.limit + 1;
 		const logs = await prisma.pointLog.findMany({
-			where: { householdId: ctx.household.id },
+			where: { householdId: input.householdId },
 			include: {
 				user: { select: { id: true, name: true, email: true } },
 			},
@@ -70,7 +70,7 @@ export const logsRouter = router({
 	create: householdFromInputProcedure.input(createLogSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
 		const actorLabel = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 
 		const membership = await prisma.householdMember.findUnique({
 			where: {

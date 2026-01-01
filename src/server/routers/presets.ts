@@ -38,8 +38,8 @@ const deletePresetSchema = z.object({
 });
 
 export const presetsRouter = router({
-	list: householdFromInputProcedure.input(listPresetsSchema).query(async ({ ctx }) => {
-		const householdId = ctx.household.id;
+	list: householdFromInputProcedure.input(listPresetsSchema).query(async ({ ctx, input }) => {
+		const householdId = input.householdId;
 		const userId = ctx.session.user.id;
 
 		const presets = await prisma.presetTask.findMany({
@@ -64,10 +64,19 @@ export const presetsRouter = router({
 	}),
 
 	create: householdFromInputProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 		const userId = ctx.session.user.id;
-		const role = ctx.household.role;
 
+		const membership = await prisma.householdMember.findUnique({
+			where: { householdId_userId: { householdId, userId } },
+			select: { role: true },
+		});
+
+		if (!membership) {
+			throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
+		}
+
+		const role = membership.role;
 		const allowShared = role !== "DOER";
 		const approvalOverride = role === "DOER" ? null : (input.approvalOverride ?? null);
 
@@ -96,9 +105,19 @@ export const presetsRouter = router({
 
 	update: householdFromInputProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
 		const { id, ...updates } = input;
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 		const userId = ctx.session.user.id;
-		const role = ctx.household.role;
+
+		const membership = await prisma.householdMember.findUnique({
+			where: { householdId_userId: { householdId, userId } },
+			select: { role: true },
+		});
+
+		if (!membership) {
+			throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
+		}
+
+		const role = membership.role;
 
 		const preset = await prisma.presetTask.findFirst({
 			where: { id, householdId },
@@ -150,7 +169,7 @@ export const presetsRouter = router({
 	}),
 
 	delete: householdFromInputProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 		const userId = ctx.session.user.id;
 
 		const preset = await prisma.presetTask.findFirst({

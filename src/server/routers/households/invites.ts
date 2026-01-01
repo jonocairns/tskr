@@ -33,11 +33,11 @@ const getInvitesSchema = z.object({
 });
 
 export const householdInvitesRouter = router({
-	getInvites: dictatorFromInputProcedure.input(getInvitesSchema).query(async ({ ctx }) => {
+	getInvites: dictatorFromInputProcedure.input(getInvitesSchema).query(async ({ ctx, input }) => {
 		const now = new Date();
 		await prisma.householdInvite.updateMany({
 			where: {
-				householdId: ctx.household.id,
+				householdId: input.householdId,
 				status: "PENDING",
 				expiresAt: { lt: now },
 			},
@@ -46,7 +46,7 @@ export const householdInvitesRouter = router({
 
 		const invites = await prisma.householdInvite.findMany({
 			where: {
-				householdId: ctx.household.id,
+				householdId: input.householdId,
 				status: { in: ["PENDING", "EXPIRED"] },
 			},
 			select: {
@@ -82,7 +82,7 @@ export const householdInvitesRouter = router({
 			}
 			invite = await prisma.householdInvite.create({
 				data: {
-					householdId: ctx.household.id,
+					householdId: input.householdId,
 					code,
 					role,
 					invitedById: ctx.session.user.id,
@@ -126,7 +126,7 @@ export const householdInvitesRouter = router({
 			throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found" });
 		}
 
-		if (invite.householdId !== ctx.household.id) {
+		if (invite.householdId !== input.householdId) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
 		}
 

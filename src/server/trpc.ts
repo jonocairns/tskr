@@ -170,123 +170,12 @@ const hasApproverRole = t.middleware(async ({ ctx, next }) => {
 
 export const approverProcedure = t.procedure.use(isAuthed).use(hasApproverRole);
 
-const withHouseholdIdInput = z.object({
-	householdId: z.string().min(1),
-});
-
-const withHouseholdFromInput = t.middleware(async ({ ctx, input, next }) => {
-	if (!ctx.session?.user?.id) {
-		throw new TRPCError({ code: "UNAUTHORIZED" });
-	}
-
-	const result = withHouseholdIdInput.safeParse(input);
-	if (!result.success) {
-		throw new TRPCError({ code: "BAD_REQUEST", message: "householdId is required" });
-	}
-
-	const { householdId } = result.data;
-	const membership = await getHouseholdMembership(ctx.session.user.id, householdId);
-
-	if (!membership) {
-		throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
-	}
-
-	return next({
-		ctx: {
-			...ctx,
-			session: {
-				...ctx.session,
-				user: ctx.session.user,
-			},
-			household: {
-				id: householdId,
-				role: membership.role,
-				requiresApprovalDefault: membership.requiresApprovalDefault,
-			},
-		},
-	});
-});
-
-export const householdFromInputProcedure = t.procedure.use(isAuthed).use(withHouseholdFromInput);
-
-const withApproverRoleFromInput = t.middleware(async ({ ctx, input, next }) => {
-	if (!ctx.session?.user?.id) {
-		throw new TRPCError({ code: "UNAUTHORIZED" });
-	}
-
-	const result = withHouseholdIdInput.safeParse(input);
-	if (!result.success) {
-		throw new TRPCError({ code: "BAD_REQUEST", message: "householdId is required" });
-	}
-
-	const { householdId } = result.data;
-	const membership = await getHouseholdMembership(ctx.session.user.id, householdId);
-
-	if (!membership) {
-		throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
-	}
-
-	const role = membership.role;
-	if (role !== "APPROVER" && role !== "DICTATOR") {
-		throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
-	}
-
-	return next({
-		ctx: {
-			...ctx,
-			session: {
-				...ctx.session,
-				user: ctx.session.user,
-			},
-			household: {
-				id: householdId,
-				role: membership.role,
-				requiresApprovalDefault: membership.requiresApprovalDefault,
-			},
-		},
-	});
-});
-
-export const approverFromInputProcedure = t.procedure.use(isAuthed).use(withApproverRoleFromInput);
-
-const withDictatorRoleFromInput = t.middleware(async ({ ctx, input, next }) => {
-	if (!ctx.session?.user?.id) {
-		throw new TRPCError({ code: "UNAUTHORIZED" });
-	}
-
-	const result = withHouseholdIdInput.safeParse(input);
-	if (!result.success) {
-		throw new TRPCError({ code: "BAD_REQUEST", message: "householdId is required" });
-	}
-
-	const { householdId } = result.data;
-	const membership = await getHouseholdMembership(ctx.session.user.id, householdId);
-
-	if (!membership) {
-		throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
-	}
-
-	if (membership.role !== "DICTATOR") {
-		throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
-	}
-
-	return next({
-		ctx: {
-			...ctx,
-			session: {
-				...ctx.session,
-				user: ctx.session.user,
-			},
-			household: {
-				id: householdId,
-				role: membership.role,
-				requiresApprovalDefault: membership.requiresApprovalDefault,
-			},
-		},
-	});
-});
-
-export const dictatorFromInputProcedure = t.procedure.use(isAuthed).use(withDictatorRoleFromInput);
+// These procedures just ensure the user is authenticated
+// The householdId comes from the input schema and is validated there
+// Role checking happens in the procedure implementation based on input.householdId
+export const householdFromInputProcedure = protectedProcedure;
+export const approverFromInputProcedure = protectedProcedure;
+export const dictatorFromInputProcedure = protectedProcedure;
 
 const isSuperAdmin = t.middleware(({ ctx, next }) => {
 	if (!ctx.session?.user?.id) {

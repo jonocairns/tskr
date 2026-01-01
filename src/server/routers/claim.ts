@@ -11,9 +11,9 @@ const claimRewardSchema = z.object({
 });
 
 export const claimRouter = router({
-	claimReward: householdFromInputProcedure.input(claimRewardSchema).mutation(async ({ ctx }) => {
+	claimReward: householdFromInputProcedure.input(claimRewardSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
-		const householdId = ctx.household.id;
+		const householdId = input.householdId;
 
 		try {
 			const result = await prisma.$transaction(async (tx) => {

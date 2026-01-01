@@ -22,9 +22,9 @@ const updateMemberSchema = z
 	});
 
 export const householdMembersRouter = router({
-	getMembers: householdFromInputProcedure.input(getMembersSchema).query(async ({ ctx }) => {
+	getMembers: householdFromInputProcedure.input(getMembersSchema).query(async ({ ctx, input }) => {
 		const members = await prisma.householdMember.findMany({
-			where: { householdId: ctx.household.id },
+			where: { householdId: input.householdId },
 			select: {
 				id: true,
 				userId: true,
@@ -44,7 +44,7 @@ export const householdMembersRouter = router({
 		const { id, ...updates } = input;
 
 		const member = await prisma.householdMember.findFirst({
-			where: { id, householdId: ctx.household.id },
+			where: { id, householdId: input.householdId },
 			select: { id: true, role: true },
 		});
 
@@ -54,7 +54,7 @@ export const householdMembersRouter = router({
 
 		if (updates.role && updates.role !== member.role && member.role === "DICTATOR" && updates.role !== "DICTATOR") {
 			const dictatorCount = await prisma.householdMember.count({
-				where: { householdId: ctx.household.id, role: "DICTATOR" },
+				where: { householdId: input.householdId, role: "DICTATOR" },
 			});
 			if (dictatorCount <= 1) {
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Household must have at least one dictator" });

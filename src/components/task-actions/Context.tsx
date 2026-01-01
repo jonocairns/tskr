@@ -92,16 +92,24 @@ export const TaskActionsProvider = ({
 	}));
 
 	const logPreset = (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => {
+		if (!householdId) {
+			toast({
+				title: "Unable to log task",
+				description: "Household context not available",
+				variant: "destructive",
+			});
+			return;
+		}
 		const noteValue = overrideNote ?? note.trim();
 		createLogMutation.mutate({
 			householdId,
-			type: "preset",
+			type: "preset" as const,
 			...payload,
 			description: noteValue || undefined,
 		});
 	};
 
-	const disabled = createLogMutation.isPending || isPresetPending;
+	const disabled = !householdId || createLogMutation.isPending || isPresetPending;
 
 	return (
 		<TaskActionsContext.Provider

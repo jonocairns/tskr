@@ -59,6 +59,16 @@ export const TimedActionsCard = () => {
 
 	const handleTimed = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
+
+		if (!householdId) {
+			toast({
+				title: "Unable to log task",
+				description: "Household context not available",
+				variant: "destructive",
+			});
+			return;
+		}
+
 		const minutes = durationMinutes.trim().length > 0 ? Number(durationMinutes) : undefined;
 
 		createLogMutation.mutate({
