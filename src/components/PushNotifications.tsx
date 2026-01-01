@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
 import { trpc } from "@/lib/trpc/react";
@@ -324,34 +323,42 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 		}
 	};
 
-	const content = (
-		<div className="space-y-2">
-			<Label htmlFor="push-notifications-toggle">Notifications</Label>
-			<div className="flex flex-wrap items-center gap-3">
-				<div className="flex items-center gap-2">
-					<Switch
-						id="push-notifications-toggle"
-						checked={isSubscribed}
-						disabled={toggleDisabled}
-						onCheckedChange={(checked) => (checked ? handleEnable() : handleDisable())}
-					/>
-					<span className="text-sm text-muted-foreground">{isSubscribed ? "On" : "Off"}</span>
-				</div>
-				<Button type="button" variant="outline" onClick={handleTest} disabled={isTesting || !isSubscribed}>
-					{isTesting ? "Sending..." : "Send test"}
-				</Button>
+	const controls = (
+		<div className="flex items-center gap-3">
+			<Button type="button" variant="outline" size="sm" onClick={handleTest} disabled={isTesting || !isSubscribed}>
+				{isTesting ? "Sending..." : "Send test"}
+			</Button>
+			<div className="flex items-center gap-2">
+				<Switch
+					id="push-notifications-toggle"
+					checked={isSubscribed}
+					disabled={toggleDisabled}
+					onCheckedChange={(checked) => (checked ? handleEnable() : handleDisable())}
+				/>
+				<span className="text-sm text-muted-foreground">{isSubscribed ? "On" : "Off"}</span>
 			</div>
-			{helperText ? <p className="text-xs text-muted-foreground">{helperText}</p> : null}
 		</div>
 	);
 
+	const content = (
+		<div className="space-y-2">{helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null}</div>
+	);
+
 	if (variant === "section") {
-		return <section className="space-y-3">{content}</section>;
+		return (
+			<>
+				{content.props.children ? content : null}
+				{controls}
+			</>
+		);
 	}
 
 	return (
 		<Card>
-			<CardContent className="pt-6">{content}</CardContent>
+			<CardContent className="pt-6">
+				{content}
+				{controls}
+			</CardContent>
 		</Card>
 	);
 };
