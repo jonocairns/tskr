@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -29,12 +29,11 @@ export type AssignedTaskEntry = {
 const BUCKET_LABELS = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]));
 
 type Props = {
+	householdId: string;
 	entries: AssignedTaskEntry[];
 };
 
-export const AssignedTaskQueue = ({ entries }: Props) => {
-	const params = useParams<{ householdId: string }>();
-	const householdId = params.householdId;
+export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 

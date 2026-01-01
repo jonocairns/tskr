@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState, useTransition } from "react";
 
@@ -8,9 +8,9 @@ import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/t
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
-import type { HouseholdRouteParams } from "@/types/routes";
 
 type TaskActionsContextValue = {
+	householdId: string;
 	presetOptions: PresetOption[];
 	presetTemplates: PresetTemplate[];
 	customPresets: PresetSummary[];
@@ -29,6 +29,7 @@ type TaskActionsContextValue = {
 };
 
 type TaskActionsProviderProps = {
+	householdId: string;
 	presets: PresetSummary[];
 	currentUserId: string;
 	currentUserRole: "DICTATOR" | "APPROVER" | "DOER";
@@ -38,6 +39,7 @@ type TaskActionsProviderProps = {
 const TaskActionsContext = createContext<TaskActionsContextValue | null>(null);
 
 export const TaskActionsProvider = ({
+	householdId,
 	presets,
 	currentUserId,
 	currentUserRole,
@@ -48,8 +50,6 @@ export const TaskActionsProvider = ({
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [isPresetPending, startPresetTransition] = useTransition();
 
-	const params = useParams<HouseholdRouteParams>();
-	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
@@ -114,6 +114,7 @@ export const TaskActionsProvider = ({
 	return (
 		<TaskActionsContext.Provider
 			value={{
+				householdId,
 				presetOptions,
 				presetTemplates,
 				customPresets,

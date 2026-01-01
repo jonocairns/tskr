@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2Icon, SparklesIcon } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -16,16 +16,13 @@ import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
-import type { HouseholdRouteParams } from "@/types/routes";
 
 export const TimedActionsCard = () => {
-	const { presetOptions, disabled, defaultBucket, logPreset } = useTaskActions();
+	const { householdId, presetOptions, disabled, defaultBucket, logPreset } = useTaskActions();
 	const [selectedBucket, setSelectedBucket] = useState(defaultBucket);
 	const [description, setDescription] = useState("");
 	const [durationMinutes, setDurationMinutes] = useState("");
 
-	const params = useParams<HouseholdRouteParams>();
-	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();

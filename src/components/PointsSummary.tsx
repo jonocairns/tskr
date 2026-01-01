@@ -1,7 +1,7 @@
 "use client";
 
 import { GiftIcon, TrophyIcon } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -12,6 +12,7 @@ import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
 import { trpc } from "@/lib/trpc/react";
 
 type Props = {
+	householdId: string;
 	points: number;
 	threshold: number;
 	progressBarColor?: string | null;
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export const PointsSummary = ({
+	householdId,
 	points,
 	threshold,
 	progressBarColor,
@@ -30,8 +32,6 @@ export const PointsSummary = ({
 	lastTaskAt,
 	currentStreak,
 }: Props) => {
-	const params = useParams<{ householdId: string }>();
-	const householdId = params.householdId;
 	const [isPending, startTransition] = useTransition();
 	const [isSubmitting, setSubmitting] = useState(false);
 	const router = useRouter();

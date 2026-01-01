@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, XIcon } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -19,13 +19,12 @@ export type ApprovalEntry = {
 };
 
 type Props = {
+	householdId: string;
 	entries: ApprovalEntry[];
 	currentUserId: string;
 };
 
-export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
-	const params = useParams<{ householdId: string }>();
-	const householdId = params.householdId;
+export const ApprovalQueue = ({ householdId, entries, currentUserId }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();

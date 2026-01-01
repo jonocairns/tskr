@@ -76,12 +76,14 @@ export default async function DashboardPage({ params }: Props) {
 				eyebrow="tskr"
 				title="Dashboard"
 				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
+				householdId={householdId}
 				user={session.user}
 				googleEnabled={googleEnabled}
 				household={{ id: householdId, role: membership.role }}
 			/>
 
 			<PointsSummary
+				householdId={householdId}
 				points={myPoints}
 				threshold={rewardThreshold}
 				progressBarColor={progressBarColor}
@@ -91,15 +93,20 @@ export default async function DashboardPage({ params }: Props) {
 				currentStreak={currentStreak}
 			/>
 
-			{assignedTasks.length > 0 ? <AssignedTaskQueue entries={assignedTasks} /> : null}
+			{assignedTasks.length > 0 ? <AssignedTaskQueue householdId={householdId} entries={assignedTasks} /> : null}
 
-			<TaskActions presets={presetSummaries} currentUserId={userId} currentUserRole={membership.role} />
+			<TaskActions
+				householdId={householdId}
+				presets={presetSummaries}
+				currentUserId={userId}
+				currentUserRole={membership.role}
+			/>
 
-			{showApprovals ? <ApprovalQueue entries={approvalEntries} currentUserId={userId} /> : null}
+			{showApprovals ? <ApprovalQueue householdId={householdId} entries={approvalEntries} currentUserId={userId} /> : null}
 
 			<Leaderboard entries={leaderboardEntries} />
 
-			<AuditLog entries={auditEntries} currentUserId={userId} initialHasMore={hasMoreHistory} />
+			<AuditLog householdId={householdId} entries={auditEntries} currentUserId={userId} initialHasMore={hasMoreHistory} />
 
 			<LiveRefresh householdId={householdId} />
 		</PageShell>

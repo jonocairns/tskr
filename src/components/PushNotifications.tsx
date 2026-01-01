@@ -1,6 +1,5 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -49,12 +48,11 @@ const subscribeWithTimeout = async (registration: ServiceWorkerRegistration, pub
 };
 
 type Props = {
+	householdId: string;
 	variant?: "card" | "section";
 };
 
-export const PushNotifications = ({ variant = "card" }: Props) => {
-	const params = useParams<{ householdId: string }>();
-	const householdId = params.householdId;
+export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	const [status, setStatus] = useState<Status>("loading");
 	const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 	const [isBusy, setIsBusy] = useState(false);

@@ -35,6 +35,7 @@ export default async function HouseholdPage({ params }: Props) {
 				description="Manage settings, members, and invite codes."
 				backHref={`/${householdId}`}
 				backLabel="Back to dashboard"
+				householdId={householdId}
 				user={session.user}
 				googleEnabled={googleEnabled}
 				household={{ id: householdId, role: membership.role }}
@@ -48,7 +49,7 @@ export default async function HouseholdPage({ params }: Props) {
 				<CardContent className="space-y-8">
 					<SettingsCard householdId={householdId} canManage={membership.role === "DICTATOR"} variant="section" />
 
-					<PushNotifications variant="section" />
+					<PushNotifications householdId={householdId} variant="section" />
 
 					<DangerZone householdId={householdId} canDelete={membership.role === "DICTATOR"} variant="section" />
 				</CardContent>

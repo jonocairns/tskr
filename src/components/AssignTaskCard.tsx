@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import type { PresetSummary } from "@/components/task-actions/types";
@@ -26,14 +26,13 @@ type MemberOption = {
 };
 
 type AssignTaskCardProps = {
+	householdId: string;
 	members: MemberOption[];
 	presets: PresetSummary[];
 	currentUserId: string;
 };
 
-export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCardProps) => {
-	const params = useParams<{ householdId: string }>();
-	const householdId = params.householdId;
+export const AssignTaskCard = ({ householdId, members, presets, currentUserId }: AssignTaskCardProps) => {
 	const router = useRouter();
 	const { toast } = useToast();
 

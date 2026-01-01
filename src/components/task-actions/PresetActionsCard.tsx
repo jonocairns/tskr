@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
@@ -15,10 +15,10 @@ import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
-import type { HouseholdRouteParams } from "@/types/routes";
 
 export const PresetActionsCard = () => {
 	const {
+		householdId,
 		presetOptions,
 		presetTemplates,
 		customPresets,
@@ -34,8 +34,6 @@ export const PresetActionsCard = () => {
 	} = useTaskActions();
 	const [isEditDrawerOpen, setEditDrawerOpen] = useState(false);
 
-	const params = useParams<HouseholdRouteParams>();
-	const householdId = params.householdId;
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();

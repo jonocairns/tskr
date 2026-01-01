@@ -2,7 +2,6 @@
 
 import { ClipboardListIcon, HomeIcon, LinkIcon, LogOutIcon, ShieldIcon } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect } from "react";
 
@@ -33,22 +32,19 @@ type Props = {
 	};
 };
 
-export const UserMenu = ({ user, googleEnabled, household: propsHousehold }: Props) => {
+export const UserMenu = ({ user, googleEnabled, household }: Props) => {
 	const { data: session, status } = useSession();
 	const { toast } = useToast();
-	const params = useParams<{ householdId?: string }>();
-	const paramsHouseholdId = params.householdId;
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
 
-	const householdId = propsHousehold?.id ?? paramsHouseholdId;
+	const householdId = household?.id;
 
 	const { data: householdData } = trpc.households.list.useQuery(undefined, {
-		enabled: status === "authenticated" && !!householdId && !propsHousehold,
+		enabled: status === "authenticated" && !!householdId && !household,
 	});
 
-	const currentHouseholdRole =
-		propsHousehold?.role ?? householdData?.households.find((h) => h.id === householdId)?.role;
+	const currentHouseholdRole = household?.role ?? householdData?.households.find((h) => h.id === householdId)?.role;
 	const initials =
 		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
 

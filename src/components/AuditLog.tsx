@@ -1,7 +1,7 @@
 "use client";
 
 import { Undo2Icon } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -26,14 +26,13 @@ export type AuditLogEntry = {
 };
 
 type Props = {
+	householdId: string;
 	entries: AuditLogEntry[];
 	currentUserId: string;
 	initialHasMore: boolean;
 };
 
-export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
-	const params = useParams<{ householdId: string }>();
-	const householdId = params.householdId;
+export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }: Props) => {
 	const [items, setItems] = useState(entries);
 	const [hasMore, setHasMore] = useState(initialHasMore);
 	const router = useRouter();

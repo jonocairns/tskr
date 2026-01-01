@@ -11,6 +11,7 @@ type Props = {
 	eyebrow?: string;
 	backHref?: string;
 	backLabel?: string;
+	householdId?: string;
 	user: {
 		name?: string | null;
 		email?: string | null;
@@ -31,6 +32,7 @@ export const PageHeader = ({
 	eyebrow,
 	backHref,
 	backLabel = "Back",
+	householdId,
 	user,
 	googleEnabled,
 	household,
@@ -48,7 +50,7 @@ export const PageHeader = ({
 		</div>
 		<div className="flex items-center gap-2">
 			<ModeToggle />
-			<Switcher />
+			<Switcher householdId={householdId} />
 			<UserMenu user={user} googleEnabled={googleEnabled} household={household} />
 		</div>
 	</header>

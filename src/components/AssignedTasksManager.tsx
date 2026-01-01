@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -45,12 +45,11 @@ type AssignedTaskRow = {
 };
 
 type Props = {
+	householdId: string;
 	initialTasks: AssignedTaskRow[];
 };
 
-export const AssignedTasksManager = ({ initialTasks }: Props) => {
-	const params = useParams<{ householdId: string }>();
-	const householdId = params.householdId;
+export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [tasks, setTasks] = useState(initialTasks);

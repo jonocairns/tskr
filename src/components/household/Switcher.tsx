@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, ChevronDownIcon, HomeIcon, Loader2Icon } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useTransition } from "react";
 
@@ -9,10 +9,13 @@ import { Button } from "@/components/ui/Button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/DropdownMenu";
 import { trpc } from "@/lib/trpc/react";
 
-export const Switcher = () => {
+type Props = {
+	householdId?: string;
+};
+
+export const Switcher = ({ householdId: propsHouseholdId }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
-	const params = useParams<{ householdId?: string }>();
 	const { status } = useSession();
 
 	const { data, isLoading } = trpc.households.list.useQuery(undefined, {
@@ -20,7 +23,7 @@ export const Switcher = () => {
 	});
 
 	const households = data?.households ?? [];
-	const activeHouseholdId = params.householdId ?? data?.activeHouseholdId ?? null;
+	const activeHouseholdId = propsHouseholdId ?? data?.activeHouseholdId ?? null;
 
 	const activeHousehold = useMemo(
 		() => households.find((household) => household.id === activeHouseholdId) ?? households[0] ?? null,
