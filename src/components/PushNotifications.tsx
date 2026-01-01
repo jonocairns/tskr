@@ -341,9 +341,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 	);
 
 	const content = (
-		<div className="space-y-2">
-			{helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null}
-		</div>
+		<div className="space-y-2">{helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null}</div>
 	);
 
 	if (variant === "section") {
