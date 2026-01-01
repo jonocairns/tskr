@@ -37,7 +37,7 @@ export const PresetActionsCard = () => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
-	const canSharePresets = currentUserRole !== "DOER";
+	const canManagePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = currentUserRole !== "DOER";
 	const [searchQuery, setSearchQuery] = useState("");
 
@@ -193,7 +193,7 @@ export const PresetActionsCard = () => {
 						householdId,
 						label: template.label,
 						bucket: template.bucket,
-						isShared: canSharePresets,
+						isShared: true,
 						approvalOverride,
 					});
 					success = true;
@@ -236,7 +236,7 @@ export const PresetActionsCard = () => {
 						householdId,
 						label: label.trim(),
 						bucket,
-						isShared: canSharePresets,
+						isShared: true,
 						approvalOverride,
 					});
 					success = true;
@@ -358,9 +358,11 @@ export const PresetActionsCard = () => {
 							<CardTitle className="text-xl">Tasks</CardTitle>
 							<CardDescription>Tap a task once you've completed it.</CardDescription>
 						</div>
-						<Button type="button" variant="ghost" size="sm" onClick={() => setEditDrawerOpen(true)}>
-							Change
-						</Button>
+						{canManagePresets ? (
+							<Button type="button" variant="ghost" size="sm" onClick={() => setEditDrawerOpen(true)}>
+								Change
+							</Button>
+						) : null}
 					</div>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -433,6 +435,7 @@ export const PresetActionsCard = () => {
 				sortedEditablePresets={sortedEditablePresets}
 				currentUserId={currentUserId}
 				canEditApprovalOverride={canEditApprovalOverride}
+				canManagePresets={canManagePresets}
 			/>
 		</>
 	);

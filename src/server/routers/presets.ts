@@ -5,7 +5,12 @@ import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { protectedProcedure, router, validateHouseholdMembershipFromInput } from "@/server/trpc";
+import {
+	protectedProcedure,
+	router,
+	validateApproverRoleFromInput,
+	validateHouseholdMembershipFromInput,
+} from "@/server/trpc";
 
 const listPresetsSchema = z.object({
 	householdId: z.string().min(1),
@@ -64,11 +69,8 @@ export const presetsRouter = router({
 	}),
 
 	create: protectedProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
-		const { householdId, membership } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
-		const role = membership.role;
-		const allowShared = role !== "DOER";
-		const approvalOverride = role === "DOER" ? null : (input.approvalOverride ?? null);
 
 		const preset = await prisma.presetTask.create({
 			data: {
@@ -76,8 +78,8 @@ export const presetsRouter = router({
 				createdById: userId,
 				label: input.label,
 				bucket: input.bucket,
-				isShared: allowShared ? (input.isShared ?? true) : false,
-				approvalOverride,
+				isShared: input.isShared ?? true,
+				approvalOverride: input.approvalOverride ?? null,
 			},
 			select: {
 				id: true,
@@ -95,9 +97,8 @@ export const presetsRouter = router({
 
 	update: protectedProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
 		const { id, ...updates } = input;
-		const { householdId, membership } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
-		const role = membership.role;
 
 		const preset = await prisma.presetTask.findFirst({
 			where: { id, householdId },
@@ -115,14 +116,6 @@ export const presetsRouter = router({
 
 		if (updates.isShared !== undefined && !isOwner) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can change sharing" });
-		}
-
-		if (updates.isShared === true && role === "DOER") {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Doers cannot share presets" });
-		}
-
-		if (updates.approvalOverride !== undefined && role === "DOER") {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Doers cannot change approval overrides" });
 		}
 
 		const updated = await prisma.presetTask.update({
@@ -149,7 +142,7 @@ export const presetsRouter = router({
 	}),
 
 	delete: protectedProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
-		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
 
 		const preset = await prisma.presetTask.findFirst({

@@ -55,6 +55,7 @@ type Props = {
 	sortedEditablePresets: PresetSummary[];
 	currentUserId: string;
 	canEditApprovalOverride: boolean;
+	canManagePresets: boolean;
 };
 
 export function PresetActionsDrawer({
@@ -73,6 +74,7 @@ export function PresetActionsDrawer({
 	sortedEditablePresets,
 	currentUserId,
 	canEditApprovalOverride,
+	canManagePresets,
 }: Props) {
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
@@ -276,17 +278,19 @@ export function PresetActionsDrawer({
 										{isPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 										Log one off task
 									</Button>
-									<Button
-										type="button"
-										className="w-full"
-										onClick={handleCreatePreset}
-										disabled={disabled || !canCreate}
-									>
-										{isPresetPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-										Create new chore
-									</Button>
+									{canManagePresets ? (
+										<Button
+											type="button"
+											className="w-full"
+											onClick={handleCreatePreset}
+											disabled={disabled || !canCreate}
+										>
+											{isPresetPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
+											Create new chore
+										</Button>
+									) : null}
 								</div>
-								{templatesByBucket.length > 0 ? (
+								{canManagePresets && templatesByBucket.length > 0 ? (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">Templates</p>
 										<div className="flex flex-wrap gap-2">
