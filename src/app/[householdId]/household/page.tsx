@@ -41,19 +41,19 @@ export default async function HouseholdPage({ params }: Props) {
 				household={{ id: householdId, role: membership.role }}
 			/>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="text-xl">General</CardTitle>
-					<CardDescription>Update household settings, notifications, and manage deletion.</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-8">
-					<SettingsCard householdId={householdId} canManage={membership.role === "DICTATOR"} variant="section" />
+			{membership.role === "DICTATOR" && (
+				<Card>
+					<CardHeader>
+						<CardTitle className="text-xl">General</CardTitle>
+						<CardDescription>Update household settings and manage deletion.</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-8">
+						<SettingsCard householdId={householdId} canManage={true} variant="section" />
 
-					<PushNotifications householdId={householdId} variant="section" />
-
-					<DangerZone householdId={householdId} canDelete={membership.role === "DICTATOR"} variant="section" />
-				</CardContent>
-			</Card>
+						<DangerZone householdId={householdId} canDelete={membership.role === "DICTATOR"} variant="section" />
+					</CardContent>
+				</Card>
+			)}
 
 			{membership.role !== "DOER" ? (
 				<MembersCard
@@ -62,6 +62,18 @@ export default async function HouseholdPage({ params }: Props) {
 					canManageMembers={membership.role === "DICTATOR"}
 				/>
 			) : null}
+
+			<Card>
+				<CardHeader>
+					<div className="flex items-start justify-between gap-4">
+						<div className="space-y-1.5">
+							<CardTitle className="text-xl">Notifications</CardTitle>
+							<CardDescription>Manage push notifications and task reminders for your household.</CardDescription>
+						</div>
+						<PushNotifications householdId={householdId} variant="section" />
+					</div>
+				</CardHeader>
+			</Card>
 
 			<InvitesCard householdId={householdId} canInvite={membership.role === "DICTATOR"} />
 
