@@ -8,7 +8,7 @@ import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
-import { protectedProcedure, router, validateHouseholdMembershipFromInput } from "@/server/trpc";
+import { householdProcedure, protectedProcedure, router } from "@/server/trpc";
 
 const presetSchema = z
 	.object({
@@ -45,8 +45,8 @@ const updateLogSchema = z.object({
 });
 
 export const logsRouter = router({
-	getHistory: protectedProcedure.input(historyQuerySchema).query(async ({ ctx, input }) => {
-		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+	getHistory: householdProcedure(historyQuerySchema).query(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 
 		const take = input.limit + 1;
 		const logs = await prisma.pointLog.findMany({
@@ -68,11 +68,11 @@ export const logsRouter = router({
 		};
 	}),
 
-	create: protectedProcedure.input(createLogSchema).mutation(async ({ ctx, input }) => {
+	create: householdProcedure(createLogSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
 		const actorLabel = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
 
-		const { householdId, membership } = await validateHouseholdMembershipFromInput(userId, input);
+		const { id: householdId, membership } = ctx.household;
 
 		const notifyTask = async (description: string, points: number) => {
 			if (!isPushConfigured()) {

@@ -177,6 +177,9 @@ dictatorProcedure
 superAdminProcedure
 ```
 
+**Note:** `householdProcedure`, `approverProcedure`, and `dictatorProcedure` require an input schema that includes
+`householdId: z.string()`.
+
 ### Example Usage
 
 ```ts
@@ -191,7 +194,7 @@ export const myRouter = router({
   }),
 
   // Must have household
-  household: householdProcedure.query(({ ctx }) => {
+  household: householdProcedure(z.object({ householdId: z.string().min(1) })).query(({ ctx }) => {
     const householdId = ctx.household.id; // ✅ Typed and guaranteed
     return { householdId };
   }),

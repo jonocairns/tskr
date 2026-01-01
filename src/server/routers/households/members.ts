@@ -4,12 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import {
-	protectedProcedure,
-	router,
-	validateDictatorRoleFromInput,
-	validateHouseholdMembershipFromInput,
-} from "@/server/trpc";
+import { dictatorProcedure, householdProcedure, router } from "@/server/trpc";
 
 const getMembersSchema = z.object({
 	householdId: z.string().min(1),
@@ -27,8 +22,8 @@ const updateMemberSchema = z
 	});
 
 export const householdMembersRouter = router({
-	getMembers: protectedProcedure.input(getMembersSchema).query(async ({ ctx, input }) => {
-		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+	getMembers: householdProcedure(getMembersSchema).query(async ({ ctx }) => {
+		const householdId = ctx.household.id;
 
 		const members = await prisma.householdMember.findMany({
 			where: { householdId },
@@ -47,8 +42,8 @@ export const householdMembersRouter = router({
 	}),
 
 	// Update household member
-	updateMember: protectedProcedure.input(updateMemberSchema).mutation(async ({ ctx, input }) => {
-		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
+	updateMember: dictatorProcedure(updateMemberSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const { id, ...updates } = input;
 
 		const member = await prisma.householdMember.findFirst({

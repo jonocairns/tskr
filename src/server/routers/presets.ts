@@ -5,12 +5,7 @@ import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import {
-	protectedProcedure,
-	router,
-	validateApproverRoleFromInput,
-	validateHouseholdMembershipFromInput,
-} from "@/server/trpc";
+import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
 const listPresetsSchema = z.object({
 	householdId: z.string().min(1),
@@ -43,8 +38,8 @@ const deletePresetSchema = z.object({
 });
 
 export const presetsRouter = router({
-	list: protectedProcedure.input(listPresetsSchema).query(async ({ ctx, input }) => {
-		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+	list: householdProcedure(listPresetsSchema).query(async ({ ctx }) => {
+		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 
 		const presets = await prisma.presetTask.findMany({
@@ -68,8 +63,8 @@ export const presetsRouter = router({
 		return { presets };
 	}),
 
-	create: protectedProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
-		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
+	create: approverProcedure(presetSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 
 		const preset = await prisma.presetTask.create({
@@ -95,9 +90,9 @@ export const presetsRouter = router({
 		return { preset };
 	}),
 
-	update: protectedProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
+	update: approverProcedure(updatePresetSchema).mutation(async ({ ctx, input }) => {
 		const { id, ...updates } = input;
-		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
+		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 
 		const preset = await prisma.presetTask.findFirst({
@@ -141,8 +136,8 @@ export const presetsRouter = router({
 		return { preset: updated };
 	}),
 
-	delete: protectedProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
-		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
+	delete: approverProcedure(deletePresetSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 
 		const preset = await prisma.presetTask.findFirst({

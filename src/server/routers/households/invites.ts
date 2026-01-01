@@ -6,7 +6,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { protectedProcedure, router, validateDictatorRoleFromInput } from "@/server/trpc";
+import { dictatorProcedure, router } from "@/server/trpc";
 import { config } from "@/server-config";
 
 const addExpiry = () => {
@@ -33,8 +33,8 @@ const getInvitesSchema = z.object({
 });
 
 export const householdInvitesRouter = router({
-	getInvites: protectedProcedure.input(getInvitesSchema).query(async ({ ctx, input }) => {
-		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
+	getInvites: dictatorProcedure(getInvitesSchema).query(async ({ ctx }) => {
+		const householdId = ctx.household.id;
 
 		const now = new Date();
 		await prisma.householdInvite.updateMany({
@@ -67,8 +67,8 @@ export const householdInvitesRouter = router({
 	}),
 
 	// Create invite
-	createInvite: protectedProcedure.input(inviteSchema).mutation(async ({ ctx, input }) => {
-		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
+	createInvite: dictatorProcedure(inviteSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const role = input.role ?? "DOER";
 		let invite = null;
 		let attempts = 0;
@@ -111,8 +111,8 @@ export const householdInvitesRouter = router({
 	}),
 
 	// Manage invite (revoke/resend)
-	manageInvite: protectedProcedure.input(inviteActionSchema).mutation(async ({ ctx, input }) => {
-		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
+	manageInvite: dictatorProcedure(inviteActionSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const { id, action } = input;
 
 		const invite = await prisma.householdInvite.findUnique({

@@ -4,16 +4,16 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { protectedProcedure, router, validateHouseholdMembershipFromInput } from "@/server/trpc";
+import { householdProcedure, router } from "@/server/trpc";
 
 const claimRewardSchema = z.object({
 	householdId: z.string().min(1),
 });
 
 export const claimRouter = router({
-	claimReward: protectedProcedure.input(claimRewardSchema).mutation(async ({ ctx, input }) => {
+	claimReward: householdProcedure(claimRewardSchema).mutation(async ({ ctx }) => {
 		const userId = ctx.session.user.id;
-		const { householdId } = await validateHouseholdMembershipFromInput(userId, input);
+		const householdId = ctx.household.id;
 
 		try {
 			const result = await prisma.$transaction(async (tx) => {

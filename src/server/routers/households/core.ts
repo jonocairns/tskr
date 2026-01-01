@@ -4,12 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import {
-	protectedProcedure,
-	router,
-	validateDictatorRoleFromInput,
-	validateHouseholdMembershipFromInput,
-} from "@/server/trpc";
+import { dictatorProcedure, householdProcedure, router } from "@/server/trpc";
 
 const getCurrentSchema = z.object({
 	householdId: z.string().min(1),
@@ -33,8 +28,8 @@ const deleteCurrentSchema = z.object({
 });
 
 export const householdCoreRouter = router({
-	getCurrent: protectedProcedure.input(getCurrentSchema).query(async ({ ctx, input }) => {
-		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+	getCurrent: householdProcedure(getCurrentSchema).query(async ({ ctx }) => {
+		const householdId = ctx.household.id;
 
 		const household = await prisma.household.findUnique({
 			where: { id: householdId },
@@ -54,8 +49,8 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	updateCurrent: protectedProcedure.input(updateSchema).mutation(async ({ ctx, input }) => {
-		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
+	updateCurrent: dictatorProcedure(updateSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const hasNameUpdate = input.name !== undefined && input.name.trim().length > 0;
 		const hasThresholdUpdate = input.rewardThreshold !== undefined;
 		const hasColorUpdate = input.progressBarColor !== undefined;
@@ -84,8 +79,8 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	deleteCurrent: protectedProcedure.input(deleteCurrentSchema).mutation(async ({ ctx, input }) => {
-		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
+	deleteCurrent: dictatorProcedure(deleteCurrentSchema).mutation(async ({ ctx }) => {
+		const householdId = ctx.household.id;
 		await prisma.$transaction(async (tx) => {
 			await tx.user.updateMany({
 				where: { lastHouseholdId: householdId },
