@@ -102,11 +102,18 @@ export default async function DashboardPage({ params }: Props) {
 				currentUserRole={membership.role}
 			/>
 
-			{showApprovals ? <ApprovalQueue householdId={householdId} entries={approvalEntries} currentUserId={userId} /> : null}
+			{showApprovals ? (
+				<ApprovalQueue householdId={householdId} entries={approvalEntries} currentUserId={userId} />
+			) : null}
 
 			<Leaderboard entries={leaderboardEntries} />
 
-			<AuditLog householdId={householdId} entries={auditEntries} currentUserId={userId} initialHasMore={hasMoreHistory} />
+			<AuditLog
+				householdId={householdId}
+				entries={auditEntries}
+				currentUserId={userId}
+				initialHasMore={hasMoreHistory}
+			/>
 
 			<LiveRefresh householdId={householdId} />
 		</PageShell>
