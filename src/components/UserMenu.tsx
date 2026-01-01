@@ -2,6 +2,7 @@
 
 import { ClipboardListIcon, HomeIcon, LinkIcon, LogOutIcon, ShieldIcon } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect } from "react";
 
@@ -32,7 +33,8 @@ type Props = {
 export const UserMenu = ({ user, googleEnabled }: Props) => {
 	const { data: session } = useSession();
 	const { toast } = useToast();
-	const householdId = session?.user?.householdId;
+	const params = useParams<{ householdId?: string }>();
+	const householdId = params.householdId ?? session?.user?.householdId;
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
 	const initials =

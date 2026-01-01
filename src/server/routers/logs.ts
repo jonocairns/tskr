@@ -221,33 +221,13 @@ export const logsRouter = router({
 
 	updateStatus: protectedProcedure.input(updateLogSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
-		const householdId = ctx.session.user.householdId;
 
-		if (!householdId) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });
-		}
-
-		const membership = await prisma.householdMember.findUnique({
-			where: {
-				householdId_userId: {
-					householdId,
-					userId,
-				},
-			},
-			select: {
-				role: true,
-			},
-		});
-
-		if (!membership) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Household membership not found" });
-		}
-
-		const log = await prisma.pointLog.findFirst({
-			where: { id: input.id, householdId },
+		const log = await prisma.pointLog.findUnique({
+			where: { id: input.id },
 			select: {
 				id: true,
 				userId: true,
+				householdId: true,
 				revertedAt: true,
 				status: true,
 				kind: true,
@@ -257,6 +237,22 @@ export const logsRouter = router({
 
 		if (!log) {
 			throw new TRPCError({ code: "NOT_FOUND", message: "Log not found" });
+		}
+
+		const membership = await prisma.householdMember.findUnique({
+			where: {
+				householdId_userId: {
+					householdId: log.householdId,
+					userId,
+				},
+			},
+			select: {
+				role: true,
+			},
+		});
+
+		if (!membership) {
+			throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
 		}
 
 		if (input.action !== "revert" && log.kind === "REWARD") {
@@ -319,7 +315,7 @@ export const logsRouter = router({
 
 			if (input.action === "approve" && log.assignedTaskId) {
 				const task = await prisma.assignedTask.findFirst({
-					where: { id: log.assignedTaskId, householdId },
+					where: { id: log.assignedTaskId, householdId: log.householdId },
 					select: {
 						id: true,
 						status: true,
@@ -331,7 +327,7 @@ export const logsRouter = router({
 					const approvedCount = await prisma.pointLog.count({
 						where: {
 							assignedTaskId: task.id,
-							householdId,
+							householdId: log.householdId,
 							revertedAt: null,
 							status: "APPROVED",
 						},

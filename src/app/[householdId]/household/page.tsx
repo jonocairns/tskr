@@ -1,5 +1,3 @@
-import { getServerSession } from "next-auth";
-
 import { DangerZone } from "@/components/household/DangerZone";
 import { InvitesCard } from "@/components/household/InvitesCard";
 import { JoinCard } from "@/components/household/JoinCard";
@@ -9,9 +7,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { PushNotifications } from "@/components/PushNotifications";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
-import { getHouseholdMembership } from "@/lib/households";
+import { getHouseholdContext } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,22 +18,14 @@ type Props = {
 
 export default async function HouseholdPage({ params }: Props) {
 	const googleEnabled = isGoogleAuthEnabled;
-	const session = await getServerSession(authOptions);
-
-	// Layout handles auth check - session will always exist here
-	if (!session?.user?.id) {
-		throw new Error("Unauthorized");
-	}
-
-	const userId = session.user.id;
 	const { householdId } = await params;
+	const ctx = await getHouseholdContext(householdId);
 
-	// Get membership for role info
-	const membership = await getHouseholdMembership(userId, householdId);
-
-	if (!membership) {
-		throw new Error("Membership not found");
+	if (!ctx) {
+		throw new Error("Unauthorized or membership not found");
 	}
+
+	const { session, userId, membership } = ctx;
 
 	return (
 		<PageShell size="lg">

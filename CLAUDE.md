@@ -134,6 +134,8 @@ tests/                    # Jest unit tests
 - `@/config` maps to `config.ts` (client-safe config)
 - `@/server-config` maps to `server-config.ts` (server-only config)
 
+DO NOT add useless comments, only when the code itself doesn't explain itself (which should be very rare)
+
 ### Authentication
 
 **Providers**:

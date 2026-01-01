@@ -1,15 +1,13 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 
 import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
-import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
-import { getHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
+import { getHouseholdContext } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,22 +17,14 @@ type Props = {
 
 export default async function AssignmentsPage({ params }: Props) {
 	const googleEnabled = isGoogleAuthEnabled;
-	const session = await getServerSession(authOptions);
-
-	// Layout handles auth check - session will always exist here
-	if (!session?.user?.id) {
-		throw new Error("Unauthorized");
-	}
-
-	const userId = session.user.id;
 	const { householdId } = await params;
+	const ctx = await getHouseholdContext(householdId);
 
-	// Get membership for role info
-	const membership = await getHouseholdMembership(userId, householdId);
-
-	if (!membership) {
-		throw new Error("Membership not found");
+	if (!ctx) {
+		throw new Error("Unauthorized or membership not found");
 	}
+
+	const { session, userId, membership } = ctx;
 
 	if (membership.role === "DOER") {
 		redirect(`/${householdId}`);

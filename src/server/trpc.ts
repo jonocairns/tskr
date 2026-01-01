@@ -3,9 +3,10 @@ import "server-only";
 import type { HouseholdRole } from "@prisma/client";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+import { z } from "zod";
 import { getAuthSession } from "@/lib/auth";
 import { checkForSensitiveInfo, sanitizeErrorMessage } from "@/lib/errorSanitization";
-import { getActiveHouseholdMembership } from "@/lib/households";
+import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
 import { validateSessionExpiry } from "@/lib/sessionValidation";
 
 export async function createTRPCContext(opts?: { req?: Request }) {
@@ -168,6 +169,45 @@ const hasApproverRole = t.middleware(async ({ ctx, next }) => {
 });
 
 export const approverProcedure = t.procedure.use(isAuthed).use(hasApproverRole);
+
+const withHouseholdIdInput = z.object({
+	householdId: z.string().min(1),
+});
+
+const withHouseholdFromInput = t.middleware(async ({ ctx, input, next }) => {
+	if (!ctx.session?.user?.id) {
+		throw new TRPCError({ code: "UNAUTHORIZED" });
+	}
+
+	const result = withHouseholdIdInput.safeParse(input);
+	if (!result.success) {
+		throw new TRPCError({ code: "BAD_REQUEST", message: "householdId is required" });
+	}
+
+	const { householdId } = result.data;
+	const membership = await getHouseholdMembership(ctx.session.user.id, householdId);
+
+	if (!membership) {
+		throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
+	}
+
+	return next({
+		ctx: {
+			...ctx,
+			session: {
+				...ctx.session,
+				user: ctx.session.user,
+			},
+			household: {
+				id: householdId,
+				role: membership.role,
+				requiresApprovalDefault: membership.requiresApprovalDefault,
+			},
+		},
+	});
+});
+
+export const householdFromInputProcedure = t.procedure.use(isAuthed).use(withHouseholdFromInput);
 
 const isSuperAdmin = t.middleware(({ ctx, next }) => {
 	if (!ctx.session?.user?.id) {

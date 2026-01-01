@@ -27,20 +27,11 @@ export const JoinCard = ({ variant = "card" }: Props) => {
 	const canSubmit = trimmed.length >= 4;
 
 	const joinMutation = trpc.households.join.useMutation({
-		onSuccess: async () => {
+		onSuccess: async (data) => {
 			setCode("");
 			toast({ title: "Joined household" });
-
-			// Update session - it will include the new householdId
-			const session = await update();
-
-			// Navigate to the new household
-			if (session?.user?.householdId) {
-				router.push(`/${session.user.householdId}`);
-			} else {
-				// Fallback to root which will redirect appropriately
-				router.push("/");
-			}
+			await update();
+			router.push(`/${data.householdId}`);
 		},
 		onError: (error) => {
 			toast({

@@ -12,7 +12,7 @@ import { trpc } from "@/lib/trpc/react";
 export const Switcher = () => {
 	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
-	const params = useParams();
+	const params = useParams<{ householdId?: string }>();
 	const { status } = useSession();
 
 	const { data, isLoading } = trpc.households.list.useQuery(undefined, {
@@ -20,13 +20,18 @@ export const Switcher = () => {
 	});
 
 	const households = data?.households ?? [];
-	// Use URL params as source of truth for active household
-	const activeHouseholdId = (params.householdId as string | undefined) ?? data?.activeHouseholdId ?? null;
+	const activeHouseholdId = params.householdId ?? data?.activeHouseholdId ?? null;
 
 	const activeHousehold = useMemo(
 		() => households.find((household) => household.id === activeHouseholdId) ?? households[0] ?? null,
 		[households, activeHouseholdId],
 	);
+
+	const selectMutation = trpc.households.select.useMutation({
+		onSuccess: (_data, variables) => {
+			router.push(`/${variables.householdId}`);
+		},
+	});
 
 	const handleSelect = (householdId: string) => {
 		if (householdId === activeHouseholdId || isPending) {
@@ -34,8 +39,7 @@ export const Switcher = () => {
 		}
 
 		startTransition(() => {
-			// Just navigate - layout will handle validation and sync
-			router.push(`/${householdId}`);
+			selectMutation.mutate({ householdId });
 		});
 	};
 

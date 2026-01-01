@@ -32,6 +32,10 @@ UPDATE "PresetTask"
 SET "householdId" = (SELECT "newId" FROM "_new_household_id" WHERE "oldId" = 'default-household')
 WHERE "householdId" = 'default-household';
 
+UPDATE "AssignedTask"
+SET "householdId" = (SELECT "newId" FROM "_new_household_id" WHERE "oldId" = 'default-household')
+WHERE "householdId" = 'default-household';
+
 -- Finally, update the Household primary key
 UPDATE "Household"
 SET "id" = (SELECT "newId" FROM "_new_household_id" WHERE "oldId" = 'default-household')
