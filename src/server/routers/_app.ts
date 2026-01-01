@@ -10,6 +10,7 @@ import { logsRouter } from "./logs";
 import { passwordResetRouter } from "./passwordReset";
 import { presetsRouter } from "./presets";
 import { pushRouter } from "./push";
+import { remindersRouter } from "./reminders";
 
 export const appRouter = router({
 	admin: adminRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
 	passwordReset: passwordResetRouter,
 	presets: presetsRouter,
 	push: pushRouter,
+	reminders: remindersRouter,
 });
 
 export type AppRouter = typeof appRouter;

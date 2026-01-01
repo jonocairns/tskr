@@ -132,60 +132,72 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 	);
 
 	const content = (
-		<div className="space-y-4">
-			<div className="grid gap-4 sm:grid-cols-2">
-				<div className="space-y-2">
-					<Label htmlFor="household-name">Name</Label>
-					<Input
-						id="household-name"
-						value={name}
-						onChange={(event) => setName(event.target.value)}
-						disabled={isLoading || isPending}
-					/>
+		<div className="space-y-6">
+			<div className="space-y-4">
+				<div className="grid gap-4 sm:grid-cols-2">
+					<div className="space-y-2">
+						<Label htmlFor="household-name">Household name</Label>
+						<Input
+							id="household-name"
+							value={name}
+							onChange={(event) => setName(event.target.value)}
+							disabled={isLoading || isPending}
+							placeholder="Enter household name"
+						/>
+						<p className="text-xs text-muted-foreground">Minimum 2 characters</p>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor="household-threshold">Reward threshold</Label>
+						<Input
+							id="household-threshold"
+							type="number"
+							min={1}
+							step={1}
+							value={threshold}
+							onChange={(event) => setThreshold(event.target.value)}
+							disabled={isLoading || isPending}
+						/>
+						<p className="text-xs text-muted-foreground">Points needed to claim a reward</p>
+					</div>
 				</div>
+
 				<div className="space-y-2">
-					<Label htmlFor="household-threshold">Reward threshold</Label>
-					<Input
-						id="household-threshold"
-						type="number"
-						min={1}
-						step={1}
-						value={threshold}
-						onChange={(event) => setThreshold(event.target.value)}
-						disabled={isLoading || isPending}
-					/>
-				</div>
-			</div>
-			<div className="space-y-2">
-				<div className="flex flex-wrap items-center justify-between gap-3">
-					<Label htmlFor="household-progress-color">Progress bar color</Label>
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-3">
+						<Label htmlFor="household-progress-color-enabled">Custom progress color</Label>
 						<Switch
 							id="household-progress-color-enabled"
 							checked={useCustomProgressBarColor}
 							onCheckedChange={setUseCustomProgressBarColor}
 							disabled={isLoading || isPending}
 						/>
-						<Label htmlFor="household-progress-color-enabled" className="text-sm font-normal">
-							Custom color
-						</Label>
+						{useCustomProgressBarColor && (
+							<Input
+								id="household-progress-color"
+								type="color"
+								value={progressBarColor}
+								onChange={(event) => setProgressBarColor(event.target.value)}
+								disabled={isLoading || isPending}
+								className="h-9 w-20 cursor-pointer p-1"
+							/>
+						)}
 					</div>
-				</div>
-				<div className="flex items-center gap-3">
-					<Input
-						id="household-progress-color"
-						type="color"
-						value={progressBarColor}
-						onChange={(event) => setProgressBarColor(event.target.value)}
-						disabled={isLoading || isPending || !useCustomProgressBarColor}
-						className="h-10 w-16 p-2"
-					/>
-					<p className="text-sm text-muted-foreground">Theme the overview progress bar.</p>
+					<p className="text-xs text-muted-foreground">Customize the dashboard progress bar color</p>
 				</div>
 			</div>
-			<Button type="button" onClick={handleSave} disabled={isLoading || isPending || !canSave || !isFormDirty}>
-				Save changes
-			</Button>
+
+			<div className="space-y-2">
+				<Button
+					type="button"
+					onClick={handleSave}
+					disabled={isLoading || isPending || !canSave || !isFormDirty}
+					className="w-full"
+				>
+					{isPending ? "Saving..." : "Save changes"}
+				</Button>
+				{isFormDirty && canSave && (
+					<p className="text-xs text-center text-muted-foreground">You have unsaved changes</p>
+				)}
+			</div>
 		</div>
 	);
 

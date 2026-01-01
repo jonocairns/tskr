@@ -7,6 +7,7 @@ import { getAuthSession } from "@/lib/auth";
 import { checkForSensitiveInfo, sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getActiveHouseholdMembership } from "@/lib/households";
 import { validateSessionExpiry } from "@/lib/sessionValidation";
+import "@/lib/reminders"; // Auto-start reminder scheduler
 
 export async function createTRPCContext(opts?: { req?: Request }) {
 	const session = await getAuthSession();
