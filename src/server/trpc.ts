@@ -134,12 +134,6 @@ export async function validateDictatorRoleFromInput(
 	return { householdId, membership };
 }
 
-export const householdFromInputProcedure = protectedProcedure;
-
-export const approverFromInputProcedure = protectedProcedure;
-
-export const dictatorFromInputProcedure = protectedProcedure;
-
 const isSuperAdmin = t.middleware(({ ctx, next }) => {
 	if (!ctx.session?.user?.id) {
 		throw new TRPCError({ code: "UNAUTHORIZED" });

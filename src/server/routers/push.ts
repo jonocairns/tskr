@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
-import { householdFromInputProcedure, protectedProcedure, publicProcedure, router } from "@/server/trpc";
+import { protectedProcedure, publicProcedure, router, validateHouseholdMembershipFromInput } from "@/server/trpc";
 import { config } from "@/server-config";
 
 const subscriptionSchema = z.object({
@@ -79,7 +79,9 @@ export const pushRouter = router({
 		return { ok: true };
 	}),
 
-	test: householdFromInputProcedure.input(testPushSchema).mutation(async ({ ctx }) => {
+	test: protectedProcedure.input(testPushSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+
 		if (!isPushConfigured()) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Push is not configured" });
 		}
@@ -92,7 +94,7 @@ export const pushRouter = router({
 				icon: "/icon-192.png",
 				badge: "/icon-192.png",
 			},
-			{ userId: ctx.session.user.id },
+			{ householdId },
 		);
 
 		return { ok: true };

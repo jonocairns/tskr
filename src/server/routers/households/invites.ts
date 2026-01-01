@@ -6,7 +6,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { dictatorFromInputProcedure, router } from "@/server/trpc";
+import { protectedProcedure, router, validateDictatorRoleFromInput } from "@/server/trpc";
 import { config } from "@/server-config";
 
 const addExpiry = () => {
@@ -33,11 +33,13 @@ const getInvitesSchema = z.object({
 });
 
 export const householdInvitesRouter = router({
-	getInvites: dictatorFromInputProcedure.input(getInvitesSchema).query(async ({ input }) => {
+	getInvites: protectedProcedure.input(getInvitesSchema).query(async ({ ctx, input }) => {
+		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
+
 		const now = new Date();
 		await prisma.householdInvite.updateMany({
 			where: {
-				householdId: input.householdId,
+				householdId,
 				status: "PENDING",
 				expiresAt: { lt: now },
 			},
@@ -46,7 +48,7 @@ export const householdInvitesRouter = router({
 
 		const invites = await prisma.householdInvite.findMany({
 			where: {
-				householdId: input.householdId,
+				householdId,
 				status: { in: ["PENDING", "EXPIRED"] },
 			},
 			select: {
@@ -65,7 +67,8 @@ export const householdInvitesRouter = router({
 	}),
 
 	// Create invite
-	createInvite: dictatorFromInputProcedure.input(inviteSchema).mutation(async ({ ctx, input }) => {
+	createInvite: protectedProcedure.input(inviteSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
 		const role = input.role ?? "DOER";
 		let invite = null;
 		let attempts = 0;
@@ -82,7 +85,7 @@ export const householdInvitesRouter = router({
 			}
 			invite = await prisma.householdInvite.create({
 				data: {
-					householdId: input.householdId,
+					householdId,
 					code,
 					role,
 					invitedById: ctx.session.user.id,
@@ -108,7 +111,8 @@ export const householdInvitesRouter = router({
 	}),
 
 	// Manage invite (revoke/resend)
-	manageInvite: dictatorFromInputProcedure.input(inviteActionSchema).mutation(async ({ input }) => {
+	manageInvite: protectedProcedure.input(inviteActionSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
 		const { id, action } = input;
 
 		const invite = await prisma.householdInvite.findUnique({
@@ -126,7 +130,7 @@ export const householdInvitesRouter = router({
 			throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found" });
 		}
 
-		if (invite.householdId !== input.householdId) {
+		if (invite.householdId !== householdId) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
 		}
 

@@ -4,30 +4,40 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { dictatorFromInputProcedure, householdFromInputProcedure, router } from "@/server/trpc";
+import {
+	protectedProcedure,
+	router,
+	validateDictatorRoleFromInput,
+	validateHouseholdMembershipFromInput,
+} from "@/server/trpc";
 
 const getCurrentSchema = z.object({
 	householdId: z.string().min(1),
 });
 
-const updateSchema = z.object({
-	householdId: z.string().min(1),
-	name: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
-	rewardThreshold: z.number().int().min(1, "Threshold must be at least 1").max(10000, "Threshold is too high"),
-	progressBarColor: z
-		.string()
-		.regex(/^#([0-9a-fA-F]{6})$/, "Color must be a 6-digit hex value")
-		.nullable(),
-});
+const updateSchema = z
+	.object({
+		householdId: z.string().min(1),
+		name: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
+		rewardThreshold: z.number().int().min(1, "Threshold must be at least 1").max(10000, "Threshold is too high"),
+		progressBarColor: z
+			.string()
+			.regex(/^#([0-9a-fA-F]{6})$/, "Color must be a 6-digit hex value")
+			.nullable(),
+	})
+	.partial()
+	.required({ householdId: true });
 
 const deleteCurrentSchema = z.object({
 	householdId: z.string().min(1),
 });
 
 export const householdCoreRouter = router({
-	getCurrent: householdFromInputProcedure.input(getCurrentSchema).query(async ({ input }) => {
+	getCurrent: protectedProcedure.input(getCurrentSchema).query(async ({ ctx, input }) => {
+		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+
 		const household = await prisma.household.findUnique({
-			where: { id: input.householdId },
+			where: { id: householdId },
 			select: {
 				id: true,
 				name: true,
@@ -44,7 +54,8 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	updateCurrent: dictatorFromInputProcedure.input(updateSchema.partial()).mutation(async ({ input }) => {
+	updateCurrent: protectedProcedure.input(updateSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
 		const hasNameUpdate = input.name !== undefined && input.name.trim().length > 0;
 		const hasThresholdUpdate = input.rewardThreshold !== undefined;
 		const hasColorUpdate = input.progressBarColor !== undefined;
@@ -54,7 +65,7 @@ export const householdCoreRouter = router({
 		}
 
 		const household = await prisma.household.update({
-			where: { id: input.householdId },
+			where: { id: householdId },
 			data: {
 				...(hasNameUpdate && input.name ? { name: input.name.trim() } : {}),
 				...(hasThresholdUpdate && input.rewardThreshold !== undefined
@@ -73,15 +84,16 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	deleteCurrent: dictatorFromInputProcedure.input(deleteCurrentSchema).mutation(async ({ input }) => {
+	deleteCurrent: protectedProcedure.input(deleteCurrentSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
 		await prisma.$transaction(async (tx) => {
 			await tx.user.updateMany({
-				where: { lastHouseholdId: input.householdId },
+				where: { lastHouseholdId: householdId },
 				data: { lastHouseholdId: null },
 			});
 
 			await tx.household.delete({
-				where: { id: input.householdId },
+				where: { id: householdId },
 			});
 		});
 

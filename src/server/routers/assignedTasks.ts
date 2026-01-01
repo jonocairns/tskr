@@ -7,7 +7,12 @@ import { z } from "zod";
 import { computeAssignedTaskState } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { approverFromInputProcedure, householdFromInputProcedure, router } from "@/server/trpc";
+import {
+	protectedProcedure,
+	router,
+	validateApproverRoleFromInput,
+	validateHouseholdMembershipFromInput,
+} from "@/server/trpc";
 
 const createAssignedTaskSchema = z.object({
 	householdId: z.string().min(1),
@@ -45,8 +50,8 @@ const deleteAssignedTaskSchema = z.object({
 const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
 export const assignedTasksRouter = router({
-	create: approverFromInputProcedure.input(createAssignedTaskSchema).mutation(async ({ ctx, input }) => {
-		const householdId = input.householdId;
+	create: protectedProcedure.input(createAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
 		const { presetId, assigneeId, cadenceTarget, cadenceIntervalMinutes, isRecurring } = input;
 		const normalizedCadenceTarget = isRecurring ? cadenceTarget : 1;
 		const normalizedCadenceIntervalMinutes = Math.max(1, cadenceIntervalMinutes);
@@ -90,8 +95,8 @@ export const assignedTasksRouter = router({
 		}
 	}),
 
-	update: approverFromInputProcedure.input(updateAssignedTaskSchema).mutation(async ({ input }) => {
-		const householdId = input.householdId;
+	update: protectedProcedure.input(updateAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
 		const { id, ...updates } = input;
 
 		const task = await prisma.assignedTask.findFirst({
@@ -124,8 +129,8 @@ export const assignedTasksRouter = router({
 		}
 	}),
 
-	delete: approverFromInputProcedure.input(deleteAssignedTaskSchema).mutation(async ({ input }) => {
-		const householdId = input.householdId;
+	delete: protectedProcedure.input(deleteAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateApproverRoleFromInput(ctx.session.user.id, input);
 		const { id } = input;
 
 		const task = await prisma.assignedTask.findFirst({
@@ -146,9 +151,9 @@ export const assignedTasksRouter = router({
 		}
 	}),
 
-	complete: householdFromInputProcedure.input(completeAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+	complete: protectedProcedure.input(completeAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
-		const householdId = input.householdId;
 		const { id } = input;
 
 		const task = await prisma.assignedTask.findFirst({

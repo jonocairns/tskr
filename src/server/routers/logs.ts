@@ -8,7 +8,7 @@ import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
-import { householdFromInputProcedure, protectedProcedure, router } from "@/server/trpc";
+import { protectedProcedure, router, validateHouseholdMembershipFromInput } from "@/server/trpc";
 
 const presetSchema = z
 	.object({
@@ -46,10 +46,12 @@ const updateLogSchema = z.object({
 });
 
 export const logsRouter = router({
-	getHistory: householdFromInputProcedure.input(historyQuerySchema).query(async ({ input }) => {
+	getHistory: protectedProcedure.input(historyQuerySchema).query(async ({ ctx, input }) => {
+		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+
 		const take = input.limit + 1;
 		const logs = await prisma.pointLog.findMany({
-			where: { householdId: input.householdId },
+			where: { householdId },
 			include: {
 				user: { select: { id: true, name: true, email: true } },
 			},
@@ -67,26 +69,11 @@ export const logsRouter = router({
 		};
 	}),
 
-	create: householdFromInputProcedure.input(createLogSchema).mutation(async ({ ctx, input }) => {
+	create: protectedProcedure.input(createLogSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
 		const actorLabel = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
-		const householdId = input.householdId;
 
-		const membership = await prisma.householdMember.findUnique({
-			where: {
-				householdId_userId: {
-					householdId,
-					userId,
-				},
-			},
-			select: {
-				requiresApprovalDefault: true,
-			},
-		});
-
-		if (!membership) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Household membership not found" });
-		}
+		const { householdId, membership } = await validateHouseholdMembershipFromInput(userId, input);
 
 		const notifyTask = async (description: string, points: number) => {
 			if (!isPushConfigured()) {

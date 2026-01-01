@@ -4,7 +4,12 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { dictatorFromInputProcedure, householdFromInputProcedure, router } from "@/server/trpc";
+import {
+	protectedProcedure,
+	router,
+	validateDictatorRoleFromInput,
+	validateHouseholdMembershipFromInput,
+} from "@/server/trpc";
 
 const getMembersSchema = z.object({
 	householdId: z.string().min(1),
@@ -22,9 +27,11 @@ const updateMemberSchema = z
 	});
 
 export const householdMembersRouter = router({
-	getMembers: householdFromInputProcedure.input(getMembersSchema).query(async ({ input }) => {
+	getMembers: protectedProcedure.input(getMembersSchema).query(async ({ ctx, input }) => {
+		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+
 		const members = await prisma.householdMember.findMany({
-			where: { householdId: input.householdId },
+			where: { householdId },
 			select: {
 				id: true,
 				userId: true,
@@ -40,11 +47,12 @@ export const householdMembersRouter = router({
 	}),
 
 	// Update household member
-	updateMember: dictatorFromInputProcedure.input(updateMemberSchema).mutation(async ({ input }) => {
+	updateMember: protectedProcedure.input(updateMemberSchema).mutation(async ({ ctx, input }) => {
+		const { householdId } = await validateDictatorRoleFromInput(ctx.session.user.id, input);
 		const { id, ...updates } = input;
 
 		const member = await prisma.householdMember.findFirst({
-			where: { id, householdId: input.householdId },
+			where: { id, householdId },
 			select: { id: true, role: true },
 		});
 
@@ -54,7 +62,7 @@ export const householdMembersRouter = router({
 
 		if (updates.role && updates.role !== member.role && member.role === "DICTATOR" && updates.role !== "DICTATOR") {
 			const dictatorCount = await prisma.householdMember.count({
-				where: { householdId: input.householdId, role: "DICTATOR" },
+				where: { householdId, role: "DICTATOR" },
 			});
 			if (dictatorCount <= 1) {
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Household must have at least one dictator" });

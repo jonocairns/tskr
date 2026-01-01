@@ -126,11 +126,20 @@ tests/                    # Jest unit tests
 - Server pages use `getHouseholdContext(householdId)` helper for auth + membership validation
 - Invalid household access redirects to active household with error toast
 - **tRPC procedures**:
-  - All household procedures use `*FromInputProcedure` variants
-  - `householdFromInputProcedure` - requires householdId in input, validates membership
-  - `approverFromInputProcedure` - requires householdId + APPROVER or DICTATOR role
-  - `dictatorFromInputProcedure` - requires householdId + DICTATOR role
+  - All household-scoped procedures use `protectedProcedure` (authenticated user only)
+  - **CRITICAL**: Procedures do NOT automatically validate household membership
+  - **You MUST manually validate** at the start of each handler:
+    - `validateHouseholdMembershipFromInput(userId, input)` - validates membership
+    - `validateApproverRoleFromInput(userId, input)` - validates APPROVER or DICTATOR role
+    - `validateDictatorRoleFromInput(userId, input)` - validates DICTATOR role
   - All input schemas include `householdId: z.string().min(1)` field
+  - Example pattern:
+    ```typescript
+    myProcedure: protectedProcedure.input(schema).mutation(async ({ ctx, input }) => {
+      const { householdId, membership } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+      // Now use householdId and membership safely
+    });
+    ```
 - **Client components**:
   - Get `householdId` from `useParams<{ householdId: string }>()` or from props
   - Pass `householdId` to all tRPC mutation/query calls

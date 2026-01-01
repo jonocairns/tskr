@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { householdFromInputProcedure, router, validateHouseholdMembershipFromInput } from "@/server/trpc";
+import { protectedProcedure, router, validateHouseholdMembershipFromInput } from "@/server/trpc";
 
 const listPresetsSchema = z.object({
 	householdId: z.string().min(1),
@@ -38,7 +38,7 @@ const deletePresetSchema = z.object({
 });
 
 export const presetsRouter = router({
-	list: householdFromInputProcedure.input(listPresetsSchema).query(async ({ ctx, input }) => {
+	list: protectedProcedure.input(listPresetsSchema).query(async ({ ctx, input }) => {
 		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
 
@@ -63,7 +63,7 @@ export const presetsRouter = router({
 		return { presets };
 	}),
 
-	create: householdFromInputProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
+	create: protectedProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
 		const { householdId, membership } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
 		const role = membership.role;
@@ -93,7 +93,7 @@ export const presetsRouter = router({
 		return { preset };
 	}),
 
-	update: householdFromInputProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
+	update: protectedProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
 		const { id, ...updates } = input;
 		const householdId = input.householdId;
 		const userId = ctx.session.user.id;
@@ -158,7 +158,7 @@ export const presetsRouter = router({
 		return { preset: updated };
 	}),
 
-	delete: householdFromInputProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
+	delete: protectedProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
 		const householdId = input.householdId;
 		const userId = ctx.session.user.id;
 
