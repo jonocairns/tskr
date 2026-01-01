@@ -95,18 +95,8 @@ export const presetsRouter = router({
 
 	update: protectedProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
 		const { id, ...updates } = input;
-		const householdId = input.householdId;
+		const { householdId, membership } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
-
-		const membership = await prisma.householdMember.findUnique({
-			where: { householdId_userId: { householdId, userId } },
-			select: { role: true },
-		});
-
-		if (!membership) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
-		}
-
 		const role = membership.role;
 
 		const preset = await prisma.presetTask.findFirst({
@@ -159,7 +149,7 @@ export const presetsRouter = router({
 	}),
 
 	delete: protectedProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
-		const householdId = input.householdId;
+		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
 
 		const preset = await prisma.presetTask.findFirst({
