@@ -22,7 +22,7 @@ const updateMemberSchema = z
 	});
 
 export const householdMembersRouter = router({
-	getMembers: householdFromInputProcedure.input(getMembersSchema).query(async ({ ctx, input }) => {
+	getMembers: householdFromInputProcedure.input(getMembersSchema).query(async ({ input }) => {
 		const members = await prisma.householdMember.findMany({
 			where: { householdId: input.householdId },
 			select: {
@@ -40,7 +40,7 @@ export const householdMembersRouter = router({
 	}),
 
 	// Update household member
-	updateMember: dictatorFromInputProcedure.input(updateMemberSchema).mutation(async ({ ctx, input }) => {
+	updateMember: dictatorFromInputProcedure.input(updateMemberSchema).mutation(async ({ input }) => {
 		const { id, ...updates } = input;
 
 		const member = await prisma.householdMember.findFirst({

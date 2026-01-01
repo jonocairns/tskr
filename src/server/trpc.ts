@@ -3,10 +3,9 @@ import "server-only";
 import type { HouseholdRole } from "@prisma/client";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { z } from "zod";
 import { getAuthSession } from "@/lib/auth";
 import { checkForSensitiveInfo, sanitizeErrorMessage } from "@/lib/errorSanitization";
-import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
+import { getActiveHouseholdMembership } from "@/lib/households";
 import { validateSessionExpiry } from "@/lib/sessionValidation";
 
 export async function createTRPCContext(opts?: { req?: Request }) {

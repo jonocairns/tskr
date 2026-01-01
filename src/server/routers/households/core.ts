@@ -25,7 +25,7 @@ const deleteCurrentSchema = z.object({
 });
 
 export const householdCoreRouter = router({
-	getCurrent: householdFromInputProcedure.input(getCurrentSchema).query(async ({ ctx, input }) => {
+	getCurrent: householdFromInputProcedure.input(getCurrentSchema).query(async ({ input }) => {
 		const household = await prisma.household.findUnique({
 			where: { id: input.householdId },
 			select: {
@@ -44,7 +44,7 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	updateCurrent: dictatorFromInputProcedure.input(updateSchema.partial()).mutation(async ({ ctx, input }) => {
+	updateCurrent: dictatorFromInputProcedure.input(updateSchema.partial()).mutation(async ({ input }) => {
 		const hasNameUpdate = input.name !== undefined && input.name.trim().length > 0;
 		const hasThresholdUpdate = input.rewardThreshold !== undefined;
 		const hasColorUpdate = input.progressBarColor !== undefined;
@@ -73,7 +73,7 @@ export const householdCoreRouter = router({
 		return { household };
 	}),
 
-	deleteCurrent: dictatorFromInputProcedure.input(deleteCurrentSchema).mutation(async ({ ctx, input }) => {
+	deleteCurrent: dictatorFromInputProcedure.input(deleteCurrentSchema).mutation(async ({ input }) => {
 		await prisma.$transaction(async (tx) => {
 			await tx.user.updateMany({
 				where: { lastHouseholdId: input.householdId },

@@ -33,7 +33,7 @@ const getInvitesSchema = z.object({
 });
 
 export const householdInvitesRouter = router({
-	getInvites: dictatorFromInputProcedure.input(getInvitesSchema).query(async ({ ctx, input }) => {
+	getInvites: dictatorFromInputProcedure.input(getInvitesSchema).query(async ({ input }) => {
 		const now = new Date();
 		await prisma.householdInvite.updateMany({
 			where: {
@@ -108,7 +108,7 @@ export const householdInvitesRouter = router({
 	}),
 
 	// Manage invite (revoke/resend)
-	manageInvite: dictatorFromInputProcedure.input(inviteActionSchema).mutation(async ({ ctx, input }) => {
+	manageInvite: dictatorFromInputProcedure.input(inviteActionSchema).mutation(async ({ input }) => {
 		const { id, action } = input;
 
 		const invite = await prisma.householdInvite.findUnique({

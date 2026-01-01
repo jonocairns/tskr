@@ -90,7 +90,7 @@ export const assignedTasksRouter = router({
 		}
 	}),
 
-	update: approverFromInputProcedure.input(updateAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+	update: approverFromInputProcedure.input(updateAssignedTaskSchema).mutation(async ({ input }) => {
 		const householdId = input.householdId;
 		const { id, ...updates } = input;
 
@@ -124,7 +124,7 @@ export const assignedTasksRouter = router({
 		}
 	}),
 
-	delete: approverFromInputProcedure.input(deleteAssignedTaskSchema).mutation(async ({ ctx, input }) => {
+	delete: approverFromInputProcedure.input(deleteAssignedTaskSchema).mutation(async ({ input }) => {
 		const householdId = input.householdId;
 		const { id } = input;
 

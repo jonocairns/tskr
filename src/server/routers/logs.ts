@@ -46,7 +46,7 @@ const updateLogSchema = z.object({
 });
 
 export const logsRouter = router({
-	getHistory: householdFromInputProcedure.input(historyQuerySchema).query(async ({ ctx, input }) => {
+	getHistory: householdFromInputProcedure.input(historyQuerySchema).query(async ({ input }) => {
 		const take = input.limit + 1;
 		const logs = await prisma.pointLog.findMany({
 			where: { householdId: input.householdId },
