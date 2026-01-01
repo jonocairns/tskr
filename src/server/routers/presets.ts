@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { householdFromInputProcedure, router } from "@/server/trpc";
+import { householdFromInputProcedure, router, validateHouseholdMembershipFromInput } from "@/server/trpc";
 
 const listPresetsSchema = z.object({
 	householdId: z.string().min(1),
@@ -39,7 +39,7 @@ const deletePresetSchema = z.object({
 
 export const presetsRouter = router({
 	list: householdFromInputProcedure.input(listPresetsSchema).query(async ({ ctx, input }) => {
-		const householdId = input.householdId;
+		const { householdId } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
 
 		const presets = await prisma.presetTask.findMany({
@@ -64,18 +64,8 @@ export const presetsRouter = router({
 	}),
 
 	create: householdFromInputProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
-		const householdId = input.householdId;
+		const { householdId, membership } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
 		const userId = ctx.session.user.id;
-
-		const membership = await prisma.householdMember.findUnique({
-			where: { householdId_userId: { householdId, userId } },
-			select: { role: true },
-		});
-
-		if (!membership) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
-		}
-
 		const role = membership.role;
 		const allowShared = role !== "DOER";
 		const approvalOverride = role === "DOER" ? null : (input.approvalOverride ?? null);
