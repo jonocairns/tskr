@@ -72,6 +72,7 @@ export default async function DashboardPage({ params }: Props) {
 				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
 				user={session.user}
 				googleEnabled={googleEnabled}
+				household={{ id: householdId, role: membership.role }}
 			/>
 
 			<PointsSummary
