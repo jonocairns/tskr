@@ -5,10 +5,14 @@ import { buildAssignedTaskEntries } from "@/lib/dashboard/assigned";
 import { prisma } from "@/lib/prisma";
 
 const HISTORY_LIMIT = 10;
+const APPROVALS_LIMIT = 10;
+const STREAK_LIMIT_DAYS = 365;
 
 export async function getDashboardData(userId: string, householdId: string) {
 	const weekStart = new Date();
 	weekStart.setDate(weekStart.getDate() - 7);
+	const streakStart = new Date();
+	streakStart.setDate(streakStart.getDate() - STREAK_LIMIT_DAYS);
 	const approvedWhere: Prisma.PointLogWhereInput = {
 		householdId,
 		revertedAt: null,
@@ -17,10 +21,9 @@ export async function getDashboardData(userId: string, householdId: string) {
 
 	const [
 		pointSums,
-		earnedPointSums,
-		taskCounts,
+		earnedTaskStats,
 		rewardCounts,
-		lastActivity,
+		activityStats,
 		household,
 		users,
 		recentLogs,
@@ -44,13 +47,6 @@ export async function getDashboardData(userId: string, householdId: string) {
 				kind: { in: ["PRESET", "TIMED"] },
 			},
 			_sum: { points: true },
-		}),
-		prisma.pointLog.groupBy({
-			by: ["userId"],
-			where: {
-				...approvedWhere,
-				kind: { in: ["PRESET", "TIMED"] },
-			},
 			_count: { _all: true },
 		}),
 		prisma.pointLog.groupBy({
@@ -62,6 +58,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 			by: ["userId"],
 			where: approvedWhere,
 			_max: { createdAt: true },
+			_min: { createdAt: true },
 		}),
 		prisma.household.findUnique({
 			where: { id: householdId },
@@ -90,8 +87,8 @@ export async function getDashboardData(userId: string, householdId: string) {
 			include: {
 				user: { select: { id: true, name: true, email: true } },
 			},
-			orderBy: { createdAt: "desc" },
-			take: 20,
+			orderBy: { createdAt: "asc" },
+			take: APPROVALS_LIMIT + 1,
 		}),
 		prisma.presetTask.findMany({
 			where: {
@@ -150,6 +147,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 				...approvedWhere,
 				userId,
 				kind: { in: ["PRESET", "TIMED"] },
+				createdAt: { gte: streakStart },
 			},
 			select: { createdAt: true },
 			orderBy: { createdAt: "desc" },
@@ -162,18 +160,41 @@ export async function getDashboardData(userId: string, householdId: string) {
 	const hasMoreHistory = recentLogs.length > HISTORY_LIMIT;
 	const trimmedLogs = hasMoreHistory ? recentLogs.slice(0, HISTORY_LIMIT) : recentLogs;
 
+	const hasMoreApprovals = pendingLogs.length > APPROVALS_LIMIT;
+	const trimmedApprovals = hasMoreApprovals ? pendingLogs.slice(0, APPROVALS_LIMIT) : pendingLogs;
+
+	const earnedPointSums = earnedTaskStats.map((item) => ({
+		userId: item.userId,
+		_sum: { points: item._sum.points },
+	}));
+	const taskCounts = earnedTaskStats.map((item) => ({
+		userId: item.userId,
+		_count: { _all: item._count._all },
+	}));
+
+	const lastActivity = activityStats.map((item) => ({
+		userId: item.userId,
+		_max: { createdAt: item._max.createdAt },
+	}));
+	const firstActivity = activityStats.map((item) => ({
+		userId: item.userId,
+		_min: { createdAt: item._min.createdAt },
+	}));
+
 	return {
 		pointSums,
 		earnedPointSums,
 		taskCounts,
 		rewardCounts,
 		lastActivity,
+		firstActivity,
 		rewardThreshold: household?.rewardThreshold ?? 50,
 		progressBarColor: household?.progressBarColor ?? null,
 		users,
 		recentLogs: trimmedLogs,
 		hasMoreHistory,
-		pendingLogs,
+		pendingLogs: trimmedApprovals,
+		hasMoreApprovals,
 		presets,
 		assignedTasks: buildAssignedTaskEntries(assignedTasks),
 		weeklyTaskCount,

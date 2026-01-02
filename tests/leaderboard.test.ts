@@ -35,17 +35,22 @@ const makeSummaryInput = () => {
 			{ userId: "u1", _max: { createdAt: new Date("2024-01-02T03:04:05.000Z") } },
 			{ userId: "u4", _max: { createdAt: null } },
 		],
+		firstActivity: [
+			{ userId: "u1", _min: { createdAt: new Date("2024-01-01T00:00:00.000Z") } },
+			{ userId: "u2", _min: { createdAt: new Date("2024-01-01T00:00:00.000Z") } },
+			{ userId: "u3", _min: { createdAt: new Date("2024-01-01T00:00:00.000Z") } },
+		],
 	};
 };
 
-test("sorts by points, balance, then name with fallbacks", () => {
+test("sorts by average points per day, then points, balance, and name with fallbacks", () => {
 	const summary = buildLeaderboardSummary(makeSummaryInput());
 
 	expect(summary.entries.map((entry) => entry.userId)).toEqual(["u2", "u3", "u1", "u4"]);
 	expect(summary.entries[0]?.name).toBe("amy@example.com");
 });
 
-test("defaults missing sums, formats activity, and returns my totals", () => {
+test("defaults missing sums, formats activity, calculates average, and returns my totals", () => {
 	const summary = buildLeaderboardSummary(makeSummaryInput());
 	const unknown = summary.entries.find((entry) => entry.userId === "u4");
 	const zed = summary.entries.find((entry) => entry.userId === "u1");
@@ -56,7 +61,9 @@ test("defaults missing sums, formats activity, and returns my totals", () => {
 	expect(unknown?.tasks).toBe(0);
 	expect(unknown?.claims).toBe(0);
 	expect(unknown?.lastActivity).toBeNull();
+	expect(unknown?.averagePointsPerDay).toBe(0);
 	expect(zed?.lastActivity).toBe("2024-01-02T03:04:05.000Z");
+	expect(zed?.averagePointsPerDay).toBeGreaterThan(0);
 
 	expect(summary.myPoints).toBe(50);
 	expect(summary.myTasks).toBe(3);

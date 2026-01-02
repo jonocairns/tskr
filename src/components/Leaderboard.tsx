@@ -13,6 +13,7 @@ export type LeaderboardEntry = {
 	tasks: number;
 	claims: number;
 	lastActivity?: string | null;
+	averagePointsPerDay: number;
 };
 
 type Props = {
@@ -25,7 +26,7 @@ export const Leaderboard = ({ entries }: Props) => {
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
 					<CardTitle className="text-xl">Leaderboard</CardTitle>
-					<CardDescription>Total earned points with current balance.</CardDescription>
+					<CardDescription>Average points per day since first task.</CardDescription>
 				</div>
 				<div className="rounded-full bg-primary/10 p-2 text-primary">
 					<UsersIcon className="h-5 w-5" />
@@ -36,8 +37,9 @@ export const Leaderboard = ({ entries }: Props) => {
 					<TableHeader>
 						<TableRow>
 							<TableHead>User</TableHead>
-							<TableHead className="text-right">Total</TableHead>
-							<TableHead className="text-right">Current</TableHead>
+							<TableHead className="text-right">Avg/day</TableHead>
+							<TableHead className="text-right text-muted-foreground">Total</TableHead>
+							<TableHead className="text-right text-muted-foreground">Current</TableHead>
 							<TableHead className="text-right">Tasks</TableHead>
 							<TableHead className="text-right">Rewards</TableHead>
 							<TableHead className="text-right">Last active</TableHead>
@@ -58,12 +60,17 @@ export const Leaderboard = ({ entries }: Props) => {
 										</Badge>
 									) : null}
 								</TableCell>
-								<TableCell className="text-right font-semibold">{entry.points.toLocaleString()}</TableCell>
-								<TableCell className="text-right text-sm font-medium text-muted-foreground">
+								<TableCell className="text-right font-semibold text-sm ">
+									{entry.averagePointsPerDay.toFixed(1)}
+								</TableCell>
+								<TableCell className="text-right text-sm text-muted-foreground">
+									{entry.points.toLocaleString()}
+								</TableCell>
+								<TableCell className="text-right text-sm text-muted-foreground">
 									{entry.currentBalance.toLocaleString()}
 								</TableCell>
-								<TableCell className="text-right">{entry.tasks}</TableCell>
-								<TableCell className="text-right">{entry.claims}</TableCell>
+								<TableCell className="text-right text-sm text-muted-foreground">{entry.tasks}</TableCell>
+								<TableCell className="text-right text-sm text-muted-foreground">{entry.claims}</TableCell>
 								<TableCell className="text-right text-sm text-muted-foreground">
 									{entry.lastActivity ? new Date(entry.lastActivity).toLocaleDateString() : "—"}
 								</TableCell>

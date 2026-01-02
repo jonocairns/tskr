@@ -1,7 +1,6 @@
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";
 import { AuditLog } from "@/components/AuditLog";
-import { HouseholdErrorToast } from "@/components/HouseholdErrorToast";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { PageHeader } from "@/components/PageHeader";
@@ -33,10 +32,12 @@ export default async function DashboardPage({ params }: Props) {
 		taskCounts,
 		rewardCounts,
 		lastActivity,
+		firstActivity,
 		users,
 		recentLogs,
 		hasMoreHistory,
 		pendingLogs,
+		hasMoreApprovals,
 		presets,
 		assignedTasks,
 		weeklyTaskCount,
@@ -56,6 +57,7 @@ export default async function DashboardPage({ params }: Props) {
 		taskCounts,
 		rewardCounts,
 		lastActivity,
+		firstActivity,
 	});
 	const presetSummaries = mapPresetSummaries(presets);
 	const auditEntries = buildAuditEntries(recentLogs);
@@ -64,20 +66,15 @@ export default async function DashboardPage({ params }: Props) {
 
 	return (
 		<PageShell>
-			<HouseholdErrorToast />
-
 			<PageHeader
 				eyebrow="tskr"
 				title="Dashboard"
 				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
-				householdId={householdId}
 				user={session.user}
 				googleEnabled={googleEnabled}
-				household={{ id: householdId, role: membership.role }}
 			/>
 
 			<PointsSummary
-				householdId={householdId}
 				points={myPoints}
 				threshold={rewardThreshold}
 				progressBarColor={progressBarColor}
@@ -85,9 +82,10 @@ export default async function DashboardPage({ params }: Props) {
 				pointsLastWeek={weeklyPoints}
 				lastTaskAt={lastTaskAt?.toISOString() ?? null}
 				currentStreak={currentStreak}
+				householdId={householdId}
 			/>
 
-			{assignedTasks.length > 0 ? <AssignedTaskQueue householdId={householdId} entries={assignedTasks} /> : null}
+			{assignedTasks.length > 0 ? <AssignedTaskQueue entries={assignedTasks} householdId={householdId} /> : null}
 
 			<TaskActions
 				householdId={householdId}
@@ -96,15 +94,17 @@ export default async function DashboardPage({ params }: Props) {
 				currentUserRole={membership.role}
 			/>
 
-			{showApprovals ? <ApprovalQueue entries={approvalEntries} currentUserId={userId} /> : null}
+			{showApprovals ? (
+				<ApprovalQueue entries={approvalEntries} currentUserId={userId} initialHasMore={hasMoreApprovals} />
+			) : null}
 
 			<Leaderboard entries={leaderboardEntries} />
 
 			<AuditLog
-				householdId={householdId}
 				entries={auditEntries}
 				currentUserId={userId}
 				initialHasMore={hasMoreHistory}
+				householdId={householdId}
 			/>
 
 			<LiveRefresh householdId={householdId} />
