@@ -60,7 +60,7 @@ export const Leaderboard = ({ entries }: Props) => {
 										</Badge>
 									) : null}
 								</TableCell>
-								<TableCell className="text-right font-semibold text-lg">
+								<TableCell className="text-right font-semibold text-sm ">
 									{entry.averagePointsPerDay.toFixed(1)}
 								</TableCell>
 								<TableCell className="text-right text-sm text-muted-foreground">
@@ -69,8 +69,8 @@ export const Leaderboard = ({ entries }: Props) => {
 								<TableCell className="text-right text-sm text-muted-foreground">
 									{entry.currentBalance.toLocaleString()}
 								</TableCell>
-								<TableCell className="text-right">{entry.tasks}</TableCell>
-								<TableCell className="text-right">{entry.claims}</TableCell>
+								<TableCell className="text-right text-sm text-muted-foreground">{entry.tasks}</TableCell>
+								<TableCell className="text-right text-sm text-muted-foreground">{entry.claims}</TableCell>
 								<TableCell className="text-right text-sm text-muted-foreground">
 									{entry.lastActivity ? new Date(entry.lastActivity).toLocaleDateString() : "—"}
 								</TableCell>
