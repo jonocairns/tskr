@@ -81,6 +81,7 @@ export const pushRouter = router({
 
 	test: householdProcedure(testPushSchema).mutation(async ({ ctx }) => {
 		const householdId = ctx.household.id;
+		const userId = ctx.session.user.id;
 
 		if (!isPushConfigured()) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Push is not configured" });
@@ -94,7 +95,7 @@ export const pushRouter = router({
 				icon: "/icon-192.png",
 				badge: "/icon-192.png",
 			},
-			{ householdId },
+			{ householdId, userId },
 		);
 
 		return { ok: true };
