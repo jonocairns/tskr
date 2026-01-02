@@ -490,12 +490,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 									) : null}
 									<AlertDialog>
 										<AlertDialogTrigger asChild>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												disabled={isBusy || activeRow.isClearingReset}
-											>
+											<Button type="button" variant="ghost" size="sm" disabled={isBusy || activeRow.isClearingReset}>
 												{activeRow.isClearingReset ? "Deleting links..." : "Delete reset links"}
 											</Button>
 										</AlertDialogTrigger>
@@ -503,7 +498,8 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 											<AlertDialogHeader>
 												<AlertDialogTitle>Delete all reset links?</AlertDialogTitle>
 												<AlertDialogDescription>
-													This will delete all password reset links for this user. Active reset links will no longer work.
+													This will delete all password reset links for this user. Active reset links will no longer
+													work.
 												</AlertDialogDescription>
 											</AlertDialogHeader>
 											<AlertDialogFooter>
@@ -547,7 +543,8 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 										<AlertDialogHeader>
 											<AlertDialogTitle>Delete user?</AlertDialogTitle>
 											<AlertDialogDescription>
-												This will delete {activeRow.email ?? "this user"} and all their household memberships. This cannot be undone.
+												This will delete {activeRow.email ?? "this user"} and all their household memberships. This
+												cannot be undone.
 											</AlertDialogDescription>
 										</AlertDialogHeader>
 										<AlertDialogFooter>
