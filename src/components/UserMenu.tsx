@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardListIcon, HomeIcon, LinkIcon, LogOutIcon, ShieldIcon } from "lucide-react";
+import { ClipboardListIcon, HomeIcon, LinkIcon, LogOutIcon } from "lucide-react";
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect } from "react";
@@ -92,14 +92,6 @@ export const UserMenu = ({ user, googleEnabled, household }: Props) => {
 							</DropdownMenuItem>
 						) : null}
 					</>
-				) : null}
-				{resolvedUser?.isSuperAdmin ? (
-					<DropdownMenuItem asChild>
-						<Link href="/admin">
-							<ShieldIcon className="mr-2 h-4 w-4" />
-							Admin
-						</Link>
-					</DropdownMenuItem>
 				) : null}
 				{googleEnabled && !resolvedUser?.hasGoogleAccount ? (
 					<DropdownMenuItem
