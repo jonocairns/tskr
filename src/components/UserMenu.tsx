@@ -15,7 +15,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { useToast } from "@/hooks/useToast";
-import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	user: {
