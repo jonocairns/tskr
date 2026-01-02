@@ -1,12 +1,10 @@
 "use client";
 
-import { ClipboardListIcon, HomeIcon, LinkIcon, LogOutIcon } from "lucide-react";
+import { ClipboardListIcon, HomeIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
-import { signIn, signOut, useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { signOut, useSession } from "next-auth/react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -14,7 +12,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
-import { useToast } from "@/hooks/useToast";
 
 type Props = {
 	user: {
@@ -24,16 +21,14 @@ type Props = {
 		isSuperAdmin?: boolean;
 		hasGoogleAccount?: boolean;
 	};
-	googleEnabled: boolean;
 	household?: {
 		id: string;
 		role: "DICTATOR" | "APPROVER" | "DOER";
 	};
 };
 
-export const UserMenu = ({ user, googleEnabled, household }: Props) => {
+export const UserMenu = ({ user, household }: Props) => {
 	const { data: session } = useSession();
-	const { toast } = useToast();
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
 
@@ -41,24 +36,6 @@ export const UserMenu = ({ user, googleEnabled, household }: Props) => {
 	const currentHouseholdRole = household?.role;
 	const initials =
 		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
-
-	useEffect(() => {
-		if (!googleEnabled) {
-			return;
-		}
-		if (typeof window === "undefined") {
-			return;
-		}
-		const flag = window.sessionStorage.getItem("googleLinkSuccess");
-		if (!flag) {
-			return;
-		}
-		window.sessionStorage.removeItem("googleLinkSuccess");
-		toast({
-			title: "Google account linked",
-			description: "Your profile has been updated.",
-		});
-	}, [googleEnabled, toast]);
 
 	return (
 		<DropdownMenu>
@@ -85,20 +62,13 @@ export const UserMenu = ({ user, googleEnabled, household }: Props) => {
 								</Link>
 							</DropdownMenuItem>
 						) : null}
+						<DropdownMenuItem asChild>
+							<Link href={`/${householdId}/settings`}>
+								<SettingsIcon className="mr-2 h-4 w-4" />
+								Settings
+							</Link>
+						</DropdownMenuItem>
 					</>
-				) : null}
-				{googleEnabled && !resolvedUser?.hasGoogleAccount ? (
-					<DropdownMenuItem
-						onSelect={() => {
-							const returnTo = window.location.pathname + window.location.search + window.location.hash;
-							signIn("google", {
-								callbackUrl: `/auth/link?returnTo=${encodeURIComponent(returnTo)}`,
-							});
-						}}
-					>
-						<LinkIcon className="mr-2 h-4 w-4" />
-						Link Google
-					</DropdownMenuItem>
 				) : null}
 				<DropdownMenuSeparator />
 				<DropdownMenuItem

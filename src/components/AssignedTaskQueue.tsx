@@ -2,6 +2,7 @@
 
 import { CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -36,6 +37,14 @@ type Props = {
 export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
+	const [isMobile, setIsMobile] = useState(false);
+
+	useEffect(() => {
+		const checkMobile = () => setIsMobile(window.innerWidth < 640);
+		checkMobile();
+		window.addEventListener("resize", checkMobile);
+		return () => window.removeEventListener("resize", checkMobile);
+	}, []);
 
 	const completeMutation = trpc.assignedTasks.complete.useMutation({
 		onSuccess: (result) => {
@@ -77,8 +86,9 @@ export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 						<TableHeader>
 							<TableRow>
 								<TableHead>Task</TableHead>
-								<TableHead>Progress</TableHead>
-								<TableHead>Cadence</TableHead>
+								<TableHead className="text-right sm:hidden">Progress</TableHead>
+								<TableHead className="hidden sm:table-cell">Progress</TableHead>
+								<TableHead className="hidden sm:table-cell">Cadence</TableHead>
 								<TableHead className="text-right">Actions</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -86,8 +96,11 @@ export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 							{entries.map((entry) => {
 								const target = Math.max(entry.cadenceTarget, 1);
 								const progressValue = Math.min(100, Math.round((entry.progress / target) * 100));
+								const bgStyle = {
+									backgroundImage: `linear-gradient(to right, rgb(255 255 255 / 0.05) ${progressValue}%, transparent ${progressValue}%)`,
+								};
 								return (
-									<TableRow key={entry.id}>
+									<TableRow key={entry.id} style={isMobile ? bgStyle : undefined}>
 										<TableCell>
 											<div className="flex flex-col gap-1">
 												<span className="font-semibold">{entry.label}</span>
@@ -96,7 +109,10 @@ export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 												</span>
 											</div>
 										</TableCell>
-										<TableCell>
+										<TableCell className="text-right text-sm text-muted-foreground sm:hidden">
+											{entry.progress}/{entry.cadenceTarget}
+										</TableCell>
+										<TableCell className="hidden sm:table-cell">
 											<div className="space-y-2">
 												<div className="flex items-center justify-between text-xs text-muted-foreground">
 													<span>
@@ -107,7 +123,7 @@ export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 												<Progress value={progressValue} />
 											</div>
 										</TableCell>
-										<TableCell>
+										<TableCell className="hidden sm:table-cell">
 											<div className="flex items-center gap-2 text-sm">
 												<Badge variant="secondary">{entry.isRecurring ? "Recurring" : "One-off"}</Badge>
 												<span className="text-muted-foreground">
@@ -117,8 +133,8 @@ export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 										</TableCell>
 										<TableCell className="text-right">
 											<Button type="button" size="sm" disabled={isPending} onClick={() => handleComplete(entry.id)}>
-												<CheckIcon className="mr-2 h-4 w-4" />
-												Complete
+												<CheckIcon className="h-4 w-4 sm:mr-2" />
+												<span className="hidden sm:inline">Complete</span>
 											</Button>
 										</TableCell>
 									</TableRow>

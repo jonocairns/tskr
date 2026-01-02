@@ -132,8 +132,8 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 						<TableHeader>
 							<TableRow>
 								<TableHead>Entry</TableHead>
-								<TableHead>Bucket</TableHead>
-								<TableHead>Date</TableHead>
+								<TableHead className="hidden sm:table-cell">Bucket</TableHead>
+								<TableHead className="hidden sm:table-cell">Date</TableHead>
 								<TableHead className="text-right">Points</TableHead>
 								<TableHead className="text-right">Actions</TableHead>
 							</TableRow>
@@ -144,14 +144,18 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 									<TableCell>
 										<div className="font-semibold">{log.description}</div>
 										<div className="text-xs text-muted-foreground">
-											{log.userName} · {log.kind.toLowerCase()}
+											{log.userName}
 											{log.status && log.status !== "APPROVED" ? ` · ${log.status.toLowerCase()}` : ""}
 										</div>
+										<div className="text-xs text-muted-foreground sm:hidden mt-1">
+											{log.bucketLabel ? `${log.bucketLabel} · ` : ""}
+											{new Date(log.createdAt).toLocaleDateString()}
+										</div>
 									</TableCell>
-									<TableCell>
+									<TableCell className="hidden sm:table-cell">
 										<Badge variant="secondary">{log.bucketLabel ?? "—"}</Badge>
 									</TableCell>
-									<TableCell className="text-sm text-muted-foreground">
+									<TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
 										{new Date(log.createdAt).toLocaleString()}
 									</TableCell>
 									<TableCell className="text-right font-semibold">
@@ -161,7 +165,10 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 									<TableCell className="text-right">
 										{log.revertedAt ? (
 											<span className="text-xs text-muted-foreground">
-												Reverted {new Date(log.revertedAt).toLocaleDateString()}
+												<span className="hidden sm:inline">
+													Reverted {new Date(log.revertedAt).toLocaleDateString()}
+												</span>
+												<span className="sm:hidden">Reverted</span>
 											</span>
 										) : log.status === "REJECTED" && log.userId === currentUserId ? (
 											<Button
@@ -174,7 +181,10 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 												Resubmit
 											</Button>
 										) : log.status === "PENDING" ? (
-											<span className="text-xs text-muted-foreground">Awaiting approval</span>
+											<span className="text-xs text-muted-foreground">
+												<span className="hidden sm:inline">Awaiting approval</span>
+												<span className="sm:hidden">Pending</span>
+											</span>
 										) : (
 											<Button
 												variant="ghost"
@@ -183,8 +193,8 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 												onClick={() => undo(log.id)}
 												className="text-muted-foreground hover:text-foreground"
 											>
-												<Undo2Icon className="mr-2 h-4 w-4" />
-												Undo
+												<Undo2Icon className="h-4 w-4 sm:mr-2" />
+												<span className="hidden sm:inline">Undo</span>
 											</Button>
 										)}
 									</TableCell>

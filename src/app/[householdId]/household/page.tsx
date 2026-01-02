@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { PushNotifications } from "@/components/PushNotifications";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getHouseholdContext } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +16,6 @@ type Props = {
 };
 
 export default async function HouseholdPage({ params }: Props) {
-	const googleEnabled = isGoogleAuthEnabled;
 	const { householdId } = await params;
 	const { session, userId, membership } = await getHouseholdContext(householdId);
 
@@ -30,7 +28,6 @@ export default async function HouseholdPage({ params }: Props) {
 				backHref={`/${householdId}`}
 				backLabel="Back to dashboard"
 				user={session.user}
-				googleEnabled={googleEnabled}
 				household={{ id: householdId, role: membership.role }}
 			/>
 
