@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/useToast";
 import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
@@ -72,7 +73,7 @@ export const PointsSummary = ({
 	};
 
 	return (
-		<Card className="border-primary/10 bg-gradient-to-br from-primary/5 via-background to-background shadow-sm">
+		<DashboardCard>
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
 					<CardTitle className="text-xl font-semibold">Overview</CardTitle>
@@ -145,7 +146,7 @@ export const PointsSummary = ({
 					</Button>
 				</div>
 			</CardContent>
-		</Card>
+		</DashboardCard>
 	);
 };
 

@@ -55,10 +55,12 @@ export default async function Home({ searchParams }: Props) {
 		taskCounts,
 		rewardCounts,
 		lastActivity,
+		firstActivity,
 		users,
 		recentLogs,
 		hasMoreHistory,
 		pendingLogs,
+		hasMoreApprovals,
 		presets,
 		assignedTasks,
 		weeklyTaskCount,
@@ -78,6 +80,7 @@ export default async function Home({ searchParams }: Props) {
 		taskCounts,
 		rewardCounts,
 		lastActivity,
+		firstActivity,
 	});
 	const presetSummaries = mapPresetSummaries(presets);
 	const auditEntries = buildAuditEntries(recentLogs);
@@ -108,7 +111,9 @@ export default async function Home({ searchParams }: Props) {
 
 			<TaskActions presets={presetSummaries} currentUserId={userId} currentUserRole={membership.role} />
 
-			{showApprovals ? <ApprovalQueue entries={approvalEntries} currentUserId={userId} /> : null}
+			{showApprovals ? (
+				<ApprovalQueue entries={approvalEntries} currentUserId={userId} initialHasMore={hasMoreApprovals} />
+			) : null}
 
 			<Leaderboard entries={leaderboardEntries} />
 

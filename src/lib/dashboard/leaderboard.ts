@@ -15,6 +15,11 @@ type LastActivity = {
 	_max: { createdAt: Date | null };
 };
 
+type FirstActivity = {
+	userId: string;
+	_min: { createdAt: Date | null };
+};
+
 type UserSummary = {
 	id: string;
 	name: string | null;
@@ -36,6 +41,7 @@ export function buildLeaderboardSummary({
 	taskCounts,
 	rewardCounts,
 	lastActivity,
+	firstActivity,
 }: {
 	userId: string;
 	users: UserSummary[];
@@ -44,6 +50,7 @@ export function buildLeaderboardSummary({
 	taskCounts: CountSum[];
 	rewardCounts: CountSum[];
 	lastActivity: LastActivity[];
+	firstActivity: FirstActivity[];
 }): LeaderboardSummary {
 	const netPointSumMap = new Map(pointSums.map((item) => [item.userId, item._sum.points ?? 0]));
 	const earnedPointSumMap = new Map(earnedPointSums.map((item) => [item.userId, item._sum.points ?? 0]));
@@ -52,19 +59,42 @@ export function buildLeaderboardSummary({
 	const lastActivityMap = new Map(
 		lastActivity.map((item) => [item.userId, item._max.createdAt?.toISOString() ?? null]),
 	);
+	const firstActivityMap = new Map(firstActivity.map((item) => [item.userId, item._min.createdAt]));
 
 	const rankedEntries = users
-		.map((user) => ({
-			userId: user.id,
-			name: user.name ?? user.email ?? "Unknown user",
-			email: user.email,
-			points: earnedPointSumMap.get(user.id) ?? 0,
-			currentBalance: netPointSumMap.get(user.id) ?? 0,
-			tasks: taskCountMap.get(user.id) ?? 0,
-			claims: rewardCountMap.get(user.id) ?? 0,
-			lastActivity: lastActivityMap.get(user.id),
-		}))
-		.sort((a, b) => b.points - a.points || b.currentBalance - a.currentBalance || a.name.localeCompare(b.name));
+		.map((user) => {
+			const points = earnedPointSumMap.get(user.id) ?? 0;
+			const firstActivityDate = firstActivityMap.get(user.id);
+
+			let averagePointsPerDay = 0;
+			if (firstActivityDate && points > 0) {
+				const now = new Date();
+				const daysSinceFirst = Math.max(
+					1,
+					Math.ceil((now.getTime() - firstActivityDate.getTime()) / (1000 * 60 * 60 * 24)),
+				);
+				averagePointsPerDay = points / daysSinceFirst;
+			}
+
+			return {
+				userId: user.id,
+				name: user.name ?? user.email ?? "Unknown user",
+				email: user.email,
+				points,
+				currentBalance: netPointSumMap.get(user.id) ?? 0,
+				tasks: taskCountMap.get(user.id) ?? 0,
+				claims: rewardCountMap.get(user.id) ?? 0,
+				lastActivity: lastActivityMap.get(user.id),
+				averagePointsPerDay,
+			};
+		})
+		.sort(
+			(a, b) =>
+				b.averagePointsPerDay - a.averagePointsPerDay ||
+				b.points - a.points ||
+				b.currentBalance - a.currentBalance ||
+				a.name.localeCompare(b.name),
+		);
 
 	return {
 		entries: rankedEntries,

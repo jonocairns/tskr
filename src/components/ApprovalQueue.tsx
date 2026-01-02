@@ -21,9 +21,10 @@ export type ApprovalEntry = {
 type Props = {
 	entries: ApprovalEntry[];
 	currentUserId: string;
+	initialHasMore: boolean;
 };
 
-export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
+export const ApprovalQueue = ({ entries, currentUserId, initialHasMore }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
@@ -116,6 +117,11 @@ export const ApprovalQueue = ({ entries, currentUserId }: Props) => {
 						</TableBody>
 					</Table>
 				)}
+				{initialHasMore && entries.length > 0 ? (
+					<p className="mt-4 text-center text-xs text-muted-foreground">
+						Showing {entries.length} oldest. More pending approvals exist.
+					</p>
+				) : null}
 			</CardContent>
 		</Card>
 	);
