@@ -1,5 +1,6 @@
 "use client";
 
+import { SaveIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -294,14 +295,29 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 										</div>
 									</TableCell>
 									<TableCell className="text-right">
-										<div className="flex justify-end gap-2">
-											<Button type="button" size="sm" disabled={isPending} onClick={() => handleSave(task.id)}>
-												Save
+										<div className="flex justify-end gap-1">
+											<Button
+												type="button"
+												size="icon"
+												variant="ghost"
+												disabled={isPending}
+												onClick={() => handleSave(task.id)}
+												aria-label="Save"
+												className="h-9 w-9"
+											>
+												<SaveIcon className="h-5 w-5" />
 											</Button>
 											<AlertDialog>
 												<AlertDialogTrigger asChild>
-													<Button type="button" size="sm" variant="outline" disabled={isPending}>
-														Delete
+													<Button
+														type="button"
+														size="icon"
+														variant="ghost"
+														disabled={isPending}
+														aria-label="Delete"
+														className="h-9 w-9"
+													>
+														<Trash2Icon className="h-5 w-5 text-destructive" />
 													</Button>
 												</AlertDialogTrigger>
 												<AlertDialogContent>

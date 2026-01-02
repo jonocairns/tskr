@@ -1,5 +1,6 @@
 "use client";
 
+import { UserPlusIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import type { UserRow } from "@/components/admin/UsersTable";
@@ -117,7 +118,9 @@ export const CreateUserDialog = ({ onCreated }: Props) => {
 	return (
 		<AlertDialog open={open} onOpenChange={handleOpenChange}>
 			<AlertDialogTrigger asChild>
-				<Button size="sm">Add</Button>
+				<Button size="icon" variant="ghost" aria-label="Add user" className="h-9 w-9">
+					<UserPlusIcon className="h-5 w-5" />
+				</Button>
 			</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>

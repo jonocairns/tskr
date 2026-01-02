@@ -23,15 +23,7 @@ type Props = {
 	};
 };
 
-export const PageHeader = ({
-	title,
-	description,
-	eyebrow,
-	backHref,
-	backLabel = "Back",
-	user,
-	household,
-}: Props) => {
+export const PageHeader = ({ title, description, eyebrow, backHref, backLabel = "Back", user, household }: Props) => {
 	return (
 		<header className="flex items-start justify-between">
 			<div className="flex items-center gap-3 flex-1">

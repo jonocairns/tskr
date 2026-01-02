@@ -1,6 +1,18 @@
+import { PencilIcon, Trash2Icon } from "lucide-react";
 import type { FormEvent } from "react";
 
 import type { PresetSummary } from "@/components/task-actions/types";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/AlertDialog";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -147,20 +159,49 @@ export function PresetListItem({
 					</p>
 				) : null}
 			</div>
-			<div className="flex items-center gap-2">
-				<Button type="button" variant="ghost" size="sm" onClick={() => onStartEdit(preset)} disabled={disabled}>
-					Edit
+			<div className="flex items-center gap-1">
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					onClick={() => onStartEdit(preset)}
+					disabled={disabled}
+					aria-label="Edit task"
+					className="h-9 w-9"
+				>
+					<PencilIcon className="h-5 w-5" />
 				</Button>
 				{canDelete ? (
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onClick={() => onDeletePreset(preset.id, preset.label)}
-						disabled={disabled}
-					>
-						Delete
-					</Button>
+					<AlertDialog>
+						<AlertDialogTrigger asChild>
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon"
+								disabled={disabled}
+								aria-label="Delete task"
+								className="h-9 w-9"
+							>
+								<Trash2Icon className="h-5 w-5 text-destructive" />
+							</Button>
+						</AlertDialogTrigger>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>Delete task preset?</AlertDialogTitle>
+								<AlertDialogDescription>This will delete "{preset.label}" and cannot be undone.</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel>Cancel</AlertDialogCancel>
+								<AlertDialogAction
+									type="button"
+									onClick={() => onDeletePreset(preset.id, preset.label)}
+									className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+								>
+									Delete
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
 				) : null}
 			</div>
 		</div>

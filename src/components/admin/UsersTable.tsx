@@ -1,6 +1,6 @@
 "use client";
 
-import { ChromeIcon, XIcon } from "lucide-react";
+import { ChromeIcon, PencilIcon, XIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 import {
@@ -385,8 +385,15 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 								) : null}
 								<TableCell>{row.passwordLoginDisabled ? "Disabled" : "Allowed"}</TableCell>
 								<TableCell>
-									<Button type="button" size="sm" variant="outline" onClick={() => openEditor(row)}>
-										Edit
+									<Button
+										type="button"
+										size="icon"
+										variant="ghost"
+										onClick={() => openEditor(row)}
+										aria-label="Edit user"
+										className="h-9 w-9"
+									>
+										<PencilIcon className="h-5 w-5" />
 									</Button>
 									{isSelf ? <span className="sr-only">You</span> : null}
 								</TableCell>

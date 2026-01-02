@@ -69,8 +69,12 @@ export const Leaderboard = ({ entries }: Props) => {
 								<TableCell className="hidden sm:table-cell text-right text-sm text-muted-foreground">
 									{entry.currentBalance.toLocaleString()}
 								</TableCell>
-								<TableCell className="hidden sm:table-cell text-right text-sm text-muted-foreground">{entry.tasks}</TableCell>
-								<TableCell className="hidden sm:table-cell text-right text-sm text-muted-foreground">{entry.claims}</TableCell>
+								<TableCell className="hidden sm:table-cell text-right text-sm text-muted-foreground">
+									{entry.tasks}
+								</TableCell>
+								<TableCell className="hidden sm:table-cell text-right text-sm text-muted-foreground">
+									{entry.claims}
+								</TableCell>
 								<TableCell className="hidden sm:table-cell text-right text-sm text-muted-foreground">
 									{entry.lastActivity ? new Date(entry.lastActivity).toLocaleDateString() : "—"}
 								</TableCell>

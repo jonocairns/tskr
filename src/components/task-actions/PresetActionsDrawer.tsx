@@ -180,9 +180,7 @@ export function PresetActionsDrawer({
 		}
 	};
 
-	const handleDeletePreset = async (presetId: string, label: string) => {
-		const confirmed = window.confirm(`Delete the "${label}" preset? This cannot be undone.`);
-		if (!confirmed) return;
+	const handleDeletePreset = async (presetId: string) => {
 		const success = await onDeletePreset(presetId);
 		if (success && editingPresetId === presetId) {
 			setEditingPresetId(null);
