@@ -1,4 +1,4 @@
-import { ChevronLeftIcon } from "lucide-react";
+import { ChevronLeftIcon, ShieldIcon } from "lucide-react";
 import Link from "next/link";
 import { Switcher } from "@/components/household/Switcher";
 import { ModeToggle } from "@/components/ModeToggle";
@@ -49,6 +49,13 @@ export const PageHeader = ({
 			<TitleBlock eyebrow={eyebrow} title={title} description={description} />
 		</div>
 		<div className="flex items-center gap-2">
+			{user.isSuperAdmin ? (
+				<Button asChild variant="outline" size="icon">
+					<Link href="/admin" aria-label="Admin">
+						<ShieldIcon className="h-[1.2rem] w-[1.2rem]" />
+					</Link>
+				</Button>
+			) : null}
 			<ModeToggle />
 			<Switcher householdId={householdId} />
 			<UserMenu user={user} googleEnabled={googleEnabled} household={household} />
