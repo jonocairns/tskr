@@ -21,19 +21,24 @@ type Props = {
 		name?: string | null;
 		email?: string | null;
 		image?: string | null;
-		householdRole?: "DICTATOR" | "APPROVER" | "DOER" | null;
 		isSuperAdmin?: boolean;
 		hasGoogleAccount?: boolean;
-		hasHouseholdMembership?: boolean;
 	};
 	googleEnabled: boolean;
+	household?: {
+		id: string;
+		role: "DICTATOR" | "APPROVER" | "DOER";
+	};
 };
 
-export const UserMenu = ({ user, googleEnabled }: Props) => {
+export const UserMenu = ({ user, googleEnabled, household }: Props) => {
 	const { data: session } = useSession();
 	const { toast } = useToast();
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
+
+	const householdId = household?.id;
+	const currentHouseholdRole = household?.role;
 	const initials =
 		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
 
@@ -70,17 +75,17 @@ export const UserMenu = ({ user, googleEnabled }: Props) => {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="w-56" align="end">
-				{resolvedUser?.hasHouseholdMembership ? (
+				{householdId ? (
 					<>
 						<DropdownMenuItem asChild>
-							<Link href="/household">
+							<Link href={`/${householdId}/household`}>
 								<HomeIcon className="mr-2 h-4 w-4" />
 								Household
 							</Link>
 						</DropdownMenuItem>
-						{resolvedUser?.householdRole !== "DOER" ? (
+						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (
 							<DropdownMenuItem asChild>
-								<Link href="/assignments">
+								<Link href={`/${householdId}/assignments`}>
 									<ClipboardListIcon className="mr-2 h-4 w-4" />
 									Assignments
 								</Link>

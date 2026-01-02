@@ -45,10 +45,11 @@ type AssignedTaskRow = {
 };
 
 type Props = {
+	householdId: string;
 	initialTasks: AssignedTaskRow[];
 };
 
-export const AssignedTasksManager = ({ initialTasks }: Props) => {
+export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [tasks, setTasks] = useState(initialTasks);
@@ -172,6 +173,7 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
 		updateMutation.mutate({
+			householdId,
 			id: taskId,
 			cadenceTarget,
 			cadenceIntervalMinutes,
@@ -180,7 +182,7 @@ export const AssignedTasksManager = ({ initialTasks }: Props) => {
 	};
 
 	const handleDelete = (taskId: string) => {
-		deleteMutation.mutate({ id: taskId });
+		deleteMutation.mutate({ householdId, id: taskId });
 	};
 
 	const isPending = updateMutation.isPending || deleteMutation.isPending;

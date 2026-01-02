@@ -11,6 +11,7 @@ type Props = {
 	eyebrow?: string;
 	backHref?: string;
 	backLabel?: string;
+	householdId?: string;
 	user: {
 		name?: string | null;
 		email?: string | null;
@@ -19,6 +20,10 @@ type Props = {
 		hasGoogleAccount?: boolean;
 	};
 	googleEnabled: boolean;
+	household?: {
+		id: string;
+		role: "DICTATOR" | "APPROVER" | "DOER";
+	};
 };
 
 export const PageHeader = ({
@@ -27,8 +32,10 @@ export const PageHeader = ({
 	eyebrow,
 	backHref,
 	backLabel = "Back",
+	householdId,
 	user,
 	googleEnabled,
+	household,
 }: Props) => (
 	<header className="flex items-start justify-between">
 		<div className="flex items-center gap-3 flex-1">
@@ -43,8 +50,8 @@ export const PageHeader = ({
 		</div>
 		<div className="flex items-center gap-2">
 			<ModeToggle />
-			<Switcher />
-			<UserMenu user={user} googleEnabled={googleEnabled} />
+			<Switcher householdId={householdId} />
+			<UserMenu user={user} googleEnabled={googleEnabled} household={household} />
 		</div>
 	</header>
 );

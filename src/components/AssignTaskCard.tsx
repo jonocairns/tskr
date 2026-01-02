@@ -26,12 +26,13 @@ type MemberOption = {
 };
 
 type AssignTaskCardProps = {
+	householdId: string;
 	members: MemberOption[];
 	presets: PresetSummary[];
 	currentUserId: string;
 };
 
-export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCardProps) => {
+export const AssignTaskCard = ({ householdId, members, presets, currentUserId }: AssignTaskCardProps) => {
 	const router = useRouter();
 	const { toast } = useToast();
 
@@ -93,6 +94,7 @@ export const AssignTaskCard = ({ members, presets, currentUserId }: AssignTaskCa
 			: DEFAULT_CADENCE_INTERVAL_MINUTES;
 
 		createMutation.mutate({
+			householdId,
 			presetId,
 			assigneeId,
 			cadenceTarget: cadenceTargetValue,

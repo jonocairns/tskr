@@ -19,6 +19,10 @@ const unsubscribeSchema = z.object({
 	endpoint: z.url(),
 });
 
+const testPushSchema = z.object({
+	householdId: z.string().min(1),
+});
+
 export const pushRouter = router({
 	getPublicKey: publicProcedure.query(() => {
 		const publicKey = config.vapidPublicKey;
@@ -75,7 +79,10 @@ export const pushRouter = router({
 		return { ok: true };
 	}),
 
-	test: householdProcedure.mutation(async ({ ctx }) => {
+	test: householdProcedure(testPushSchema).mutation(async ({ ctx }) => {
+		const householdId = ctx.household.id;
+		const userId = ctx.session.user.id;
+
 		if (!isPushConfigured()) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Push is not configured" });
 		}
@@ -88,7 +95,7 @@ export const pushRouter = router({
 				icon: "/icon-192.png",
 				badge: "/icon-192.png",
 			},
-			{ userId: ctx.session.user.id },
+			{ householdId, userId },
 		);
 
 		return { ok: true };

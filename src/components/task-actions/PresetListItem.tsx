@@ -18,6 +18,8 @@ type Props = {
 	onEditBucketChange: (bucket: DurationKey) => void;
 	editApprovalOverride: "DEFAULT" | "REQUIRE" | "SKIP";
 	onEditApprovalOverrideChange: (value: "DEFAULT" | "REQUIRE" | "SKIP") => void;
+	editIsShared: boolean;
+	onEditIsSharedChange: (value: boolean) => void;
 	canUpdatePreset: boolean;
 	onUpdatePreset: (event: FormEvent<HTMLFormElement>, presetId: string) => void;
 	onCancelEdit: () => void;
@@ -25,6 +27,7 @@ type Props = {
 	onDeletePreset: (presetId: string, label: string) => void;
 	canDelete: boolean;
 	canEditApprovalOverride: boolean;
+	canManagePresets: boolean;
 	disabled: boolean;
 };
 
@@ -38,6 +41,8 @@ export function PresetListItem({
 	onEditBucketChange,
 	editApprovalOverride,
 	onEditApprovalOverrideChange,
+	editIsShared,
+	onEditIsSharedChange,
 	canUpdatePreset,
 	onUpdatePreset,
 	onCancelEdit,
@@ -45,6 +50,7 @@ export function PresetListItem({
 	onDeletePreset,
 	canDelete,
 	canEditApprovalOverride,
+	canManagePresets,
 	disabled,
 }: Props) {
 	if (isEditing) {
@@ -78,6 +84,20 @@ export function PresetListItem({
 						</SelectContent>
 					</Select>
 				</div>
+				{canManagePresets ? (
+					<div className="space-y-2">
+						<label className="flex items-center gap-2">
+							<input
+								type="checkbox"
+								checked={editIsShared}
+								onChange={(e) => onEditIsSharedChange(e.target.checked)}
+								disabled={disabled}
+								className="h-4 w-4"
+							/>
+							<span className="text-sm">Share with household</span>
+						</label>
+					</div>
+				) : null}
 				{canEditApprovalOverride ? (
 					<div className="space-y-2">
 						<Label htmlFor={`preset-approval-${preset.id}`}>Approval override</Label>
@@ -114,6 +134,9 @@ export function PresetListItem({
 			<div className="space-y-1">
 				<div className="flex items-center gap-2">
 					<p className="text-sm font-medium">{preset.label}</p>
+					{!preset.isShared ? (
+						<span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Personal</span>
+					) : null}
 				</div>
 				<p className="text-xs text-muted-foreground">
 					{bucket?.label ?? preset.bucket} · {bucket?.points ?? 0} pts

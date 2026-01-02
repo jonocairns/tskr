@@ -18,7 +18,7 @@ const selectHouseholdSchema = z.object({
 export const householdSwitchingRouter = router({
 	list: protectedProcedure.query(async ({ ctx }) => {
 		const userId = ctx.session.user.id;
-		const activeHouseholdId = await resolveActiveHouseholdId(userId, ctx.session.user.householdId ?? null);
+		const activeHouseholdId = await resolveActiveHouseholdId(userId);
 
 		const memberships = await prisma.householdMember.findMany({
 			where: { userId },

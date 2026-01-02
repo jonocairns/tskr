@@ -123,6 +123,6 @@ export const householdJoiningRouter = router({
 			});
 		});
 
-		return { ok: true };
+		return { householdId: invite.householdId };
 	}),
 });

@@ -10,6 +10,7 @@ import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
 type TaskActionsContextValue = {
+	householdId: string;
 	presetOptions: PresetOption[];
 	presetTemplates: PresetTemplate[];
 	customPresets: PresetSummary[];
@@ -28,6 +29,7 @@ type TaskActionsContextValue = {
 };
 
 type TaskActionsProviderProps = {
+	householdId: string;
 	presets: PresetSummary[];
 	currentUserId: string;
 	currentUserRole: "DICTATOR" | "APPROVER" | "DOER";
@@ -37,6 +39,7 @@ type TaskActionsProviderProps = {
 const TaskActionsContext = createContext<TaskActionsContextValue | null>(null);
 
 export const TaskActionsProvider = ({
+	householdId,
 	presets,
 	currentUserId,
 	currentUserRole,
@@ -91,7 +94,8 @@ export const TaskActionsProvider = ({
 	const logPreset = (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => {
 		const noteValue = overrideNote ?? note.trim();
 		createLogMutation.mutate({
-			type: "preset",
+			householdId,
+			type: "preset" as const,
 			...payload,
 			description: noteValue || undefined,
 		});
@@ -102,6 +106,7 @@ export const TaskActionsProvider = ({
 	return (
 		<TaskActionsContext.Provider
 			value={{
+				householdId,
 				presetOptions,
 				presetTemplates,
 				customPresets,

@@ -18,20 +18,28 @@ const addExpiry = () => {
 const generateCode = () => randomBytes(8).toString("hex").toUpperCase();
 
 const inviteSchema = z.object({
+	householdId: z.string().min(1),
 	role: z.enum(["DICTATOR", "APPROVER", "DOER"]).optional(),
 });
 
 const inviteActionSchema = z.object({
+	householdId: z.string().min(1),
 	id: z.string(),
 	action: z.enum(["revoke", "resend"]),
 });
 
+const getInvitesSchema = z.object({
+	householdId: z.string().min(1),
+});
+
 export const householdInvitesRouter = router({
-	getInvites: dictatorProcedure.query(async ({ ctx }) => {
+	getInvites: dictatorProcedure(getInvitesSchema).query(async ({ ctx }) => {
+		const householdId = ctx.household.id;
+
 		const now = new Date();
 		await prisma.householdInvite.updateMany({
 			where: {
-				householdId: ctx.household.id,
+				householdId,
 				status: "PENDING",
 				expiresAt: { lt: now },
 			},
@@ -40,7 +48,7 @@ export const householdInvitesRouter = router({
 
 		const invites = await prisma.householdInvite.findMany({
 			where: {
-				householdId: ctx.household.id,
+				householdId,
 				status: { in: ["PENDING", "EXPIRED"] },
 			},
 			select: {
@@ -59,7 +67,8 @@ export const householdInvitesRouter = router({
 	}),
 
 	// Create invite
-	createInvite: dictatorProcedure.input(inviteSchema).mutation(async ({ ctx, input }) => {
+	createInvite: dictatorProcedure(inviteSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const role = input.role ?? "DOER";
 		let invite = null;
 		let attempts = 0;
@@ -76,7 +85,7 @@ export const householdInvitesRouter = router({
 			}
 			invite = await prisma.householdInvite.create({
 				data: {
-					householdId: ctx.household.id,
+					householdId,
 					code,
 					role,
 					invitedById: ctx.session.user.id,
@@ -102,7 +111,8 @@ export const householdInvitesRouter = router({
 	}),
 
 	// Manage invite (revoke/resend)
-	manageInvite: dictatorProcedure.input(inviteActionSchema).mutation(async ({ ctx, input }) => {
+	manageInvite: dictatorProcedure(inviteActionSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const { id, action } = input;
 
 		const invite = await prisma.householdInvite.findUnique({
@@ -120,7 +130,7 @@ export const householdInvitesRouter = router({
 			throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found" });
 		}
 
-		if (invite.householdId !== ctx.household.id) {
+		if (invite.householdId !== householdId) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
 		}
 

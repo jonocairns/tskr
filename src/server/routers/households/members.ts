@@ -6,8 +6,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { dictatorProcedure, householdProcedure, router } from "@/server/trpc";
 
+const getMembersSchema = z.object({
+	householdId: z.string().min(1),
+});
+
 const updateMemberSchema = z
 	.object({
+		householdId: z.string().min(1),
 		id: z.string(),
 		role: z.enum(["DICTATOR", "APPROVER", "DOER"]).optional(),
 		requiresApprovalDefault: z.boolean().optional(),
@@ -17,9 +22,11 @@ const updateMemberSchema = z
 	});
 
 export const householdMembersRouter = router({
-	getMembers: householdProcedure.query(async ({ ctx }) => {
+	getMembers: householdProcedure(getMembersSchema).query(async ({ ctx }) => {
+		const householdId = ctx.household.id;
+
 		const members = await prisma.householdMember.findMany({
-			where: { householdId: ctx.household.id },
+			where: { householdId },
 			select: {
 				id: true,
 				userId: true,
@@ -35,11 +42,12 @@ export const householdMembersRouter = router({
 	}),
 
 	// Update household member
-	updateMember: dictatorProcedure.input(updateMemberSchema).mutation(async ({ ctx, input }) => {
+	updateMember: dictatorProcedure(updateMemberSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
 		const { id, ...updates } = input;
 
 		const member = await prisma.householdMember.findFirst({
-			where: { id, householdId: ctx.household.id },
+			where: { id, householdId },
 			select: { id: true, role: true },
 		});
 
@@ -49,7 +57,7 @@ export const householdMembersRouter = router({
 
 		if (updates.role && updates.role !== member.role && member.role === "DICTATOR" && updates.role !== "DICTATOR") {
 			const dictatorCount = await prisma.householdMember.count({
-				where: { householdId: ctx.household.id, role: "DICTATOR" },
+				where: { householdId, role: "DICTATOR" },
 			});
 			if (dictatorCount <= 1) {
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Household must have at least one dictator" });

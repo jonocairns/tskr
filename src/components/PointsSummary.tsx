@@ -12,6 +12,7 @@ import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
 import { trpc } from "@/lib/trpc/react";
 
 type Props = {
+	householdId: string;
 	points: number;
 	threshold: number;
 	progressBarColor?: string | null;
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export const PointsSummary = ({
+	householdId,
 	points,
 	threshold,
 	progressBarColor,
@@ -66,7 +68,7 @@ export const PointsSummary = ({
 	const handleClaim = () => {
 		setSubmitting(true);
 		startTransition(async () => {
-			await claimMutation.mutateAsync();
+			await claimMutation.mutateAsync({ householdId });
 			setSubmitting(false);
 		});
 	};

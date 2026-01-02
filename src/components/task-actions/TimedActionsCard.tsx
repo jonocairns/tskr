@@ -18,7 +18,7 @@ import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
 export const TimedActionsCard = () => {
-	const { presetOptions, disabled, defaultBucket, logPreset } = useTaskActions();
+	const { householdId, presetOptions, disabled, defaultBucket, logPreset } = useTaskActions();
 	const [selectedBucket, setSelectedBucket] = useState(defaultBucket);
 	const [description, setDescription] = useState("");
 	const [durationMinutes, setDurationMinutes] = useState("");
@@ -56,9 +56,20 @@ export const TimedActionsCard = () => {
 
 	const handleTimed = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
+
+		if (!householdId) {
+			toast({
+				title: "Unable to log task",
+				description: "Household context not available",
+				variant: "destructive",
+			});
+			return;
+		}
+
 		const minutes = durationMinutes.trim().length > 0 ? Number(durationMinutes) : undefined;
 
 		createLogMutation.mutate({
+			householdId,
 			type: "timed",
 			bucket: selectedBucket,
 			description: description.trim(),

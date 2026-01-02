@@ -47,10 +47,11 @@ const subscribeWithTimeout = async (registration: ServiceWorkerRegistration, pub
 };
 
 type Props = {
+	householdId: string;
 	variant?: "card" | "section";
 };
 
-export const PushNotifications = ({ variant = "card" }: Props) => {
+export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	const [status, setStatus] = useState<Status>("loading");
 	const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
@@ -317,7 +318,7 @@ export const PushNotifications = ({ variant = "card" }: Props) => {
 	const handleTest = async () => {
 		setIsTesting(true);
 		try {
-			await testMutation.mutateAsync();
+			await testMutation.mutateAsync({ householdId });
 		} finally {
 			setIsTesting(false);
 		}

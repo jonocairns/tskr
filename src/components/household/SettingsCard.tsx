@@ -22,7 +22,7 @@ const PROGRESS_BAR_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
 
 const isValidProgressBarColor = (value: string) => PROGRESS_BAR_COLOR_RE.test(value);
 
-export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
+export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props) => {
 	const [name, setName] = useState("");
 	const [initialName, setInitialName] = useState("");
 	const [threshold, setThreshold] = useState("50");
@@ -34,13 +34,16 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 	const router = useRouter();
 	const isSection = variant === "section";
 
-	const { data, isLoading, error } = trpc.households.getCurrent.useQuery(undefined, {
-		enabled: canManage,
-	});
+	const { data, isLoading, error } = trpc.households.getCurrent.useQuery(
+		{ householdId },
+		{
+			enabled: canManage,
+		},
+	);
 
 	const utils = trpc.useUtils();
 
-	const updateMutation = trpc.households.updateCurrent.useMutation({
+	const { mutate: updateHousehold, isPending } = trpc.households.updateCurrent.useMutation({
 		onSuccess: (result) => {
 			const updatedName = result.household.name;
 			const updatedThreshold = result.household.rewardThreshold;
@@ -102,7 +105,6 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 		return null;
 	}
 
-	const isPending = updateMutation.isPending;
 	const isDirty = name.trim() !== initialName.trim();
 	const parsedThreshold = Number(threshold);
 	const thresholdValid = Number.isFinite(parsedThreshold) && parsedThreshold >= 1;
@@ -117,7 +119,8 @@ export const SettingsCard = ({ canManage, variant = "card" }: Props) => {
 			return;
 		}
 
-		updateMutation.mutate({
+		updateHousehold({
+			householdId,
 			name: name.trim(),
 			rewardThreshold: Math.floor(parsedThreshold),
 			progressBarColor: currentProgressBarColor,

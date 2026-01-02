@@ -1,11 +1,11 @@
 import "server-only";
 
-import type { HouseholdRole } from "@prisma/client";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+import { z } from "zod";
 import { getAuthSession } from "@/lib/auth";
 import { checkForSensitiveInfo, sanitizeErrorMessage } from "@/lib/errorSanitization";
-import { getActiveHouseholdMembership } from "@/lib/households";
+import { getHouseholdMembership, type HouseholdMembership } from "@/lib/households";
 import { validateSessionExpiry } from "@/lib/sessionValidation";
 
 export async function createTRPCContext(opts?: { req?: Request }) {
@@ -26,7 +26,6 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 const t = initTRPC.context<Context>().create({
 	transformer: superjson,
 	errorFormatter({ shape, error }) {
-		// In development, check for potential information leakage
 		if (process.env.NODE_ENV !== "production" && error.message) {
 			const warnings = checkForSensitiveInfo(error.message);
 			if (warnings.length > 0) {
@@ -35,7 +34,6 @@ const t = initTRPC.context<Context>().create({
 			}
 		}
 
-		// Sanitize error messages for production
 		const sanitizedMessage = sanitizeErrorMessage(shape.message, shape.data?.code || "INTERNAL_SERVER_ERROR");
 
 		return {
@@ -48,10 +46,21 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
-const isAuthed = t.middleware(({ ctx, next }) => {
-	if (!ctx.session?.user?.id) {
+type AuthedUser = NonNullable<NonNullable<Context["session"]>["user"]>;
+type AuthedSession = NonNullable<Context["session"]> & { user: AuthedUser };
+type AuthedContext = Context & { session: AuthedSession };
+
+const getAuthedSession = (ctx: Context): AuthedSession => {
+	const session = ctx.session;
+	const user = session?.user;
+	if (!session || !user?.id) {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
 	}
+	return { ...session, user };
+};
+
+const isAuthed = t.middleware(({ ctx, next }) => {
+	const session = getAuthedSession(ctx);
 
 	const validation = validateSessionExpiry(ctx.sessionTimestamps);
 	if (!validation.valid) {
@@ -65,109 +74,87 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 	return next({
 		ctx: {
 			...ctx,
-			session: {
-				...ctx.session,
-				user: ctx.session.user,
-			},
-		},
+			session,
+		} satisfies AuthedContext,
 	});
 });
-
-const hasHousehold = t.middleware(async ({ ctx, next }) => {
-	if (!ctx.session?.user?.id) {
-		throw new TRPCError({ code: "UNAUTHORIZED" });
-	}
-
-	const active = await getActiveHouseholdMembership(ctx.session.user.id, ctx.session.user.householdId ?? null);
-
-	if (!active) {
-		throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });
-	}
-
-	return next({
-		ctx: {
-			...ctx,
-			session: {
-				...ctx.session,
-				user: ctx.session.user,
-			},
-			household: {
-				id: active.householdId,
-				role: active.membership.role,
-			},
-		},
-	});
-});
-
-const hasRole = (requiredRole: HouseholdRole) =>
-	t.middleware(async ({ ctx, next }) => {
-		if (!ctx.session?.user?.id) {
-			throw new TRPCError({ code: "UNAUTHORIZED" });
-		}
-
-		const active = await getActiveHouseholdMembership(ctx.session.user.id, ctx.session.user.householdId ?? null);
-
-		if (!active) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });
-		}
-
-		if (active.membership.role !== requiredRole) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
-		}
-
-		return next({
-			ctx: {
-				...ctx,
-				session: {
-					...ctx.session,
-					user: ctx.session.user,
-				},
-				household: {
-					id: active.householdId,
-					role: active.membership.role,
-				},
-			},
-		});
-	});
 
 export const protectedProcedure = t.procedure.use(isAuthed);
 
-export const householdProcedure = t.procedure.use(isAuthed).use(hasHousehold);
+const householdIdSchema = z.object({ householdId: z.string().min(1) });
 
-export const dictatorProcedure = t.procedure.use(isAuthed).use(hasRole("DICTATOR"));
+type HouseholdContext = { household: { id: string; membership: HouseholdMembership } };
 
-const hasApproverRole = t.middleware(async ({ ctx, next }) => {
-	if (!ctx.session?.user?.id) {
-		throw new TRPCError({ code: "UNAUTHORIZED" });
+const validateMembership = t.middleware(async ({ ctx, input, next }) => {
+	const parsed = householdIdSchema.safeParse(input);
+	if (!parsed.success) {
+		throw new TRPCError({ code: "BAD_REQUEST", message: "householdId is required" });
 	}
 
-	const active = await getActiveHouseholdMembership(ctx.session.user.id, ctx.session.user.householdId ?? null);
-
-	if (!active) {
-		throw new TRPCError({ code: "FORBIDDEN", message: "Household not found" });
-	}
-
-	const role = active.membership.role;
-	if (role !== "APPROVER" && role !== "DICTATOR") {
-		throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
+	const session = getAuthedSession(ctx);
+	const membership = await getHouseholdMembership(session.user.id, parsed.data.householdId);
+	if (!membership) {
+		throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
 	}
 
 	return next({
 		ctx: {
 			...ctx,
-			session: {
-				...ctx.session,
-				user: ctx.session.user,
-			},
-			household: {
-				id: active.householdId,
-				role: active.membership.role,
-			},
+			session,
+			household: { id: parsed.data.householdId, membership },
 		},
 	});
 });
 
-export const approverProcedure = t.procedure.use(isAuthed).use(hasApproverRole);
+const validateApprover = t.middleware(async ({ ctx, next }) => {
+	const { membership } = (ctx as typeof ctx & HouseholdContext).household;
+	if (membership.role !== "APPROVER" && membership.role !== "DICTATOR") {
+		throw new TRPCError({ code: "FORBIDDEN", message: "Requires APPROVER or DICTATOR role" });
+	}
+	return next();
+});
+
+const validateDictator = t.middleware(async ({ ctx, next }) => {
+	const { membership } = (ctx as typeof ctx & HouseholdContext).household;
+	if (membership.role !== "DICTATOR") {
+		throw new TRPCError({ code: "FORBIDDEN", message: "Requires DICTATOR role" });
+	}
+	return next();
+});
+
+export const householdProcedure = <TInput extends z.ZodTypeAny>(inputSchema: TInput) =>
+	protectedProcedure.input(inputSchema).use(validateMembership);
+
+export const approverProcedure = <TInput extends z.ZodTypeAny>(inputSchema: TInput) =>
+	householdProcedure(inputSchema).use(validateApprover);
+
+export const dictatorProcedure = <TInput extends z.ZodTypeAny>(inputSchema: TInput) =>
+	householdProcedure(inputSchema).use(validateDictator);
+
+export async function validateHouseholdMembershipFromInput(
+	userId: string,
+	input: { householdId: string },
+): Promise<{ householdId: string; membership: HouseholdMembership }> {
+	const { householdId } = input;
+
+	if (!householdId) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "householdId is required",
+		});
+	}
+
+	const membership = await getHouseholdMembership(userId, householdId);
+
+	if (!membership) {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "You are not a member of this household",
+		});
+	}
+
+	return { householdId, membership };
+}
 
 const isSuperAdmin = t.middleware(({ ctx, next }) => {
 	if (!ctx.session?.user?.id) {

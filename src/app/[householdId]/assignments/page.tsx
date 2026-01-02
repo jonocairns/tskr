@@ -1,41 +1,28 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
+
 import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignTaskCard } from "@/components/AssignTaskCard";
-import { AuthCta } from "@/components/AuthCta";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
-import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
-import { getActiveHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
+import { getHouseholdContext } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 
-export default async function AssignmentsPage() {
+type Props = {
+	params: Promise<{ householdId: string }>;
+};
+
+export default async function AssignmentsPage({ params }: Props) {
 	const googleEnabled = isGoogleAuthEnabled;
-	const session = await getServerSession(authOptions);
+	const { householdId } = await params;
+	const { session, userId, membership } = await getHouseholdContext(householdId);
 
-	if (!session?.user?.id) {
-		return (
-			<PageShell layout="centered" size="lg">
-				<AuthCta googleEnabled={googleEnabled} />
-			</PageShell>
-		);
+	if (membership.role === "DOER") {
+		redirect(`/${householdId}`);
 	}
-
-	const userId = session.user.id;
-	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
-	if (!active) {
-		redirect("/landing");
-	}
-
-	if (active.membership.role === "DOER") {
-		redirect("/");
-	}
-
-	const { householdId } = active;
 
 	const [members, presets, assignedTasks] = await Promise.all([
 		prisma.user.findMany({
@@ -93,15 +80,17 @@ export default async function AssignmentsPage() {
 				eyebrow="tskr"
 				title="Assignments"
 				description="Assign tasks and adjust cadence or recurrence."
-				backHref="/"
+				backHref={`/${householdId}`}
 				backLabel="Back to dashboard"
+				householdId={householdId}
 				user={session.user}
 				googleEnabled={googleEnabled}
+				household={{ id: householdId, role: membership.role }}
 			/>
 
-			<AssignTaskCard members={members} presets={presetSummaries} currentUserId={userId} />
+			<AssignTaskCard householdId={householdId} members={members} presets={presetSummaries} currentUserId={userId} />
 
-			<AssignedTasksManager initialTasks={assignedTaskEntries} />
+			<AssignedTasksManager householdId={householdId} initialTasks={assignedTaskEntries} />
 		</PageShell>
 	);
 }

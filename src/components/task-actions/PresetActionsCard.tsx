@@ -18,6 +18,7 @@ import { trpc } from "@/lib/trpc/react";
 
 export const PresetActionsCard = () => {
 	const {
+		householdId,
 		presetOptions,
 		presetTemplates,
 		customPresets,
@@ -36,7 +37,7 @@ export const PresetActionsCard = () => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
-	const canSharePresets = currentUserRole !== "DOER";
+	const canManagePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = currentUserRole !== "DOER";
 	const [searchQuery, setSearchQuery] = useState("");
 
@@ -168,6 +169,7 @@ export const PresetActionsCard = () => {
 
 	const handleCreatePresetFromTemplate = async (
 		template: PresetTemplate,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	) => {
 		const key = `${normalizeText(template.label)}|${template.bucket}`;
@@ -180,9 +182,10 @@ export const PresetActionsCard = () => {
 			startPresetTransition(async () => {
 				try {
 					await createPresetMutation.mutateAsync({
+						householdId,
 						label: template.label,
 						bucket: template.bucket,
-						isShared: canSharePresets,
+						isShared,
 						approvalOverride,
 					});
 					success = true;
@@ -202,6 +205,7 @@ export const PresetActionsCard = () => {
 	const handleCreatePreset = async (
 		label: string,
 		bucket: DurationKey,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	): Promise<boolean> => {
 		if (label.trim().length < 2) {
@@ -213,9 +217,10 @@ export const PresetActionsCard = () => {
 			startPresetTransition(async () => {
 				try {
 					await createPresetMutation.mutateAsync({
+						householdId,
 						label: label.trim(),
 						bucket,
-						isShared: canSharePresets,
+						isShared,
 						approvalOverride,
 					});
 					success = true;
@@ -237,6 +242,7 @@ export const PresetActionsCard = () => {
 		return new Promise<boolean>((resolve) => {
 			createLogMutation.mutate(
 				{
+					householdId,
 					type: "timed",
 					bucket,
 					description: label.trim(),
@@ -257,6 +263,7 @@ export const PresetActionsCard = () => {
 		presetId: string,
 		label: string,
 		bucket: DurationKey,
+		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	): Promise<boolean> => {
 		if (label.trim().length < 2) {
@@ -268,9 +275,11 @@ export const PresetActionsCard = () => {
 			startPresetTransition(async () => {
 				try {
 					await updatePresetMutation.mutateAsync({
+						householdId,
 						id: presetId,
 						label: label.trim(),
 						bucket,
+						isShared,
 						approvalOverride,
 					});
 					success = true;
@@ -288,7 +297,7 @@ export const PresetActionsCard = () => {
 		await new Promise<void>((resolve) =>
 			startPresetTransition(async () => {
 				try {
-					await deletePresetMutation.mutateAsync({ id: presetId });
+					await deletePresetMutation.mutateAsync({ householdId, id: presetId });
 					success = true;
 				} catch {
 					// Error handled by mutation onError
@@ -308,9 +317,11 @@ export const PresetActionsCard = () => {
 							<CardTitle className="text-xl">Tasks</CardTitle>
 							<CardDescription>Tap a task once you've completed it.</CardDescription>
 						</div>
-						<Button type="button" variant="ghost" size="sm" onClick={() => setEditDrawerOpen(true)}>
-							Change
-						</Button>
+						{canManagePresets ? (
+							<Button type="button" variant="ghost" size="sm" onClick={() => setEditDrawerOpen(true)}>
+								Change
+							</Button>
+						) : null}
 					</div>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -383,6 +394,7 @@ export const PresetActionsCard = () => {
 				sortedEditablePresets={sortedEditablePresets}
 				currentUserId={currentUserId}
 				canEditApprovalOverride={canEditApprovalOverride}
+				canManagePresets={canManagePresets}
 			/>
 		</>
 	);

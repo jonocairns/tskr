@@ -34,7 +34,7 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" }: Props) => {
+export const MembersCard = ({ householdId, currentUserId, canManageMembers, variant = "card" }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const [pendingRoleChange, setPendingRoleChange] = useState<{
 		memberId: string;
@@ -44,7 +44,7 @@ export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" 
 	const isSection = variant === "section";
 	const utils = trpc.useUtils();
 
-	const { data, isLoading } = trpc.households.getMembers.useQuery();
+	const { data, isLoading } = trpc.households.getMembers.useQuery({ householdId });
 
 	const updateMemberMutation = trpc.households.updateMember.useMutation({
 		onSuccess: () => {
@@ -65,7 +65,7 @@ export const MembersCard = ({ currentUserId, canManageMembers, variant = "card" 
 
 	const updateMember = (memberId: string, payload: Partial<Pick<Member, "role" | "requiresApprovalDefault">>) => {
 		startTransition(async () => {
-			await updateMemberMutation.mutateAsync({ id: memberId, ...payload });
+			await updateMemberMutation.mutateAsync({ householdId, id: memberId, ...payload });
 		});
 	};
 
