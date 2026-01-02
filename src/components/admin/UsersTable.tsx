@@ -5,11 +5,14 @@ import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 import {
 	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
+	AlertDialogTrigger,
 } from "@/components/ui/AlertDialog";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -218,15 +221,6 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 	};
 
 	const handleDelete = (id: string) => {
-		const row = rowsById.get(id);
-		if (!row) {
-			return;
-		}
-
-		if (!window.confirm(`Delete ${row.email ?? "this user"}?`)) {
-			return;
-		}
-
 		deleteUserMutation.mutate({ id });
 	};
 
@@ -261,15 +255,6 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 	};
 
 	const handleClearResetLinks = (id: string) => {
-		const row = rowsById.get(id);
-		if (!row) {
-			return;
-		}
-
-		if (!window.confirm("Delete all reset links for this user?")) {
-			return;
-		}
-
 		deletePasswordResetsMutation.mutate({ userId: id });
 	};
 
@@ -503,15 +488,36 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 											Copy
 										</Button>
 									) : null}
-									<Button
-										type="button"
-										variant="ghost"
-										size="sm"
-										onClick={() => handleClearResetLinks(activeRow.id)}
-										disabled={isBusy || activeRow.isClearingReset}
-									>
-										{activeRow.isClearingReset ? "Deleting links..." : "Delete reset links"}
-									</Button>
+									<AlertDialog>
+										<AlertDialogTrigger asChild>
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												disabled={isBusy || activeRow.isClearingReset}
+											>
+												{activeRow.isClearingReset ? "Deleting links..." : "Delete reset links"}
+											</Button>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>Delete all reset links?</AlertDialogTitle>
+												<AlertDialogDescription>
+													This will delete all password reset links for this user. Active reset links will no longer work.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel>Cancel</AlertDialogCancel>
+												<AlertDialogAction
+													type="button"
+													onClick={() => handleClearResetLinks(activeRow.id)}
+													className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+												>
+													Delete links
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
 								</div>
 								{activeRow.resetUrl ? <Input value={activeRow.resetUrl} readOnly className="text-xs" /> : null}
 								{activeRow.resetExpiresAt ? (
@@ -526,15 +532,36 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 									<p className="text-sm font-medium text-destructive">Delete user</p>
 									<p className="text-xs text-muted-foreground">This removes the user and their memberships.</p>
 								</div>
-								<Button
-									type="button"
-									variant="destructive"
-									size="sm"
-									onClick={() => handleDelete(activeRow.id)}
-									disabled={isBusy || currentUserId === activeRow.id}
-								>
-									{activeRow.isDeleting ? "Deleting..." : "Delete"}
-								</Button>
+								<AlertDialog>
+									<AlertDialogTrigger asChild>
+										<Button
+											type="button"
+											variant="destructive"
+											size="sm"
+											disabled={isBusy || currentUserId === activeRow.id}
+										>
+											{activeRow.isDeleting ? "Deleting..." : "Delete"}
+										</Button>
+									</AlertDialogTrigger>
+									<AlertDialogContent>
+										<AlertDialogHeader>
+											<AlertDialogTitle>Delete user?</AlertDialogTitle>
+											<AlertDialogDescription>
+												This will delete {activeRow.email ?? "this user"} and all their household memberships. This cannot be undone.
+											</AlertDialogDescription>
+										</AlertDialogHeader>
+										<AlertDialogFooter>
+											<AlertDialogCancel>Cancel</AlertDialogCancel>
+											<AlertDialogAction
+												type="button"
+												onClick={() => handleDelete(activeRow.id)}
+												className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+											>
+												Delete
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+								</AlertDialog>
 							</div>
 						</div>
 					) : null}
