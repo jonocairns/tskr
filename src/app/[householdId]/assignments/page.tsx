@@ -82,7 +82,6 @@ export default async function AssignmentsPage({ params }: Props) {
 				description="Assign tasks and adjust cadence or recurrence."
 				backHref={`/${householdId}`}
 				backLabel="Back to dashboard"
-				householdId={householdId}
 				user={session.user}
 				googleEnabled={googleEnabled}
 				household={{ id: householdId, role: membership.role }}

@@ -11,7 +11,6 @@ type Props = {
 	eyebrow?: string;
 	backHref?: string;
 	backLabel?: string;
-	householdId?: string;
 	user: {
 		name?: string | null;
 		email?: string | null;
@@ -32,36 +31,40 @@ export const PageHeader = ({
 	eyebrow,
 	backHref,
 	backLabel = "Back",
-	householdId,
 	user,
 	googleEnabled,
 	household,
-}: Props) => (
-	<header className="flex items-start justify-between">
-		<div className="flex items-center gap-3 flex-1">
-			{backHref ? (
-				<Button asChild variant="ghost" size="icon" className="h-16 w-12 min-w-12">
-					<Link href={backHref} aria-label={backLabel}>
-						<ChevronLeftIcon className="h-5 w-5" />
-					</Link>
-				</Button>
-			) : null}
-			<TitleBlock eyebrow={eyebrow} title={title} description={description} />
-		</div>
-		<div className="flex items-center gap-2">
-			{user.isSuperAdmin ? (
-				<Button asChild variant="outline" size="icon">
-					<Link href="/admin" aria-label="Admin">
-						<ShieldIcon className="h-[1.2rem] w-[1.2rem]" />
-					</Link>
-				</Button>
-			) : null}
-			<ModeToggle />
-			<Switcher householdId={householdId} />
-			<UserMenu user={user} googleEnabled={googleEnabled} household={household} />
-		</div>
-	</header>
-);
+}: Props) => {
+	const resolvedHouseholdId = household?.id;
+	const adminHref = resolvedHouseholdId ? `/${resolvedHouseholdId}/admin` : "/admin";
+
+	return (
+		<header className="flex items-start justify-between">
+			<div className="flex items-center gap-3 flex-1">
+				{backHref ? (
+					<Button asChild variant="ghost" size="icon" className="h-16 w-12 min-w-12">
+						<Link href={backHref} aria-label={backLabel}>
+							<ChevronLeftIcon className="h-5 w-5" />
+						</Link>
+					</Button>
+				) : null}
+				<TitleBlock eyebrow={eyebrow} title={title} description={description} />
+			</div>
+			<div className="flex items-center gap-2">
+				{user.isSuperAdmin ? (
+					<Button asChild variant="outline" size="icon">
+						<Link href={adminHref} aria-label="Admin">
+							<ShieldIcon className="h-[1.2rem] w-[1.2rem]" />
+						</Link>
+					</Button>
+				) : null}
+				<ModeToggle />
+				<Switcher householdId={resolvedHouseholdId} />
+				<UserMenu user={user} googleEnabled={googleEnabled} household={household} />
+			</div>
+		</header>
+	);
+};
 
 type TitleBlockProps = Pick<Props, "title" | "description" | "eyebrow">;
 
