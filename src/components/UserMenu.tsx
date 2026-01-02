@@ -63,16 +63,10 @@ export const UserMenu = ({ user, googleEnabled, household }: Props) => {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" className="group gap-2 py-6">
-					<Avatar className="h-9 w-9 ring-1  ring-ring/25 ring-black transition group-hover:ring-ring/50">
-						<AvatarImage src={resolvedUser?.image ?? undefined} alt={resolvedUser?.name ?? ""} />
-						<AvatarFallback>{initials}</AvatarFallback>
-					</Avatar>
-					<div className="hidden flex-col items-start text-left sm:flex ">
-						<span className="text-sm font-semibold leading-5">{resolvedUser?.name ?? "User"}</span>
-						<span className="text-xs text-muted-foreground">{resolvedUser?.email}</span>
-					</div>
-				</Button>
+				<Avatar className="h-9 w-9 rounded-md ring-1  ring-ring/25 ring-black transition group-hover:ring-ring/50 cursor-pointer">
+					<AvatarImage src={resolvedUser?.image ?? undefined} alt={resolvedUser?.name ?? ""} />
+					<AvatarFallback className="rounded-md">{initials}</AvatarFallback>
+				</Avatar>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="w-56" align="end">
 				{householdId ? (

@@ -51,6 +51,7 @@ export const PageHeader = ({
 				<TitleBlock eyebrow={eyebrow} title={title} description={description} />
 			</div>
 			<div className="flex items-center gap-2">
+				<Switcher householdId={resolvedHouseholdId} />
 				{user.isSuperAdmin ? (
 					<Button asChild variant="outline" size="icon">
 						<Link href={adminHref} aria-label="Admin">
@@ -59,7 +60,7 @@ export const PageHeader = ({
 					</Button>
 				) : null}
 				<ModeToggle />
-				<Switcher householdId={resolvedHouseholdId} />
+
 				<UserMenu user={user} googleEnabled={googleEnabled} household={household} />
 			</div>
 		</header>
