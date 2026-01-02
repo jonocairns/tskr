@@ -1,5 +1,5 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
 import { AuthCta } from "@/components/AuthCta";
 import { PageShell } from "@/components/PageShell";
