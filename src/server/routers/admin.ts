@@ -16,8 +16,10 @@ const updateAppSettingsSchema = z.object({
 	allowGoogleAccountCreation: z.boolean(),
 });
 
+const emailSchema = z.string().trim().pipe(z.email());
+
 const createUserSchema = z.object({
-	email: z.email(),
+	email: emailSchema,
 	name: z.string().trim().max(80).nullable().optional(),
 	password: z.string().min(8),
 	passwordResetRequired: z.boolean().optional(),
@@ -25,7 +27,7 @@ const createUserSchema = z.object({
 
 const updateUserSchema = z.object({
 	id: z.string(),
-	email: z.email().optional(),
+	email: emailSchema.optional(),
 	name: z.string().trim().max(80).nullable().optional(),
 	passwordLoginDisabled: z.boolean().optional(),
 	passwordResetRequired: z.boolean().optional(),
@@ -36,7 +38,7 @@ const deleteUserSchema = z.object({
 });
 
 const createPasswordResetSchema = z.object({
-	email: z.email(),
+	email: emailSchema,
 });
 
 const deletePasswordResetsSchema = z.object({

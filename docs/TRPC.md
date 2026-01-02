@@ -220,7 +220,7 @@ All inputs are validated with [Zod](https://zod.dev/):
 ```ts
 const updateSchema = z.object({
   name: z.string().trim().min(2).max(50),
-  email: z.string().email(),
+  email: z.email(),
   age: z.number().int().min(18),
 });
 
