@@ -14,7 +14,13 @@ INSERT INTO "_new_household_id" ("oldId", "newId")
 SELECT 'default-household', lower(hex(randomblob(16)))
 WHERE EXISTS (SELECT 1 FROM "Household" WHERE "id" = 'default-household');
 
--- Update all foreign key references first (before changing the primary key)
+-- Create the new Household row first so FK updates are valid
+INSERT INTO "Household" ("id", "name", "rewardThreshold", "progressBarColor", "createdById", "createdAt", "updatedAt")
+SELECT n."newId", h."name", h."rewardThreshold", h."progressBarColor", h."createdById", h."createdAt", h."updatedAt"
+FROM "Household" h
+JOIN "_new_household_id" n ON n."oldId" = h."id";
+
+-- Update all foreign key references
 UPDATE "HouseholdMember"
 SET "householdId" = (SELECT "newId" FROM "_new_household_id" WHERE "oldId" = 'default-household')
 WHERE "householdId" = 'default-household';
@@ -39,9 +45,8 @@ UPDATE "AssignedTask"
 SET "householdId" = (SELECT "newId" FROM "_new_household_id" WHERE "oldId" = 'default-household')
 WHERE "householdId" = 'default-household';
 
--- Finally, update the Household primary key
-UPDATE "Household"
-SET "id" = (SELECT "newId" FROM "_new_household_id" WHERE "oldId" = 'default-household')
+-- Finally, remove the old Household row
+DELETE FROM "Household"
 WHERE "id" = 'default-household';
 
 -- Clean up temporary table
