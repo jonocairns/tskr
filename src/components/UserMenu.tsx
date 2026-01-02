@@ -33,18 +33,13 @@ type Props = {
 };
 
 export const UserMenu = ({ user, googleEnabled, household }: Props) => {
-	const { data: session, status } = useSession();
+	const { data: session } = useSession();
 	const { toast } = useToast();
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
 
 	const householdId = household?.id;
-
-	const { data: householdData } = trpc.households.list.useQuery(undefined, {
-		enabled: status === "authenticated" && !!householdId && !household,
-	});
-
-	const currentHouseholdRole = household?.role ?? householdData?.households.find((h) => h.id === householdId)?.role;
+	const currentHouseholdRole = household?.role;
 	const initials =
 		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
 

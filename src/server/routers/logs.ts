@@ -212,8 +212,11 @@ export const logsRouter = router({
 	updateStatus: protectedProcedure.input(updateLogSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
 
-		const log = await prisma.pointLog.findUnique({
-			where: { id: input.id },
+		const log = await prisma.pointLog.findFirst({
+			where: {
+				id: input.id,
+				household: { members: { some: { userId } } },
+			},
 			select: {
 				id: true,
 				userId: true,
@@ -222,6 +225,14 @@ export const logsRouter = router({
 				status: true,
 				kind: true,
 				assignedTaskId: true,
+				household: {
+					select: {
+						members: {
+							where: { userId },
+							select: { role: true },
+						},
+					},
+				},
 			},
 		});
 
@@ -229,18 +240,7 @@ export const logsRouter = router({
 			throw new TRPCError({ code: "NOT_FOUND", message: "Log not found" });
 		}
 
-		const membership = await prisma.householdMember.findUnique({
-			where: {
-				householdId_userId: {
-					householdId: log.householdId,
-					userId,
-				},
-			},
-			select: {
-				role: true,
-			},
-		});
-
+		const membership = log.household.members[0];
 		if (!membership) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
 		}
