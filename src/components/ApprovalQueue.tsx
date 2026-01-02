@@ -29,7 +29,7 @@ export const ApprovalQueue = ({ entries, currentUserId, initialHasMore }: Props)
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
 
-	const updateMutation = trpc.logs.updateStatus.useMutation({
+	const { mutate, isPending } = trpc.logs.updateStatus.useMutation({
 		onError: (error, variables) => {
 			const action = variables.action;
 			toast({
@@ -51,10 +51,8 @@ export const ApprovalQueue = ({ entries, currentUserId, initialHasMore }: Props)
 	});
 
 	const actOnEntry = (id: string, action: "approve" | "reject") => {
-		updateMutation.mutate({ id, action });
+		mutate({ id, action });
 	};
-
-	const isPending = updateMutation.isPending;
 
 	return (
 		<Card>

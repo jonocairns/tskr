@@ -114,9 +114,36 @@ tests/                    # Jest unit tests
 - Client reconnects automatically on disconnect
 
 **Session Management**:
-- NextAuth sessions extended with `householdId` and `isSuperAdmin`
+- NextAuth sessions contain user identity and auth status only (`id`, `isSuperAdmin`, `hasGoogleAccount`)
 - Session validation includes idle timeout (24hr) and max age (30 days)
 - Session tokens validated via `validateSessionExpiry()` in tRPC middleware
+- **Household context is NOT stored in session** - see Household Routing below
+
+**Household Routing**:
+- **Fully URL-based routing**: All household context derived from URL, no session-based fallbacks
+- Route pattern: `/[householdId]/*` for all household-scoped pages
+- Server pages use `getHouseholdContext(householdId)` helper for auth + membership validation
+- `getHouseholdContext` handles redirects: invalid access → active household, no membership → landing page
+- **tRPC procedures**:
+  - All household-scoped procedures use `protectedProcedure` (authenticated user only)
+  - **CRITICAL**: Procedures do NOT automatically validate household membership
+  - **You MUST manually validate** at the start of each handler:
+    - `validateHouseholdMembershipFromInput(userId, input)` - validates membership
+    - `validateApproverRoleFromInput(userId, input)` - validates APPROVER or DICTATOR role
+    - `validateDictatorRoleFromInput(userId, input)` - validates DICTATOR role
+  - All input schemas include `householdId: z.string().min(1)` field
+  - Example pattern:
+    ```typescript
+    myProcedure: protectedProcedure.input(schema).mutation(async ({ ctx, input }) => {
+      const { householdId, membership } = await validateHouseholdMembershipFromInput(ctx.session.user.id, input);
+      // Now use householdId and membership safely
+    });
+    ```
+- **Client components**:
+  - Get `householdId` from `useParams<{ householdId: string }>()` or from props
+  - Pass `householdId` to all tRPC mutation/query calls
+- **SSE stream**: Requires `householdId` query parameter, validates membership
+- **Session**: Only stores user identity (`id`, `isSuperAdmin`), not household context
 
 **Database Patterns**:
 - Prisma singleton in `src/lib/prisma.ts` with better-sqlite3 adapter
@@ -133,6 +160,8 @@ tests/                    # Jest unit tests
 - `@/*` maps to `src/*`
 - `@/config` maps to `config.ts` (client-safe config)
 - `@/server-config` maps to `server-config.ts` (server-only config)
+
+DO NOT add useless comments, only when the code itself doesn't explain itself (which should be very rare)
 
 ### Authentication
 

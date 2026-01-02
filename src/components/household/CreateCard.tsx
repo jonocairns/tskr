@@ -11,11 +11,7 @@ import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
 import { trpc } from "@/lib/trpc/react";
 
-type Props = {
-	redirectTo?: string;
-};
-
-export const CreateCard = ({ redirectTo }: Props) => {
+export const CreateCard = () => {
 	const [name, setName] = useState("");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
@@ -26,15 +22,11 @@ export const CreateCard = ({ redirectTo }: Props) => {
 	const canSubmit = trimmed.length === 0 || trimmed.length >= 2;
 
 	const createMutation = trpc.households.create.useMutation({
-		onSuccess: async () => {
+		onSuccess: async (data) => {
 			setName("");
 			toast({ title: "Household created" });
 			await update();
-			if (redirectTo) {
-				router.push(redirectTo);
-			} else {
-				router.refresh();
-			}
+			router.push(`/${data.household.id}`);
 		},
 		onError: (error) => {
 			toast({

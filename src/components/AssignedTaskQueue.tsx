@@ -29,10 +29,11 @@ export type AssignedTaskEntry = {
 const BUCKET_LABELS = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]));
 
 type Props = {
+	householdId: string;
 	entries: AssignedTaskEntry[];
 };
 
-export const AssignedTaskQueue = ({ entries }: Props) => {
+export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 
@@ -57,7 +58,7 @@ export const AssignedTaskQueue = ({ entries }: Props) => {
 	});
 
 	const handleComplete = (taskId: string) => {
-		completeMutation.mutate({ id: taskId });
+		completeMutation.mutate({ householdId, id: taskId });
 	};
 
 	const isPending = completeMutation.isPending;

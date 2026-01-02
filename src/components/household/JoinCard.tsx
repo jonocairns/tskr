@@ -13,10 +13,9 @@ import { trpc } from "@/lib/trpc/react";
 
 type Props = {
 	variant?: "card" | "section";
-	redirectTo?: string;
 };
 
-export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
+export const JoinCard = ({ variant = "card" }: Props) => {
 	const [code, setCode] = useState("");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
@@ -28,15 +27,11 @@ export const JoinCard = ({ variant = "card", redirectTo }: Props) => {
 	const canSubmit = trimmed.length >= 4;
 
 	const joinMutation = trpc.households.join.useMutation({
-		onSuccess: async () => {
+		onSuccess: async (data) => {
 			setCode("");
 			toast({ title: "Joined household" });
 			await update();
-			if (redirectTo) {
-				router.push(redirectTo);
-			} else {
-				router.refresh();
-			}
+			router.push(`/${data.householdId}`);
 		},
 		onError: (error) => {
 			toast({

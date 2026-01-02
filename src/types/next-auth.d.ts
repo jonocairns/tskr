@@ -5,11 +5,8 @@ declare module "next-auth" {
 	interface Session {
 		user?: {
 			id: string;
-			householdId?: string | null;
-			householdRole?: "DICTATOR" | "APPROVER" | "DOER" | null;
 			isSuperAdmin?: boolean;
 			hasGoogleAccount?: boolean;
-			hasHouseholdMembership?: boolean;
 		} & DefaultSession["user"];
 		/**
 		 * Issued at timestamp (Unix timestamp in seconds).

@@ -26,12 +26,13 @@ export type AuditLogEntry = {
 };
 
 type Props = {
+	householdId: string;
 	entries: AuditLogEntry[];
 	currentUserId: string;
 	initialHasMore: boolean;
 };
 
-export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
+export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }: Props) => {
 	const [items, setItems] = useState(entries);
 	const [hasMore, setHasMore] = useState(initialHasMore);
 	const router = useRouter();
@@ -43,7 +44,7 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 		setHasMore(initialHasMore);
 	}, [entries, initialHasMore]);
 
-	const updateMutation = trpc.logs.updateStatus.useMutation({
+	const { mutate: updateStatus, isPending } = trpc.logs.updateStatus.useMutation({
 		onSuccess: (_, variables) => {
 			const action = variables.action;
 			if (action === "revert") {
@@ -80,6 +81,7 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 
 	const { refetch: loadMoreQuery, isFetching: isLoadingMore } = trpc.logs.getHistory.useQuery(
 		{
+			householdId,
 			offset: items.length,
 			limit: 10,
 		},
@@ -89,11 +91,11 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 	);
 
 	const undo = (id: string) => {
-		updateMutation.mutate({ id, action: "revert" });
+		updateStatus({ id, action: "revert" });
 	};
 
 	const resubmit = (id: string) => {
-		updateMutation.mutate({ id, action: "resubmit" });
+		updateStatus({ id, action: "resubmit" });
 	};
 
 	const loadMore = async () => {
@@ -115,8 +117,6 @@ export const AuditLog = ({ entries, currentUserId, initialHasMore }: Props) => {
 			});
 		}
 	};
-
-	const isPending = updateMutation.isPending;
 
 	return (
 		<Card>

@@ -7,21 +7,23 @@ import { useMemo, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/DropdownMenu";
-import { useToast } from "@/hooks/useToast";
 import { trpc } from "@/lib/trpc/react";
 
-export const Switcher = () => {
+type Props = {
+	householdId?: string;
+};
+
+export const Switcher = ({ householdId: propsHouseholdId }: Props) => {
 	const [isPending, startTransition] = useTransition();
-	const { toast } = useToast();
 	const router = useRouter();
-	const { status, update } = useSession();
+	const { status } = useSession();
 
 	const { data, isLoading } = trpc.households.list.useQuery(undefined, {
 		enabled: status === "authenticated",
 	});
 
 	const households = data?.households ?? [];
-	const activeHouseholdId = data?.activeHouseholdId ?? null;
+	const activeHouseholdId = propsHouseholdId ?? data?.activeHouseholdId ?? null;
 
 	const activeHousehold = useMemo(
 		() => households.find((household) => household.id === activeHouseholdId) ?? households[0] ?? null,
@@ -29,16 +31,8 @@ export const Switcher = () => {
 	);
 
 	const selectMutation = trpc.households.select.useMutation({
-		onSuccess: async () => {
-			await update();
-			router.refresh();
-		},
-		onError: (error) => {
-			toast({
-				title: "Unable to switch households",
-				description: error.message ?? "Please try again.",
-				variant: "destructive",
-			});
+		onSuccess: (_data, variables) => {
+			router.push(`/${variables.householdId}`);
 		},
 	});
 
@@ -47,8 +41,8 @@ export const Switcher = () => {
 			return;
 		}
 
-		startTransition(async () => {
-			await selectMutation.mutateAsync({ householdId });
+		startTransition(() => {
+			selectMutation.mutate({ householdId });
 		});
 	};
 

@@ -27,16 +27,19 @@ type Props = {
 	variant?: "card" | "section";
 };
 
-export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
+export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props) => {
 	const [role, setRole] = useState<Invite["role"]>("DOER");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const isSection = variant === "section";
 	const utils = trpc.useUtils();
 
-	const { data, isLoading } = trpc.households.getInvites.useQuery(undefined, {
-		enabled: canInvite,
-	});
+	const { data, isLoading } = trpc.households.getInvites.useQuery(
+		{ householdId },
+		{
+			enabled: canInvite,
+		},
+	);
 
 	const createInviteMutation = trpc.households.createInvite.useMutation({
 		onSuccess: () => {
@@ -54,18 +57,18 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 
 	const manageInviteMutation = trpc.households.manageInvite.useMutation({
 		onMutate: async (variables) => {
-			await utils.households.getInvites.cancel();
-			const previousInvites = utils.households.getInvites.getData();
+			await utils.households.getInvites.cancel({ householdId });
+			const previousInvites = utils.households.getInvites.getData({ householdId });
 
 			if (variables.action === "revoke") {
-				utils.households.getInvites.setData(undefined, (old) => {
+				utils.households.getInvites.setData({ householdId }, (old) => {
 					if (!old) return old;
 					return {
 						invites: old.invites.filter((invite) => invite.id !== variables.id),
 					};
 				});
 			} else if (variables.action === "resend") {
-				utils.households.getInvites.setData(undefined, (old) => {
+				utils.households.getInvites.setData({ householdId }, (old) => {
 					if (!old) return old;
 					return {
 						invites: old.invites.map((invite) =>
@@ -79,7 +82,7 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 		},
 		onError: (error, variables, context) => {
 			if (context?.previousInvites) {
-				utils.households.getInvites.setData(undefined, context.previousInvites);
+				utils.households.getInvites.setData({ householdId }, context.previousInvites);
 			}
 			toast({
 				title: variables.action === "revoke" ? "Unable to revoke invite" : "Unable to resend invite",
@@ -103,19 +106,19 @@ export const InvitesCard = ({ canInvite, variant = "card" }: Props) => {
 
 	const handleInvite = () => {
 		startTransition(async () => {
-			await createInviteMutation.mutateAsync({ role });
+			await createInviteMutation.mutateAsync({ householdId, role });
 		});
 	};
 
 	const handleRevoke = (inviteId: string) => {
 		startTransition(async () => {
-			await manageInviteMutation.mutateAsync({ id: inviteId, action: "revoke" });
+			await manageInviteMutation.mutateAsync({ householdId, id: inviteId, action: "revoke" });
 		});
 	};
 
 	const handleResend = (inviteId: string) => {
 		startTransition(async () => {
-			await manageInviteMutation.mutateAsync({ id: inviteId, action: "resend" });
+			await manageInviteMutation.mutateAsync({ householdId, id: inviteId, action: "resend" });
 		});
 	};
 

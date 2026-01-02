@@ -5,33 +5,40 @@ import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
-import { householdProcedure, router } from "@/server/trpc";
+import { approverProcedure, householdProcedure, router } from "@/server/trpc";
+
+const listPresetsSchema = z.object({
+	householdId: z.string().min(1),
+});
 
 const presetSchema = z.object({
+	householdId: z.string().min(1),
 	label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 	bucket: z.enum(DURATION_KEYS),
 	isShared: z.boolean().optional(),
-	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullable().optional(),
+	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
 });
 
 const updatePresetSchema = z
 	.object({
+		householdId: z.string().min(1),
 		id: z.string(),
 		label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short").optional(),
 		bucket: z.enum(DURATION_KEYS).optional(),
 		isShared: z.boolean().optional(),
-		approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullable().optional(),
+		approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
 	})
 	.refine((data) => data.label || data.bucket || data.isShared !== undefined || data.approvalOverride !== undefined, {
 		message: "No updates provided",
 	});
 
 const deletePresetSchema = z.object({
+	householdId: z.string().min(1),
 	id: z.string(),
 });
 
 export const presetsRouter = router({
-	list: householdProcedure.query(async ({ ctx }) => {
+	list: householdProcedure(listPresetsSchema).query(async ({ ctx }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 
@@ -56,13 +63,9 @@ export const presetsRouter = router({
 		return { presets };
 	}),
 
-	create: householdProcedure.input(presetSchema).mutation(async ({ ctx, input }) => {
+	create: approverProcedure(presetSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
-		const role = ctx.household.role;
-
-		const allowShared = role !== "DOER";
-		const approvalOverride = role === "DOER" ? null : (input.approvalOverride ?? null);
 
 		const preset = await prisma.presetTask.create({
 			data: {
@@ -70,8 +73,8 @@ export const presetsRouter = router({
 				createdById: userId,
 				label: input.label,
 				bucket: input.bucket,
-				isShared: allowShared ? (input.isShared ?? true) : false,
-				approvalOverride,
+				isShared: input.isShared ?? true,
+				approvalOverride: input.approvalOverride ?? null,
 			},
 			select: {
 				id: true,
@@ -87,11 +90,10 @@ export const presetsRouter = router({
 		return { preset };
 	}),
 
-	update: householdProcedure.input(updatePresetSchema).mutation(async ({ ctx, input }) => {
+	update: approverProcedure(updatePresetSchema).mutation(async ({ ctx, input }) => {
 		const { id, ...updates } = input;
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
-		const role = ctx.household.role;
 
 		const preset = await prisma.presetTask.findFirst({
 			where: { id, householdId },
@@ -109,14 +111,6 @@ export const presetsRouter = router({
 
 		if (updates.isShared !== undefined && !isOwner) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can change sharing" });
-		}
-
-		if (updates.isShared === true && role === "DOER") {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Doers cannot share presets" });
-		}
-
-		if (updates.approvalOverride !== undefined && role === "DOER") {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Doers cannot change approval overrides" });
 		}
 
 		const updated = await prisma.presetTask.update({
@@ -142,7 +136,7 @@ export const presetsRouter = router({
 		return { preset: updated };
 	}),
 
-	delete: householdProcedure.input(deletePresetSchema).mutation(async ({ ctx, input }) => {
+	delete: approverProcedure(deletePresetSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 

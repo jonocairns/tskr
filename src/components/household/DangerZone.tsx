@@ -20,12 +20,13 @@ import { useToast } from "@/hooks/useToast";
 import { trpc } from "@/lib/trpc/react";
 
 type Props = {
+	householdId: string;
 	canDelete: boolean;
 	variant?: "card" | "section";
 	showTitle?: boolean;
 };
 
-export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: Props) => {
+export const DangerZone = ({ householdId, canDelete, variant = "card", showTitle = false }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
@@ -51,7 +52,7 @@ export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: P
 
 	const handleDelete = () => {
 		startTransition(async () => {
-			await deleteMutation.mutateAsync();
+			await deleteMutation.mutateAsync({ householdId });
 		});
 	};
 
@@ -64,14 +65,14 @@ export const DangerZone = ({ canDelete, variant = "card", showTitle = false }: P
 
 	const content = (
 		<AlertDialog>
-			<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+			<div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-4">
 				<div>
-					<p className="text-sm font-medium text-destructive">Delete household</p>
+					<p className="text-sm font-semibold text-destructive">Delete household</p>
 					<p className="text-xs text-muted-foreground">This removes all members, tasks, and history.</p>
 				</div>
 				<AlertDialogTrigger asChild>
-					<Button type="button" variant="destructive" disabled={isPending}>
-						{isPending ? "Deleting..." : "Delete"}
+					<Button type="button" variant="destructive" size="default" disabled={isPending}>
+						Delete
 					</Button>
 				</AlertDialogTrigger>
 			</div>

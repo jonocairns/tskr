@@ -1,24 +1,11 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
-import { ApprovalQueue } from "@/components/ApprovalQueue";
-import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";
-import { AuditLog } from "@/components/AuditLog";
 import { AuthCta } from "@/components/AuthCta";
-import { Leaderboard } from "@/components/Leaderboard";
-import { LiveRefresh } from "@/components/LiveRefresh";
-import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
-import { PointsSummary } from "@/components/PointsSummary";
-import { TaskActions } from "@/components/TaskActions";
 import { authOptions } from "@/lib/auth";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getAuthErrorMessage } from "@/lib/authError";
-import { buildApprovalEntries } from "@/lib/dashboard/approvals";
-import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
-import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
-import { mapPresetSummaries } from "@/lib/dashboard/presets";
-import { getDashboardData } from "@/lib/dashboard/queries";
 import { getActiveHouseholdMembership } from "@/lib/households";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +14,7 @@ type Props = {
 	searchParams?: Promise<{ error?: string | string[] }>;
 };
 
-export default async function Home({ searchParams }: Props) {
+export default async function RootPage({ searchParams }: Props) {
 	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
 
@@ -42,84 +29,11 @@ export default async function Home({ searchParams }: Props) {
 		);
 	}
 
-	const userId = session.user.id;
-	const active = await getActiveHouseholdMembership(userId, session.user.householdId ?? null);
+	const active = await getActiveHouseholdMembership(session.user.id);
+
 	if (!active) {
 		redirect("/landing");
 	}
-	const { householdId, membership } = active;
 
-	const {
-		pointSums,
-		earnedPointSums,
-		taskCounts,
-		rewardCounts,
-		lastActivity,
-		firstActivity,
-		users,
-		recentLogs,
-		hasMoreHistory,
-		pendingLogs,
-		hasMoreApprovals,
-		presets,
-		assignedTasks,
-		weeklyTaskCount,
-		weeklyPoints,
-		rewardThreshold,
-		progressBarColor,
-		hasApprovalMembers,
-		lastTaskAt,
-		currentStreak,
-	} = await getDashboardData(userId, householdId);
-
-	const { entries: leaderboardEntries, myPoints } = buildLeaderboardSummary({
-		userId,
-		users,
-		pointSums,
-		earnedPointSums,
-		taskCounts,
-		rewardCounts,
-		lastActivity,
-		firstActivity,
-	});
-	const presetSummaries = mapPresetSummaries(presets);
-	const auditEntries = buildAuditEntries(recentLogs);
-	const approvalEntries = buildApprovalEntries(pendingLogs);
-	const showApprovals = membership.role !== "DOER" && (hasApprovalMembers || approvalEntries.length > 0);
-
-	return (
-		<PageShell>
-			<PageHeader
-				eyebrow="tskr"
-				title="Dashboard"
-				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
-				user={session.user}
-				googleEnabled={googleEnabled}
-			/>
-
-			<PointsSummary
-				points={myPoints}
-				threshold={rewardThreshold}
-				progressBarColor={progressBarColor}
-				tasksLastWeek={weeklyTaskCount}
-				pointsLastWeek={weeklyPoints}
-				lastTaskAt={lastTaskAt?.toISOString() ?? null}
-				currentStreak={currentStreak}
-			/>
-
-			{assignedTasks.length > 0 ? <AssignedTaskQueue entries={assignedTasks} /> : null}
-
-			<TaskActions presets={presetSummaries} currentUserId={userId} currentUserRole={membership.role} />
-
-			{showApprovals ? (
-				<ApprovalQueue entries={approvalEntries} currentUserId={userId} initialHasMore={hasMoreApprovals} />
-			) : null}
-
-			<Leaderboard entries={leaderboardEntries} />
-
-			<AuditLog entries={auditEntries} currentUserId={userId} initialHasMore={hasMoreHistory} />
-
-			<LiveRefresh key={householdId} />
-		</PageShell>
-	);
+	redirect(`/${active.householdId}`);
 }

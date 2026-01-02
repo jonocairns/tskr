@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { AuthCta } from "@/components/AuthCta";
+import { HouseholdErrorToast } from "@/components/HouseholdErrorToast";
 import { CreateCard } from "@/components/household/CreateCard";
 import { JoinCard } from "@/components/household/JoinCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -24,13 +25,15 @@ export default async function LandingPage() {
 		);
 	}
 
-	const active = await getActiveHouseholdMembership(session.user.id, session.user.householdId ?? null);
+	const active = await getActiveHouseholdMembership(session.user.id);
 	if (active) {
-		redirect("/");
+		redirect(`/${active.householdId}`);
 	}
 
 	return (
 		<PageShell size="sm">
+			<HouseholdErrorToast />
+
 			<PageHeader
 				eyebrow="tskr"
 				title="Welcome"
@@ -39,8 +42,8 @@ export default async function LandingPage() {
 				googleEnabled={googleEnabled}
 			/>
 
-			<JoinCard redirectTo="/" />
-			<CreateCard redirectTo="/" />
+			<JoinCard />
+			<CreateCard />
 		</PageShell>
 	);
 }
