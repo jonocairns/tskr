@@ -54,10 +54,9 @@ export default async function AdminPage({ params }: Props) {
 				eyebrow="tskr"
 				title="Admin"
 				description="Generate reset links for user passwords."
-				backHref={`/${householdId}`}
-				backLabel="Back to dashboard"
+				backHref={`/${householdId}/settings`}
+				backLabel="Back to settings"
 				user={session.user}
-				googleEnabled={googleEnabled}
 				household={{ id: householdId, role: membership.role }}
 			/>
 			{googleEnabled && settings ? (

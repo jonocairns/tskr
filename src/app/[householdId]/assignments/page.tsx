@@ -4,7 +4,6 @@ import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
-import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
@@ -16,7 +15,6 @@ type Props = {
 };
 
 export default async function AssignmentsPage({ params }: Props) {
-	const googleEnabled = isGoogleAuthEnabled;
 	const { householdId } = await params;
 	const { session, userId, membership } = await getHouseholdContext(householdId);
 
@@ -83,7 +81,6 @@ export default async function AssignmentsPage({ params }: Props) {
 				backHref={`/${householdId}`}
 				backLabel="Back to dashboard"
 				user={session.user}
-				googleEnabled={googleEnabled}
 				household={{ id: householdId, role: membership.role }}
 			/>
 

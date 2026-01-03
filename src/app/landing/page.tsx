@@ -14,8 +14,8 @@ import { getActiveHouseholdMembership } from "@/lib/households";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-	const googleEnabled = isGoogleAuthEnabled;
 	const session = await getServerSession(authOptions);
+	const googleEnabled = isGoogleAuthEnabled;
 
 	if (!session?.user?.id) {
 		return (
@@ -39,7 +39,6 @@ export default async function LandingPage() {
 				title="Welcome"
 				description="Join an existing household or create a new one."
 				user={session.user}
-				googleEnabled={googleEnabled}
 			/>
 
 			<JoinCard />

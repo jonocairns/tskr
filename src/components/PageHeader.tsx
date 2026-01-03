@@ -1,7 +1,6 @@
-import { ChevronLeftIcon, ShieldIcon } from "lucide-react";
+import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { Switcher } from "@/components/household/Switcher";
-import { ModeToggle } from "@/components/ModeToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { Button } from "@/components/ui/Button";
 
@@ -18,26 +17,13 @@ type Props = {
 		isSuperAdmin?: boolean;
 		hasGoogleAccount?: boolean;
 	};
-	googleEnabled: boolean;
 	household?: {
 		id: string;
 		role: "DICTATOR" | "APPROVER" | "DOER";
 	};
 };
 
-export const PageHeader = ({
-	title,
-	description,
-	eyebrow,
-	backHref,
-	backLabel = "Back",
-	user,
-	googleEnabled,
-	household,
-}: Props) => {
-	const resolvedHouseholdId = household?.id;
-	const adminHref = resolvedHouseholdId ? `/${resolvedHouseholdId}/admin` : "/admin";
-
+export const PageHeader = ({ title, description, eyebrow, backHref, backLabel = "Back", user, household }: Props) => {
 	return (
 		<header className="flex items-start justify-between">
 			<div className="flex items-center gap-3 flex-1">
@@ -51,16 +37,8 @@ export const PageHeader = ({
 				<TitleBlock eyebrow={eyebrow} title={title} description={description} />
 			</div>
 			<div className="flex items-center gap-2">
-				{user.isSuperAdmin ? (
-					<Button asChild variant="outline" size="icon">
-						<Link href={adminHref} aria-label="Admin">
-							<ShieldIcon className="h-[1.2rem] w-[1.2rem]" />
-						</Link>
-					</Button>
-				) : null}
-				<ModeToggle />
-				<Switcher householdId={resolvedHouseholdId} />
-				<UserMenu user={user} googleEnabled={googleEnabled} household={household} />
+				<Switcher householdId={household?.id} />
+				<UserMenu user={user} household={household} />
 			</div>
 		</header>
 	);
