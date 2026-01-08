@@ -5,12 +5,7 @@ import { auth } from "@/auth/auth";
 // Handle Prisma P2025 errors (record not found) gracefully
 // This can happen when Better Auth tries to delete a session that was already deleted
 const isPrismaNotFoundError = (error: unknown): boolean => {
-	return (
-		error !== null &&
-		typeof error === "object" &&
-		"code" in error &&
-		(error as { code: string }).code === "P2025"
-	);
+	return error !== null && typeof error === "object" && "code" in error && (error as { code: string }).code === "P2025";
 };
 
 export const Route = createFileRoute("/api/auth/$")({

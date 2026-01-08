@@ -4,9 +4,8 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 
 import { auth } from "@/auth/auth";
 import { Providers } from "@/components/Providers";
-import { checkPasswordResetRequired } from "@/lib/passwordReset";
-
 import appCss from "@/globals.css?url";
+import { checkPasswordResetRequired } from "@/lib/passwordReset";
 
 const getSession = createServerFn({ method: "GET" }).handler(async () => {
 	const headers = getRequestHeaders();
