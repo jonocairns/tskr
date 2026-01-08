@@ -20,13 +20,7 @@ import type { HouseholdMembership } from "@/lib/households";
 import type { HouseholdContext } from "../_layout";
 
 const loadDashboard = createServerFn({ method: "GET" })
-	.inputValidator(
-		(data: {
-			householdId: string;
-			userId: string;
-			membership: HouseholdMembership;
-		}) => data,
-	)
+	.inputValidator((data: { householdId: string; userId: string; membership: HouseholdMembership }) => data)
 	.handler(async ({ data: { householdId, userId, membership } }) => {
 		const dashboardData = await getDashboardData(userId, householdId);
 

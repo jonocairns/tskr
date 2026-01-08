@@ -12,13 +12,7 @@ import { prisma } from "@/lib/prisma";
 import type { HouseholdContext } from "../_layout";
 
 const loadAssignments = createServerFn({ method: "GET" })
-	.inputValidator(
-		(data: {
-			householdId: string;
-			userId: string;
-			membershipRole: HouseholdMembership["role"];
-		}) => data,
-	)
+	.inputValidator((data: { householdId: string; userId: string; membershipRole: HouseholdMembership["role"] }) => data)
 	.handler(async ({ data: { householdId, userId, membershipRole } }) => {
 		// Authorization check - DOERs cannot access assignments page
 		if (membershipRole === "DOER") {
