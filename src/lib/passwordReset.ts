@@ -34,12 +34,12 @@ export const createPasswordResetToken = async (userId: string) => {
  * Returns the reset token if required, null otherwise.
  */
 export const checkPasswordResetRequired = async (userId: string): Promise<string | null> => {
-	const user = await prisma.user.findUnique({
-		where: { id: userId },
+	const credentialAccount = await prisma.account.findFirst({
+		where: { userId, providerId: "credential" },
 		select: { passwordResetRequired: true },
 	});
 
-	if (user?.passwordResetRequired) {
+	if (credentialAccount?.passwordResetRequired) {
 		const { token } = await createPasswordResetToken(userId);
 		return token;
 	}

@@ -43,22 +43,28 @@ const loadAdmin = createServerFn({ method: "GET" })
 				email: true,
 				createdAt: true,
 				isSuperAdmin: true,
-				passwordResetRequired: true,
-				passwordLoginDisabled: true,
 				accounts: {
-					where: { providerId: "google" },
-					select: { id: true },
-					take: 1,
+					select: {
+						providerId: true,
+						passwordResetRequired: true,
+						disabled: true,
+					},
 				},
 			},
 			orderBy: { createdAt: "asc" },
 		});
 
-		const userRows = users.map(({ accounts, ...user }) => ({
-			...user,
-			createdAt: user.createdAt.toISOString(),
-			hasGoogleAccount: isGoogleEnabled && accounts.length > 0,
-		}));
+		const userRows = users.map(({ accounts, ...user }) => {
+			const credentialAccount = accounts.find((a) => a.providerId === "credential");
+			const hasGoogleAccount = isGoogleEnabled && accounts.some((a) => a.providerId === "google");
+			return {
+				...user,
+				createdAt: user.createdAt.toISOString(),
+				hasGoogleAccount,
+				passwordResetRequired: credentialAccount?.passwordResetRequired ?? false,
+				credentialDisabled: credentialAccount?.disabled ?? false,
+			};
+		});
 
 		const settings = isGoogleEnabled ? await getAppSettings() : null;
 

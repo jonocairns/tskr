@@ -91,18 +91,6 @@ export const auth = betterAuth({
 				input: false,
 				returned: true,
 			},
-			passwordResetRequired: {
-				type: "boolean",
-				defaultValue: false,
-				input: false,
-				returned: true,
-			},
-			passwordLoginDisabled: {
-				type: "boolean",
-				defaultValue: false,
-				input: false,
-				returned: true,
-			},
 		},
 	},
 
@@ -136,45 +124,50 @@ export const auth = betterAuth({
 		account: {
 			create: {
 				after: async (account) => {
-					// When a Google account is linked, update user profile with Google data
+					// When a Google account is linked, optionally update user profile
 					if (account.providerId === "google") {
-						const googleProfile = await prisma.account.findUnique({
-							where: { id: account.id },
-							select: { accessToken: true, idToken: true },
+						// Check if user already has other accounts (linking scenario vs first sign-up)
+						const existingAccounts = await prisma.account.count({
+							where: { userId: account.userId },
 						});
 
-						// Fetch user info from the account's linked data if available
-						// The account record should have the Google user info
-						// Update the user's email to match the Google account
-						if (account.accountId) {
-							// accountId contains the Google user ID, we need to get the email
-							// from the OAuth flow. Better Auth should have stored it.
-							// For now, we'll fetch the Google user info if we have an access token
-							if (googleProfile?.accessToken) {
-								try {
-									const response = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-										headers: { Authorization: `Bearer ${googleProfile.accessToken}` },
-									});
-									if (response.ok) {
-										const googleUser = (await response.json()) as {
-											email?: string;
-											name?: string;
-											picture?: string;
-										};
-										if (googleUser.email) {
-											await prisma.user.update({
-												where: { id: account.userId },
-												data: {
-													email: googleUser.email,
-													name: googleUser.name || undefined,
-													image: googleUser.picture || undefined,
-												},
-											});
-										}
+						// If user has multiple accounts, don't overwrite their existing email/name
+						// This prevents credential account email from being replaced by Google email
+						if (existingAccounts > 1) {
+							console.log("[auth] User already has accounts, skipping profile update from Google");
+							return;
+						}
+
+						// First-time Google sign-up: update profile from Google
+						const googleProfile = await prisma.account.findUnique({
+							where: { id: account.id },
+							select: { accessToken: true },
+						});
+
+						if (googleProfile?.accessToken) {
+							try {
+								const response = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+									headers: { Authorization: `Bearer ${googleProfile.accessToken}` },
+								});
+								if (response.ok) {
+									const googleUser = (await response.json()) as {
+										email?: string;
+										name?: string;
+										picture?: string;
+									};
+									if (googleUser.email) {
+										await prisma.user.update({
+											where: { id: account.userId },
+											data: {
+												email: googleUser.email,
+												name: googleUser.name || undefined,
+												image: googleUser.picture || undefined,
+											},
+										});
 									}
-								} catch (error) {
-									console.error("[auth] Failed to fetch Google user info:", error);
 								}
+							} catch (error) {
+								console.error("[auth] Failed to fetch Google user info:", error);
 							}
 						}
 					}

@@ -45,15 +45,10 @@ export const passwordResetRouter = router({
 		const now = new Date();
 
 		await prisma.$transaction([
-			// Update the credential account's password (Better Auth stores it here)
+			// Update the credential account's password and clear reset flag
 			prisma.account.updateMany({
 				where: { userId: resetToken.userId, providerId: "credential" },
-				data: { password: passwordHash },
-			}),
-			// Also update User.passwordHash for backwards compatibility
-			prisma.user.update({
-				where: { id: resetToken.userId },
-				data: { passwordHash, passwordResetRequired: false },
+				data: { password: passwordHash, passwordResetRequired: false },
 			}),
 			prisma.passwordResetToken.updateMany({
 				where: { userId: resetToken.userId, usedAt: null },

@@ -27,8 +27,8 @@ const updateUserSchema = z.object({
 	id: z.string(),
 	email: emailSchema.optional(),
 	name: z.string().trim().max(80).nullable().optional(),
-	passwordLoginDisabled: z.boolean().optional(),
-	passwordResetRequired: z.boolean().optional(),
+	credentialDisabled: z.boolean().optional(),
+	credentialPasswordResetRequired: z.boolean().optional(),
 });
 
 const deleteUserSchema = z.object({
@@ -65,25 +65,35 @@ export const adminRouter = router({
 				data: {
 					email: normalizedEmail,
 					name: name.length > 0 ? name : null,
-					passwordHash,
-					passwordResetRequired,
-					passwordLoginDisabled: false,
+					accounts: {
+						create: {
+							providerId: "credential",
+							accountId: normalizedEmail,
+							password: passwordHash,
+							passwordResetRequired,
+							disabled: false,
+						},
+					},
 				},
-				select: {
-					id: true,
-					name: true,
-					email: true,
-					createdAt: true,
-					isSuperAdmin: true,
-					passwordResetRequired: true,
-					passwordLoginDisabled: true,
+				include: {
+					accounts: {
+						where: { providerId: "credential" },
+						select: { passwordResetRequired: true, disabled: true },
+					},
 				},
 			});
 
+			const credentialAccount = user.accounts[0];
+
 			return {
 				user: {
-					...user,
+					id: user.id,
+					name: user.name,
+					email: user.email,
 					createdAt: user.createdAt.toISOString(),
+					isSuperAdmin: user.isSuperAdmin,
+					passwordResetRequired: credentialAccount?.passwordResetRequired ?? false,
+					credentialDisabled: credentialAccount?.disabled ?? false,
 					hasGoogleAccount: false,
 				},
 			};
@@ -103,33 +113,14 @@ export const adminRouter = router({
 		if (
 			updates.email === undefined &&
 			updates.name === undefined &&
-			updates.passwordLoginDisabled === undefined &&
-			updates.passwordResetRequired === undefined
+			updates.credentialDisabled === undefined &&
+			updates.credentialPasswordResetRequired === undefined
 		) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "No updates provided" });
 		}
 
-		const data: {
-			email?: string;
-			name?: string | null;
-			passwordLoginDisabled?: boolean;
-			passwordResetRequired?: boolean;
-		} = {};
-		if (updates.email !== undefined) {
-			data.email = updates.email.trim().toLowerCase();
-		}
-		if (updates.name !== undefined) {
-			const trimmedName = updates.name?.trim() ?? "";
-			data.name = trimmedName.length > 0 ? trimmedName : null;
-		}
-		if (updates.passwordLoginDisabled !== undefined) {
-			data.passwordLoginDisabled = updates.passwordLoginDisabled;
-		}
-		if (updates.passwordResetRequired !== undefined) {
-			data.passwordResetRequired = updates.passwordResetRequired;
-		}
-
-		if (data.passwordLoginDisabled === true) {
+		// Validate disabling credential login
+		if (updates.credentialDisabled === true) {
 			if (!isGoogleAuthEnabled) {
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Google OAuth is disabled" });
 			}
@@ -142,16 +133,46 @@ export const adminRouter = router({
 			if (!hasGoogleAccount) {
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Link Google before disabling password login" });
 			}
-
-			data.passwordResetRequired = false;
 		}
 
 		try {
-			const user = await prisma.user.update({
-				where: { id },
-				data,
-				select: { id: true, name: true, email: true },
-			});
+			// Update user fields (email, name)
+			const userData: { email?: string; name?: string | null } = {};
+			if (updates.email !== undefined) {
+				userData.email = updates.email.trim().toLowerCase();
+			}
+			if (updates.name !== undefined) {
+				const trimmedName = updates.name?.trim() ?? "";
+				userData.name = trimmedName.length > 0 ? trimmedName : null;
+			}
+
+			// Update credential account fields
+			const accountData: { disabled?: boolean; passwordResetRequired?: boolean } = {};
+			if (updates.credentialDisabled !== undefined) {
+				accountData.disabled = updates.credentialDisabled;
+				if (updates.credentialDisabled) {
+					accountData.passwordResetRequired = false;
+				}
+			}
+			if (updates.credentialPasswordResetRequired !== undefined) {
+				accountData.passwordResetRequired = updates.credentialPasswordResetRequired;
+			}
+
+			const [user] = await prisma.$transaction([
+				prisma.user.update({
+					where: { id },
+					data: userData,
+					select: { id: true, name: true, email: true },
+				}),
+				...(Object.keys(accountData).length > 0
+					? [
+							prisma.account.updateMany({
+								where: { userId: id, providerId: "credential" },
+								data: accountData,
+							}),
+						]
+					: []),
+			]);
 
 			return { user };
 		} catch (error) {
@@ -184,14 +205,26 @@ export const adminRouter = router({
 		const email = input.email.trim().toLowerCase();
 		const user = await prisma.user.findUnique({
 			where: { email },
-			select: { id: true, email: true, passwordLoginDisabled: true },
+			select: {
+				id: true,
+				email: true,
+				accounts: {
+					where: { providerId: "credential" },
+					select: { disabled: true },
+				},
+			},
 		});
 
 		if (!user) {
 			throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
 		}
 
-		if (user.passwordLoginDisabled) {
+		const credentialAccount = user.accounts[0];
+		if (!credentialAccount) {
+			throw new TRPCError({ code: "BAD_REQUEST", message: "User has no credential account" });
+		}
+
+		if (credentialAccount.disabled) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Password login is disabled for this user" });
 		}
 

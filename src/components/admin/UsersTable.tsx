@@ -27,7 +27,7 @@ export type UserRow = {
 	createdAt: string;
 	isSuperAdmin: boolean;
 	passwordResetRequired: boolean;
-	passwordLoginDisabled: boolean;
+	credentialDisabled: boolean;
 	hasGoogleAccount: boolean;
 };
 
@@ -45,7 +45,7 @@ type Draft = {
 	name: string;
 	email: string;
 	passwordResetRequired: boolean;
-	passwordLoginDisabled: boolean;
+	credentialDisabled: boolean;
 };
 
 type Props = {
@@ -77,7 +77,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			name: row.name ?? "",
 			email: row.email ?? "",
 			passwordResetRequired: row.passwordResetRequired,
-			passwordLoginDisabled: row.passwordLoginDisabled,
+			credentialDisabled: row.credentialDisabled,
 		});
 	};
 
@@ -97,7 +97,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 				name: name.length > 0 ? name : null,
 				email,
 				passwordResetRequired: draft?.passwordResetRequired ?? current.passwordResetRequired,
-				passwordLoginDisabled: draft?.passwordLoginDisabled ?? current.passwordLoginDisabled,
+				credentialDisabled: draft?.credentialDisabled ?? current.credentialDisabled,
 				isSaving: false,
 			}));
 			closeEditor();
@@ -213,8 +213,8 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			id: row.id,
 			name: name.length > 0 ? name : null,
 			email,
-			passwordResetRequired: draft.passwordResetRequired,
-			passwordLoginDisabled: draft.passwordLoginDisabled,
+			credentialPasswordResetRequired: draft.passwordResetRequired,
+			credentialDisabled: draft.credentialDisabled,
 		});
 	};
 
@@ -279,8 +279,8 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 	const nameDirty = Boolean(activeRow && draftName !== savedName);
 	const emailDirty = Boolean(activeRow && draftEmail !== savedEmail);
 	const resetRequiredDirty = Boolean(activeRow && draft?.passwordResetRequired !== activeRow.passwordResetRequired);
-	const passwordLoginDirty = Boolean(activeRow && draft?.passwordLoginDisabled !== activeRow.passwordLoginDisabled);
-	const hasChanges = nameDirty || emailDirty || resetRequiredDirty || passwordLoginDirty;
+	const credentialDisabledDirty = Boolean(activeRow && draft?.credentialDisabled !== activeRow.credentialDisabled);
+	const hasChanges = nameDirty || emailDirty || resetRequiredDirty || credentialDisabledDirty;
 	const isPending =
 		updateUserMutation.isPending ||
 		deleteUserMutation.isPending ||
@@ -292,7 +292,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 		(activeRow?.isResetting ?? false) ||
 		(activeRow?.isClearingReset ?? false) ||
 		isPending;
-	const allowPassword = draft ? !draft.passwordLoginDisabled : true;
+	const allowPassword = draft ? !draft.credentialDisabled : true;
 	const canDisablePassword = googleEnabled && (activeRow?.hasGoogleAccount ?? false);
 	const passwordToggleDisabled = isBusy || (!canDisablePassword && allowPassword);
 	const canSave = Boolean(draft && hasChanges && draftEmail.length > 0 && !isBusy);
@@ -366,7 +366,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 										)}
 									</TableCell>
 								) : null}
-								<TableCell>{row.passwordLoginDisabled ? "Disabled" : "Allowed"}</TableCell>
+								<TableCell>{row.credentialDisabled ? "Disabled" : "Allowed"}</TableCell>
 								<TableCell>
 									<Button
 										type="button"
@@ -440,7 +440,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 												current
 													? {
 															...current,
-															passwordLoginDisabled: !checked,
+															credentialDisabled: !checked,
 														}
 													: current,
 											)
@@ -465,7 +465,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 													: current,
 											)
 										}
-										disabled={isBusy || draft.passwordLoginDisabled}
+										disabled={isBusy || draft.credentialDisabled}
 									/>
 								</div>
 							</div>
@@ -477,7 +477,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 										variant="outline"
 										size="sm"
 										onClick={() => handleResetLink(activeRow.id, draft.email)}
-										disabled={isBusy || activeRow.isResetting || draft.passwordLoginDisabled}
+										disabled={isBusy || activeRow.isResetting || draft.credentialDisabled}
 									>
 										{activeRow.isResetting ? "Generating reset link..." : "Generate password reset link"}
 									</Button>
