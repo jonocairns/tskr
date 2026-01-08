@@ -17,15 +17,18 @@ More screenshots: [Assignments](screenshots/assignments.png), [Household](screen
 
 ## Tech stack
 
-- Next.js 16 + React 19
-- NextAuth (credentials + Google OAuth)
+- TanStack Start + TanStack Router + Vite
+- React 19
+- Better Auth (credentials + Google OAuth)
+- tRPC + TanStack Query
 - Prisma + SQLite (default)
 - Tailwind CSS + Radix UI
 
 ## Auth options
 
-- Email + password credentials.
-- Optional Google OAuth via `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+- Email + password credentials (stored on Account model)
+- Optional Google OAuth via `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+- Account linking (users can have both credential and Google accounts)
 
 ## Getting Started
 
@@ -45,7 +48,8 @@ direnv allow
 cp .env.example .env
 ```
 
-2) Update `.env` as needed. At minimum set `NEXTAUTH_SECRET` and `NEXTAUTH_URL`.
+2) Update `.env` as needed. At minimum set `BETTER_AUTH_SECRET` (or `NEXTAUTH_SECRET` for
+   backwards compatibility) and `APP_URL` (or `NEXTAUTH_URL`).
    `DATABASE_URL` defaults to `file:./prisma/dev.db`. Google OAuth reads from
    `process.env.GOOGLE_CLIENT_ID` and `process.env.GOOGLE_CLIENT_SECRET` (leave blank
    to disable the Google button). Set `SUPER_ADMIN_EMAIL` to bootstrap the first
@@ -84,7 +88,7 @@ Run the container (persists the SQLite db and generated secrets under `/data`):
 docker run --rm \
   -p 3000:3000 \
   -v tskr-data:/data \
-  -e NEXTAUTH_URL="http://localhost:3000" \
+  -e APP_URL="http://localhost:3000" \
   ghcr.io/<owner>/tskr:latest
 ```
 
@@ -99,8 +103,8 @@ docker run --rm -p 3000:3000 -v tskr-data:/data --env-file .env tskr
 Notes:
 - `DATABASE_URL` is optional; the entrypoint defaults to `file:/data/dev.db`.
 - Migrations run on container start when Prisma migrations are present.
-- Set `NEXTAUTH_SECRET` for stable sessions. If unset, the entrypoint generates one and
-  stores it in `/data/tskr-secrets.env`.
+- Set `BETTER_AUTH_SECRET` (or `NEXTAUTH_SECRET`) for stable sessions. If unset, the
+  entrypoint generates one and stores it in `/data/tskr-secrets.env`.
 - Google OAuth reads `GOOGLE_CLIENT_ID` and
   `GOOGLE_CLIENT_SECRET` (leave them blank to disable the Google button).
 - Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` to enable push

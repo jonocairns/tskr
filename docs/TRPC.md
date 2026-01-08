@@ -8,7 +8,7 @@ Type-safe API layer using [tRPC](https://trpc.io/) + [TanStack Query](https://ta
 - `src/lib/trpc/react.tsx` - Client-side hooks + provider
 - `src/server/trpc.ts` - tRPC instance + middleware
 - `src/server/routers/_app.ts` - Main router
-- `src/app/api/trpc/[trpc]/route.ts` - Next.js handler
+- `src/routes/api/trpc/$.ts` - TanStack Start handler
 
 ## Client Usage
 
@@ -29,16 +29,24 @@ utils.households.getCurrent.invalidate(); // Specific
 utils.households.invalidate(); // All household queries
 ```
 
-## Server Components
+## Server Functions / Route Loaders
 
 **⚠️ Use Prisma directly, NOT tRPC client** (avoid HTTP overhead)
 
-```ts
-// ✅ DO
-import { prisma } from "@/lib/prisma";
-const household = await prisma.household.findUnique({ where: { id } });
+In TanStack Start route loaders (`beforeLoad`, `loader`) and server functions (`createServerFn`):
 
-// ❌ DON'T
+```ts
+// ✅ DO - Direct Prisma access in route loaders
+import { prisma } from "@/lib/prisma";
+
+export const Route = createFileRoute("/example")({
+  loader: async () => {
+    const household = await prisma.household.findUnique({ where: { id } });
+    return { household };
+  },
+});
+
+// ❌ DON'T - HTTP overhead for server-side data
 import { trpcClient } from "@/lib/trpc/client";
 const result = await trpcClient.households.getCurrent.query();
 ```
@@ -128,7 +136,6 @@ throw new TRPCError({
 
 ```ts
 // src/server/routers/myFeature.ts
-import "server-only";
 import { router, protectedProcedure } from "@/server/trpc";
 import { z } from "zod";
 
@@ -194,5 +201,7 @@ const { data: members } = trpc.households.getMembers.useQuery(undefined, {
 
 - [tRPC Docs](https://trpc.io/docs)
 - [TanStack Query Docs](https://tanstack.com/query)
+- [TanStack Start Docs](https://tanstack.com/start)
+- [TanStack Router Docs](https://tanstack.com/router)
 - [SuperJSON](https://github.com/blitz-js/superjson)
 - [Zod](https://zod.dev/)
