@@ -1,5 +1,3 @@
-import "server-only";
-
 import { router } from "@/server/trpc";
 import { adminRouter } from "./admin";
 import { assignedTasksRouter } from "./assignedTasks";

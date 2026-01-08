@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { SaveIcon, Trash2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -129,7 +129,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 				isRecurring: result.assignedTask.isRecurring,
 			});
 			toast({ title: "Assigned task updated" });
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error) => {
 			toast({
@@ -158,7 +158,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 		},
 		onSuccess: () => {
 			toast({ title: "Assigned task deleted" });
-			router.refresh();
+			router.invalidate();
 		},
 	});
 

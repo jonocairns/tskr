@@ -1,5 +1,3 @@
-import "server-only";
-
 import { prisma } from "@/lib/prisma";
 
 const APP_SETTINGS_ID = "singleton";

@@ -1,9 +1,9 @@
 "use client";
 
+import { Link } from "@tanstack/react-router";
 import { ClipboardListIcon, HomeIcon, LogOutIcon, SettingsIcon } from "lucide-react";
-import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
 
+import { signOut } from "@/auth/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import {
 	DropdownMenu,
@@ -28,20 +28,25 @@ type Props = {
 };
 
 export const UserMenu = ({ user, household }: Props) => {
-	const { data: session } = useSession();
-	const sessionUser = session?.user;
-	const resolvedUser = sessionUser ?? user;
-
 	const householdId = household?.id;
 	const currentHouseholdRole = household?.role;
-	const initials =
-		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
+	const initials = user?.name?.slice(0, 1)?.toUpperCase() ?? user?.email?.slice(0, 1)?.toUpperCase() ?? "U";
+
+	const handleSignOut = async () => {
+		await signOut({
+			fetchOptions: {
+				onSuccess: () => {
+					window.location.href = "/";
+				},
+			},
+		});
+	};
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Avatar className="h-9 w-9 rounded-md ring-1  ring-ring/25 ring-black transition group-hover:ring-ring/50 cursor-pointer">
-					<AvatarImage src={resolvedUser?.image ?? undefined} alt={resolvedUser?.name ?? ""} />
+					<AvatarImage src={user?.image ?? undefined} alt={user?.name ?? ""} />
 					<AvatarFallback className="rounded-md">{initials}</AvatarFallback>
 				</Avatar>
 			</DropdownMenuTrigger>
@@ -49,21 +54,21 @@ export const UserMenu = ({ user, household }: Props) => {
 				{householdId ? (
 					<>
 						<DropdownMenuItem asChild>
-							<Link href={`/${householdId}/household`}>
+							<Link to={`/${householdId}/household`}>
 								<HomeIcon className="mr-2 h-4 w-4" />
 								Household
 							</Link>
 						</DropdownMenuItem>
 						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (
 							<DropdownMenuItem asChild>
-								<Link href={`/${householdId}/assignments`}>
+								<Link to={`/${householdId}/assignments`}>
 									<ClipboardListIcon className="mr-2 h-4 w-4" />
 									Assignments
 								</Link>
 							</DropdownMenuItem>
 						) : null}
 						<DropdownMenuItem asChild>
-							<Link href={`/${householdId}/settings`}>
+							<Link to={`/${householdId}/settings`}>
 								<SettingsIcon className="mr-2 h-4 w-4" />
 								Settings
 							</Link>
@@ -73,7 +78,7 @@ export const UserMenu = ({ user, household }: Props) => {
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					className="text-red-600 font-semibold opacity-100 hover:text-red-600 focus:text-red-600"
-					onSelect={() => signOut()}
+					onSelect={handleSignOut}
 				>
 					<LogOutIcon className="mr-2 h-4 w-4" />
 					Sign out

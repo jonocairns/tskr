@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { CheckIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -55,7 +55,7 @@ export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 					? "Completion logged and waiting on approval."
 					: "Completion logged and points added.",
 			});
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error) => {
 			toast({

@@ -1,10 +1,10 @@
 "use client";
 
+import { useRouterState } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
-import { usePathname } from "next/navigation";
 
 export const PageTransition = ({ children }: { children: React.ReactNode }) => {
-	const pathname = usePathname();
+	const pathname = useRouterState({ select: (s) => s.location.pathname });
 	const prefersReducedMotion = useReducedMotion();
 	const duration = prefersReducedMotion ? 0.01 : 0.1;
 

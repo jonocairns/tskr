@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useRouter } from "@tanstack/react-router";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -16,7 +15,6 @@ export const CreateCard = () => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
-	const { update } = useSession();
 
 	const trimmed = name.trim();
 	const canSubmit = trimmed.length === 0 || trimmed.length >= 2;
@@ -25,8 +23,7 @@ export const CreateCard = () => {
 		onSuccess: async (data) => {
 			setName("");
 			toast({ title: "Household created" });
-			await update();
-			router.push(`/${data.household.id}`);
+			router.navigate({ to: `/${data.household.id}` });
 		},
 		onError: (error) => {
 			toast({

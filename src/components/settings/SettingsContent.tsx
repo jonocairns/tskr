@@ -1,11 +1,11 @@
 "use client";
 
+import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon, LinkIcon } from "lucide-react";
-import Link from "next/link";
-import { signIn } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 
+import { linkSocial } from "@/auth/client";
 import { Button } from "@/components/ui/Button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
@@ -84,8 +84,9 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 								<Button
 									onClick={() => {
 										const returnTo = window.location.pathname + window.location.search + window.location.hash;
-										signIn("google", {
-											callbackUrl: `/auth/link?returnTo=${encodeURIComponent(returnTo)}`,
+										linkSocial({
+											provider: "google",
+											callbackURL: `/auth/link?returnTo=${encodeURIComponent(returnTo)}`,
 										});
 									}}
 								>
@@ -107,7 +108,7 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 								<CardDescription>Manage users and system settings.</CardDescription>
 							</div>
 							<Button asChild variant="outline">
-								<Link href={`/${householdId}/admin`}>
+								<Link to={`/${householdId}/admin`}>
 									Admin Panel
 									<ArrowRightIcon className="ml-2 h-4 w-4" />
 								</Link>

@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useRouter } from "@tanstack/react-router";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -20,7 +19,6 @@ export const JoinCard = ({ variant = "card" }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
-	const { update } = useSession();
 	const isSection = variant === "section";
 
 	const trimmed = code.trim().toUpperCase();
@@ -30,8 +28,7 @@ export const JoinCard = ({ variant = "card" }: Props) => {
 		onSuccess: async (data) => {
 			setCode("");
 			toast({ title: "Joined household" });
-			await update();
-			router.push(`/${data.householdId}`);
+			router.navigate({ to: `/${data.householdId}` });
 		},
 		onError: (error) => {
 			toast({

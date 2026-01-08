@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { LogStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";

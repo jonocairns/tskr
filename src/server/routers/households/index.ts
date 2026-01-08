@@ -1,5 +1,3 @@
-import "server-only";
-
 import { router } from "@/server/trpc";
 import { householdCoreRouter } from "./core";
 import { householdInvitesRouter } from "./invites";

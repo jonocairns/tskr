@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@tanstack/react-router";
 import { useTransition } from "react";
 
 import {
@@ -35,7 +35,7 @@ export const DangerZone = ({ householdId, canDelete, variant = "card", showTitle
 	const deleteMutation = trpc.households.deleteCurrent.useMutation({
 		onSuccess: () => {
 			toast({ title: "Household deleted" });
-			router.push("/landing");
+			router.navigate({ to: "/landing" });
 		},
 		onError: (error) => {
 			toast({

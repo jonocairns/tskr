@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { Undo2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -59,7 +59,7 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 				});
 			}
 			utils.logs.invalidate();
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error, variables) => {
 			const action = variables.action;

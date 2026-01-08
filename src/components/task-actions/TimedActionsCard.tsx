@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -37,7 +37,7 @@ export const TimedActionsCard = () => {
 				description: isPending ? "Task logged and waiting for approval." : "Time-based task recorded and points added.",
 			});
 			utils.logs.invalidate();
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error) => {
 			toast({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 
 type Props = {
@@ -28,7 +28,7 @@ export const LiveRefresh = ({ householdId, enabled = true, debounceMs = 300 }: P
 
 			refreshTimerRef.current = setTimeout(() => {
 				refreshTimerRef.current = null;
-				router.refresh();
+				router.invalidate();
 			}, debounceMs);
 		};
 

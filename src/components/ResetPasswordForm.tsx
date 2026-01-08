@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState, useTransition } from "react";
 
+import { signIn } from "@/auth/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -27,31 +27,39 @@ export const ResetPasswordForm = ({ token }: Props) => {
 		onSuccess: async (data) => {
 			if (!data.email) {
 				toast({ title: "Password updated" });
-				router.push("/");
-				router.refresh();
+				router.navigate({ to: "/" });
+				router.invalidate();
 				return;
 			}
 
 			toast({ title: "Password updated", description: "Signing you in..." });
 
-			const result = await signIn("credentials", {
-				email: data.email,
-				password,
-				redirect: false,
-			});
-
-			if (result?.error) {
-				toast({
-					title: "Unable to sign in",
-					description: "Try signing in manually.",
-					variant: "destructive",
+			try {
+				const result = await signIn.email({
+					email: data.email,
+					password,
 				});
-				router.push("/");
-				return;
-			}
 
-			router.push("/");
-			router.refresh();
+				// Better Auth returns { data, error } - check if we got valid data
+				if (result.error || !result.data) {
+					console.warn("[ResetPasswordForm] Sign-in returned error:", result.error);
+					// Still navigate - the user can sign in manually
+					toast({ title: "Password updated", description: "Please sign in with your new password." });
+					router.navigate({ to: "/" });
+					router.invalidate();
+					return;
+				}
+
+				toast({ title: "Password updated", description: "You're now signed in." });
+				router.invalidate();
+				router.navigate({ to: "/" });
+			} catch (error) {
+				console.error("[ResetPasswordForm] Sign-in error:", error);
+				// Password was reset successfully, just redirect to sign in
+				toast({ title: "Password updated", description: "Please sign in with your new password." });
+				router.navigate({ to: "/" });
+				router.invalidate();
+			}
 		},
 		onError: (error) => {
 			toast({

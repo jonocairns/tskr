@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -61,7 +61,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 
 			toast({ title: "Household updated" });
 			utils.households.getCurrent.invalidate();
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error) => {
 			toast({

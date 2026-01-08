@@ -1,10 +1,10 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { RocketIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { type FormEvent, useState, useTransition } from "react";
 
+import { signIn } from "@/auth/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -38,13 +38,12 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 
 		startTransition(async () => {
 			try {
-				const result = await signIn("credentials", {
+				const result = await signIn.email({
 					email: trimmedEmail,
 					password,
-					redirect: false,
 				});
 
-				if (!result || result.error || result.ok === false) {
+				if (result.error) {
 					toast({
 						title: "Sign in failed",
 						description: "Check your email or password.",
@@ -53,27 +52,8 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 					return;
 				}
 
-				if (result.url) {
-					let target = result.url;
-					if (result.url.startsWith("http")) {
-						try {
-							const parsed = new URL(result.url);
-							target = parsed.pathname + parsed.search + parsed.hash;
-						} catch {
-							target = "/";
-						}
-					}
-					const current = window.location.pathname + window.location.search + window.location.hash;
-					if (target === current) {
-						router.refresh();
-						return;
-					}
-					router.push(target);
-					router.refresh();
-					return;
-				}
-
-				router.refresh();
+				router.invalidate();
+				router.navigate({ to: "/" });
 			} catch (_error) {
 				toast({
 					title: "Unable to sign in",
@@ -81,6 +61,13 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 					variant: "destructive",
 				});
 			}
+		});
+	};
+
+	const handleGoogleSignIn = () => {
+		signIn.social({
+			provider: "google",
+			callbackURL: "/",
 		});
 	};
 
@@ -100,7 +87,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 			<div className="flex w-full flex-col gap-4">
 				{googleEnabled ? (
 					<>
-						<Button size="lg" onClick={() => signIn("google")} disabled={isPending}>
+						<Button size="lg" onClick={handleGoogleSignIn} disabled={isPending}>
 							Sign in with Google
 						</Button>
 						<div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">

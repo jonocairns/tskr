@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
@@ -137,7 +137,7 @@ export const PresetActionsCard = () => {
 				description: isPending ? "Task logged and waiting for approval." : "Time-based task recorded and points added.",
 			});
 			utils.logs.invalidate();
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error) => {
 			toast({

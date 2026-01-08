@@ -188,10 +188,10 @@ export function PresetActionsDrawer({
 	};
 
 	return (
-		<div className="fixed inset-0 z-40">
+		<div className="pointer-events-none fixed inset-0 z-40">
 			<button
 				type="button"
-				className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+				className="pointer-events-auto absolute inset-0 bg-background/80 backdrop-blur-sm"
 				onClick={onClose}
 				aria-label="Close tasks editor"
 			/>
@@ -199,7 +199,7 @@ export function PresetActionsDrawer({
 				role="dialog"
 				aria-modal="true"
 				aria-label="Tasks editor"
-				className="absolute right-0 top-0 h-full w-full border-l bg-background shadow-xl sm:max-w-md"
+				className="pointer-events-auto absolute right-0 top-0 z-50 h-full w-full border-l bg-background shadow-xl sm:max-w-md"
 			>
 				<div className="flex h-full flex-col">
 					<div className="flex items-start justify-between gap-2 border-b px-6 py-5">

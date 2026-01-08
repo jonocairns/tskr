@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState, useTransition } from "react";
 
@@ -63,7 +63,7 @@ export const TaskActionsProvider = ({
 				description: isPending ? "Task logged and waiting for approval." : "Task recorded and points added.",
 			});
 			utils.logs.invalidate();
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error) => {
 			toast({

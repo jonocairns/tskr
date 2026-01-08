@@ -1,5 +1,3 @@
-import "server-only";
-
 import { createHash, randomBytes } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
@@ -29,4 +27,22 @@ export const createPasswordResetToken = async (userId: string) => {
 	});
 
 	return { token, expiresAt };
+};
+
+/**
+ * Check if a user needs to reset their password.
+ * Returns the reset token if required, null otherwise.
+ */
+export const checkPasswordResetRequired = async (userId: string): Promise<string | null> => {
+	const user = await prisma.user.findUnique({
+		where: { id: userId },
+		select: { passwordResetRequired: true },
+	});
+
+	if (user?.passwordResetRequired) {
+		const { token } = await createPasswordResetToken(userId);
+		return token;
+	}
+
+	return null;
 };

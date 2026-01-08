@@ -1,5 +1,3 @@
-import "server-only";
-
 const NONCE_REGEX = /'nonce-([^']+)'/;
 
 export const getCspNonce = (cspHeader: string | null) => {

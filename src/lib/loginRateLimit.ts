@@ -1,5 +1,3 @@
-import "server-only";
-
 const LOGIN_RATE_LIMIT_WINDOW_MS = 10 * 60_000;
 const LOGIN_RATE_LIMIT_MAX = 10;
 

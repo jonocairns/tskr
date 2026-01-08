@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { CheckIcon, XIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -46,7 +46,7 @@ export const ApprovalQueue = ({ entries, currentUserId, initialHasMore }: Props)
 		},
 		onSettled: () => {
 			utils.logs.invalidate();
-			router.refresh();
+			router.invalidate();
 		},
 	});
 

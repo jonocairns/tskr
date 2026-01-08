@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { GiftIcon, TrophyIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -55,7 +55,7 @@ export const PointsSummary = ({
 				title: "Reward claimed",
 				description: `We deducted ${threshold} points. Nice work!`,
 			});
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error) => {
 			toast({

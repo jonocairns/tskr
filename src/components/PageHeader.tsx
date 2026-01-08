@@ -1,5 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
-import Link from "next/link";
+
 import { Switcher } from "@/components/household/Switcher";
 import { UserMenu } from "@/components/UserMenu";
 import { Button } from "@/components/ui/Button";
@@ -29,7 +30,7 @@ export const PageHeader = ({ title, description, eyebrow, backHref, backLabel = 
 			<div className="flex items-center gap-3 flex-1">
 				{backHref ? (
 					<Button asChild variant="ghost" size="icon" className="h-16 w-12 min-w-12">
-						<Link href={backHref} aria-label={backLabel}>
+						<Link to={backHref} aria-label={backLabel}>
 							<ChevronLeftIcon className="h-5 w-5" />
 						</Link>
 					</Button>

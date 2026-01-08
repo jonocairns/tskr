@@ -1,15 +1,32 @@
-import "server-only";
-
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { z } from "zod";
-import { getAuthSession } from "@/lib/auth";
+
+import { auth } from "@/auth/auth";
 import { checkForSensitiveInfo, sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getHouseholdMembership, type HouseholdMembership } from "@/lib/households";
-import { validateSessionExpiry } from "@/lib/sessionValidation";
+import { config } from "@/server-config";
 
 export async function createTRPCContext(opts?: { req?: Request }) {
-	const session = await getAuthSession();
+	const headers = opts?.req?.headers ?? new Headers();
+	const betterAuthSession = await auth.api.getSession({ headers });
+
+	// Map Better Auth session to our expected format
+	const session = betterAuthSession
+		? {
+				user: {
+					id: betterAuthSession.user.id,
+					email: betterAuthSession.user.email,
+					name: betterAuthSession.user.name,
+					image: betterAuthSession.user.image,
+					isSuperAdmin: (betterAuthSession.user as { isSuperAdmin?: boolean }).isSuperAdmin ?? false,
+				},
+				iat: Math.floor(new Date(betterAuthSession.session.createdAt).getTime() / 1000),
+				lastActivity: betterAuthSession.session.updatedAt
+					? Math.floor(new Date(betterAuthSession.session.updatedAt).getTime() / 1000)
+					: undefined,
+			}
+		: null;
 
 	return {
 		session,
@@ -62,13 +79,27 @@ const getAuthedSession = (ctx: Context): AuthedSession => {
 const isAuthed = t.middleware(({ ctx, next }) => {
 	const session = getAuthedSession(ctx);
 
-	const validation = validateSessionExpiry(ctx.sessionTimestamps);
-	if (!validation.valid) {
-		const message = validation.reason === "idle_timeout" ? "Session expired due to inactivity" : "Session expired";
-		throw new TRPCError({
-			code: "UNAUTHORIZED",
-			message,
-		});
+	// Validate session expiry
+	const now = Math.floor(Date.now() / 1000);
+
+	if (ctx.sessionTimestamps.iat) {
+		const sessionAge = now - ctx.sessionTimestamps.iat;
+		if (sessionAge > config.sessionMaxAge) {
+			throw new TRPCError({
+				code: "UNAUTHORIZED",
+				message: "Session expired",
+			});
+		}
+	}
+
+	if (ctx.sessionTimestamps.lastActivity) {
+		const idleTime = now - ctx.sessionTimestamps.lastActivity;
+		if (idleTime > config.sessionIdleTimeout) {
+			throw new TRPCError({
+				code: "UNAUTHORIZED",
+				message: "Session expired due to inactivity",
+			});
+		}
 	}
 
 	return next({

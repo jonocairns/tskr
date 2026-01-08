@@ -1,10 +1,10 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { CheckIcon, ChevronDownIcon, HomeIcon, Loader2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useMemo, useTransition } from "react";
 
+import { useSession } from "@/auth/client";
 import { Button } from "@/components/ui/Button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/DropdownMenu";
 import { trpc } from "@/lib/trpc/react";
@@ -16,23 +16,24 @@ type Props = {
 export const Switcher = ({ householdId: propsHouseholdId }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
-	const { status } = useSession();
+	const { data: session, isPending: isSessionPending } = useSession();
+	const isAuthenticated = !isSessionPending && !!session?.user;
 
 	const { data, isLoading } = trpc.households.list.useQuery(undefined, {
-		enabled: status === "authenticated",
+		enabled: isAuthenticated,
 	});
 
 	const households = data?.households ?? [];
 	const activeHouseholdId = propsHouseholdId ?? data?.activeHouseholdId ?? null;
 
 	const activeHousehold = useMemo(
-		() => households.find((household) => household.id === activeHouseholdId) ?? households[0] ?? null,
+		() => households.find((household: { id: string }) => household.id === activeHouseholdId) ?? households[0] ?? null,
 		[households, activeHouseholdId],
 	);
 
 	const selectMutation = trpc.households.select.useMutation({
 		onSuccess: (_data, variables) => {
-			router.push(`/${variables.householdId}`);
+			router.navigate({ to: `/${variables.householdId}` });
 		},
 	});
 
@@ -71,7 +72,7 @@ export const Switcher = ({ householdId: propsHouseholdId }: Props) => {
 				{households.length === 0 ? (
 					<DropdownMenuItem disabled>No households found</DropdownMenuItem>
 				) : (
-					households.map((household) => (
+					households.map((household: { id: string; name: string }) => (
 						<DropdownMenuItem
 							key={household.id}
 							onSelect={(event) => {

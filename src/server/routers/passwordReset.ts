@@ -1,5 +1,3 @@
-import "server-only";
-
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -47,6 +45,12 @@ export const passwordResetRouter = router({
 		const now = new Date();
 
 		await prisma.$transaction([
+			// Update the credential account's password (Better Auth stores it here)
+			prisma.account.updateMany({
+				where: { userId: resetToken.userId, providerId: "credential" },
+				data: { password: passwordHash },
+			}),
+			// Also update User.passwordHash for backwards compatibility
 			prisma.user.update({
 				where: { id: resetToken.userId },
 				data: { passwordHash, passwordResetRequired: false },

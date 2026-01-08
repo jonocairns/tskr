@@ -1,5 +1,3 @@
-import "server-only";
-
 /**
  * Sanitizes error messages to prevent information leakage.
  *

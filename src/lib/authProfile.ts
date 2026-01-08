@@ -1,5 +1,3 @@
-import "server-only";
-
 export const getProfileEmail = (profile: unknown) => {
 	if (!profile || typeof profile !== "object") {
 		return null;

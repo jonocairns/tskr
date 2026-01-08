@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearch } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { useToast } from "@/hooks/useToast";
@@ -17,12 +17,12 @@ const householdErrorMessages: Record<string, { title: string; description: strin
 };
 
 export const HouseholdErrorToast = () => {
-	const searchParams = useSearchParams();
+	const search = useSearch({ strict: false }) as { error?: string };
 	const router = useRouter();
 	const { toast } = useToast();
 
 	useEffect(() => {
-		const error = searchParams.get("error");
+		const error = search?.error;
 		if (error && householdErrorMessages[error]) {
 			const message = householdErrorMessages[error];
 			toast({
@@ -33,9 +33,9 @@ export const HouseholdErrorToast = () => {
 
 			const url = new URL(window.location.href);
 			url.searchParams.delete("error");
-			router.replace(url.pathname + url.search);
+			router.navigate({ to: url.pathname + url.search, replace: true });
 		}
-	}, [searchParams, router, toast]);
+	}, [search, router, toast]);
 
 	return null;
 };

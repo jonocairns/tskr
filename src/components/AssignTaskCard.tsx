@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import type { PresetSummary } from "@/components/task-actions/types";
@@ -66,7 +66,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 				title: "Assigned task created",
 				description: "The task is now in the queue.",
 			});
-			router.refresh();
+			router.invalidate();
 		},
 		onError: (error) => {
 			toast({

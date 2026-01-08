@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 const MAX_PULL = 120;
@@ -91,7 +91,7 @@ export const PullToRefresh = () => {
 
 			if (shouldRefresh && !refreshingRef.current) {
 				refreshingRef.current = true;
-				router.refresh();
+				router.invalidate();
 				resetTimeoutRef.current = window.setTimeout(() => {
 					refreshingRef.current = false;
 				}, RESET_DELAY_MS);

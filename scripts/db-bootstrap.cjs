@@ -117,20 +117,40 @@ const main = async () => {
 		updates.passwordResetRequired = true;
 	}
 
+	let userId;
 	if (!existing) {
-		await prisma.user.create({
+		const user = await prisma.user.create({
 			data: {
 				email: normalizedEmail,
 				...updates,
 			},
 		});
+		userId = user.id;
 		log(`Created super admin for ${normalizedEmail}.`);
 	} else {
 		await prisma.user.update({
 			where: { id: existing.id },
 			data: updates,
 		});
+		userId = existing.id;
 		log(`Updated super admin record for ${normalizedEmail}.`);
+	}
+
+	// Better Auth stores credentials in the Account table
+	if (generatedPassword) {
+		// Remove existing credential account if any
+		await prisma.account.deleteMany({
+			where: { userId, providerId: "credential" },
+		});
+		// Create new credential account with hashed password
+		await prisma.account.create({
+			data: {
+				userId,
+				accountId: userId,
+				providerId: "credential",
+				password: updates.passwordHash,
+			},
+		});
 	}
 
 	if (generatedPassword) {

@@ -1,5 +1,3 @@
-import "server-only";
-
 import { config } from "@/server-config";
 
 /**

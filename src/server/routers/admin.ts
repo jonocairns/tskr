@@ -1,5 +1,3 @@
-import "server-only";
-
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -137,7 +135,7 @@ export const adminRouter = router({
 			}
 
 			const hasGoogleAccount = await prisma.account.findFirst({
-				where: { userId: id, provider: "google" },
+				where: { userId: id, providerId: "google" },
 				select: { id: true },
 			});
 
