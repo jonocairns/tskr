@@ -97,9 +97,24 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
-				before: async (user, _ctx) => {
+				before: async (user, ctx) => {
 					console.log("[auth] user.create.before hook called with email:", user.email);
-					// For social sign-ups, check if new account creation is allowed
+					const providerId =
+						typeof ctx?.params === "object" && ctx?.params
+							? "providerId" in ctx.params && typeof ctx.params.providerId === "string"
+								? ctx.params.providerId
+								: "id" in ctx.params && typeof ctx.params.id === "string"
+									? ctx.params.id
+									: null
+							: null;
+					const isCallbackPath =
+						typeof ctx?.path === "string" &&
+						(ctx.path === "/oauth2/callback/:providerId" || ctx.path === "/callback/:id");
+					const shouldCheckGoogleSignup = providerId === "google" || (isCallbackPath && !providerId);
+					if (!shouldCheckGoogleSignup) {
+						return { data: user };
+					}
+					// For Google sign-ups, check if new account creation is allowed
 					// Note: This only blocks NEW user creation, not account linking
 					const settings = await getAppSettings();
 					if (!settings.allowGoogleAccountCreation) {

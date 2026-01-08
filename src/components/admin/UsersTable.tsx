@@ -76,7 +76,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			id: row.id,
 			name: row.name ?? "",
 			email: row.email ?? "",
-			passwordResetRequired: row.passwordResetRequired,
+			passwordResetRequired: row.credentialDisabled ? false : row.passwordResetRequired,
 			credentialDisabled: row.credentialDisabled,
 		});
 	};
@@ -213,7 +213,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			id: row.id,
 			name: name.length > 0 ? name : null,
 			email,
-			credentialPasswordResetRequired: draft.passwordResetRequired,
+			credentialPasswordResetRequired: draft.credentialDisabled ? false : draft.passwordResetRequired,
 			credentialDisabled: draft.credentialDisabled,
 		});
 	};
@@ -441,6 +441,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 													? {
 															...current,
 															credentialDisabled: !checked,
+															passwordResetRequired: checked ? current.passwordResetRequired : false,
 														}
 													: current,
 											)

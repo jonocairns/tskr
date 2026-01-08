@@ -5,10 +5,14 @@ import { checkRateLimit } from "@/lib/loginRateLimit";
 import { hashPasswordResetToken } from "@/lib/passwordReset";
 import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
-import { publicProcedure, router } from "@/server/trpc";
+import { protectedProcedure, publicProcedure, router } from "@/server/trpc";
 
 const resetPasswordSchema = z.object({
 	token: z.string().trim().min(1),
+	password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+const resetAuthedSchema = z.object({
 	password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -60,5 +64,48 @@ export const passwordResetRouter = router({
 		]);
 
 		return { ok: true, email: resetToken.user.email };
+	}),
+
+	resetAuthed: protectedProcedure.input(resetAuthedSchema).mutation(async ({ ctx, input }) => {
+		const userId = ctx.session.user.id;
+
+		const account = await prisma.account.findFirst({
+			where: { userId, providerId: "credential" },
+			select: { passwordResetRequired: true, disabled: true },
+		});
+
+		if (!account) {
+			throw new TRPCError({ code: "BAD_REQUEST", message: "User has no credential account" });
+		}
+
+		if (account.disabled) {
+			throw new TRPCError({ code: "BAD_REQUEST", message: "Password login is disabled for this user" });
+		}
+
+		if (!account.passwordResetRequired) {
+			throw new TRPCError({ code: "BAD_REQUEST", message: "Password reset is not required" });
+		}
+
+		const user = await prisma.user.findUnique({
+			where: { id: userId },
+			select: { email: true },
+		});
+
+		const passwordHash = await hashPassword(input.password);
+
+		await prisma.$transaction([
+			prisma.account.updateMany({
+				where: { userId, providerId: "credential" },
+				data: { password: passwordHash, passwordResetRequired: false },
+			}),
+			prisma.passwordResetToken.deleteMany({
+				where: { userId },
+			}),
+			prisma.session.deleteMany({
+				where: { userId },
+			}),
+		]);
+
+		return { ok: true, email: user?.email ?? null };
 	}),
 });

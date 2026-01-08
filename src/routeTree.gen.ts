@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LandingRouteImport } from './routes/landing'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ResetPasswordIndexRouteImport } from './routes/reset-password/index'
 import { Route as ResetPasswordTokenRouteImport } from './routes/reset-password/$token'
 import { Route as AuthLinkRouteImport } from './routes/auth/link'
 import { Route as AuthErrorRouteImport } from './routes/auth/error'
@@ -38,6 +39,11 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordIndexRoute = ResetPasswordIndexRouteImport.update({
+  id: '/reset-password/',
+  path: '/reset-password/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/auth/error': typeof AuthErrorRoute
   '/auth/link': typeof AuthLinkRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/reset-password': typeof ResetPasswordIndexRoute
   '/$householdId/admin': typeof HouseholdIdLayoutAdminRoute
   '/$householdId/assignments': typeof HouseholdIdLayoutAssignmentsRoute
   '/$householdId/household': typeof HouseholdIdLayoutHouseholdRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/auth/error': typeof AuthErrorRoute
   '/auth/link': typeof AuthLinkRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/reset-password': typeof ResetPasswordIndexRoute
   '/$householdId/admin': typeof HouseholdIdLayoutAdminRoute
   '/$householdId/assignments': typeof HouseholdIdLayoutAssignmentsRoute
   '/$householdId/household': typeof HouseholdIdLayoutHouseholdRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/auth/error': typeof AuthErrorRoute
   '/auth/link': typeof AuthLinkRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/reset-password/': typeof ResetPasswordIndexRoute
   '/$householdId/_layout/admin': typeof HouseholdIdLayoutAdminRoute
   '/$householdId/_layout/assignments': typeof HouseholdIdLayoutAssignmentsRoute
   '/$householdId/_layout/household': typeof HouseholdIdLayoutHouseholdRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/auth/error'
     | '/auth/link'
     | '/reset-password/$token'
+    | '/reset-password'
     | '/$householdId/admin'
     | '/$householdId/assignments'
     | '/$householdId/household'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/auth/error'
     | '/auth/link'
     | '/reset-password/$token'
+    | '/reset-password'
     | '/$householdId/admin'
     | '/$householdId/assignments'
     | '/$householdId/household'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/auth/error'
     | '/auth/link'
     | '/reset-password/$token'
+    | '/reset-password/'
     | '/$householdId/_layout/admin'
     | '/$householdId/_layout/assignments'
     | '/$householdId/_layout/household'
@@ -217,6 +229,7 @@ export interface RootRouteChildren {
   AuthErrorRoute: typeof AuthErrorRoute
   AuthLinkRoute: typeof AuthLinkRoute
   ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
+  ResetPasswordIndexRoute: typeof ResetPasswordIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
@@ -242,6 +255,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password/': {
+      id: '/reset-password/'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password/$token': {
@@ -359,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthErrorRoute: AuthErrorRoute,
   AuthLinkRoute: AuthLinkRoute,
   ResetPasswordTokenRoute: ResetPasswordTokenRoute,
+  ResetPasswordIndexRoute: ResetPasswordIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
 }
@@ -367,10 +388,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

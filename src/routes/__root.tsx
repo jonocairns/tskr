@@ -1,4 +1,4 @@
-import { createRootRoute, HeadContent, Outlet, redirect, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, redirect, Scripts, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 
@@ -59,9 +59,9 @@ export const Route = createRootRoute({
 		// Check if user needs to reset their password
 		// Skip this check for reset-password routes and API routes to avoid infinite loops
 		if (session?.user?.id && !pathname.startsWith("/reset-password") && !pathname.startsWith("/api/")) {
-			const resetToken = await checkPasswordReset({ data: { userId: session.user.id } });
-			if (resetToken) {
-				throw redirect({ to: "/reset-password/$token", params: { token: resetToken } });
+			const resetRequired = await checkPasswordReset({ data: { userId: session.user.id } });
+			if (resetRequired) {
+				throw redirect({ to: "/reset-password" });
 			}
 		}
 
@@ -71,13 +71,17 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
+	const router = useRouter();
+	const nonce = router.options.ssr?.nonce;
+
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
+				{nonce ? <meta property="csp-nonce" content={nonce} /> : null}
 			</head>
 			<body className="min-h-screen bg-background font-sans antialiased">
-				<Providers>
+				<Providers nonce={nonce}>
 					<Outlet />
 				</Providers>
 				<Scripts />

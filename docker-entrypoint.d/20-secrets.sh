@@ -28,22 +28,32 @@ write_secret() {
   printf '%s=%s\n' "$key" "$value" >> "$secrets_file"
 }
 
-if [ -z "$NEXTAUTH_SECRET" ]; then
-  if stored_secret="$(read_secret NEXTAUTH_SECRET)"; then
-    NEXTAUTH_SECRET="$stored_secret"
-    export NEXTAUTH_SECRET
+if [ -z "$BETTER_AUTH_SECRET" ]; then
+  if stored_secret="$(read_secret BETTER_AUTH_SECRET)"; then
+    BETTER_AUTH_SECRET="$stored_secret"
+    export BETTER_AUTH_SECRET
+  elif [ -n "$NEXTAUTH_SECRET" ]; then
+    BETTER_AUTH_SECRET="$NEXTAUTH_SECRET"
+    export BETTER_AUTH_SECRET
+  elif stored_secret="$(read_secret NEXTAUTH_SECRET)"; then
+    BETTER_AUTH_SECRET="$stored_secret"
+    export BETTER_AUTH_SECRET
+  fi
+fi
+if [ -z "$BETTER_AUTH_SECRET" ]; then
+  if generated_secret="$(openssl rand -hex 32)"; then
+    BETTER_AUTH_SECRET="$generated_secret"
+    export BETTER_AUTH_SECRET
+    write_secret BETTER_AUTH_SECRET "$BETTER_AUTH_SECRET"
+    echo "Generated BETTER_AUTH_SECRET."
+  else
+    echo "Failed to generate BETTER_AUTH_SECRET; set it manually." >&2
+    exit 1
   fi
 fi
 if [ -z "$NEXTAUTH_SECRET" ]; then
-  if nextauth_secret="$(openssl rand -hex 32)"; then
-    NEXTAUTH_SECRET="$nextauth_secret"
-    export NEXTAUTH_SECRET
-    write_secret NEXTAUTH_SECRET "$NEXTAUTH_SECRET"
-    echo "Generated NEXTAUTH_SECRET."
-  else
-    echo "Failed to generate NEXTAUTH_SECRET; set it manually." >&2
-    exit 1
-  fi
+  NEXTAUTH_SECRET="$BETTER_AUTH_SECRET"
+  export NEXTAUTH_SECRET
 fi
 
 if [ -z "$VAPID_PUBLIC_KEY" ]; then

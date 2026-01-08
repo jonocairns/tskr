@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/useToast";
 import { trpc } from "@/lib/trpc/react";
 
 type Props = {
-	token: string;
+	token?: string;
 };
 
 export const ResetPasswordForm = ({ token }: Props) => {
@@ -21,48 +21,61 @@ export const ResetPasswordForm = ({ token }: Props) => {
 
 	const canSubmit = password.length >= 8 && confirmPassword.length >= 8 && password === confirmPassword;
 
-	const resetMutation = trpc.passwordReset.reset.useMutation({
-		onSuccess: async (data) => {
-			if (!data.email) {
-				toast({ title: "Password updated" });
+	const handleSuccess = async (data: { email?: string | null }) => {
+		if (!data.email) {
+			toast({ title: "Password updated" });
+			router.navigate({ to: "/", search: { error: undefined } });
+			router.invalidate();
+			return;
+		}
+
+		toast({ title: "Password updated", description: "Signing you in..." });
+
+		try {
+			const result = await signIn.email({
+				email: data.email,
+				password,
+			});
+
+			// Better Auth returns { data, error } - check if we got valid data
+			if (result.error || !result.data) {
+				console.warn("[ResetPasswordForm] Sign-in returned error:", result.error);
+				// Still navigate - the user can sign in manually
+				toast({ title: "Password updated", description: "Please sign in with your new password." });
 				router.navigate({ to: "/", search: { error: undefined } });
 				router.invalidate();
 				return;
 			}
 
-			toast({ title: "Password updated", description: "Signing you in..." });
+			toast({ title: "Password updated", description: "You're now signed in." });
+			router.invalidate();
+			router.navigate({ to: "/", search: { error: undefined } });
+		} catch (error) {
+			console.error("[ResetPasswordForm] Sign-in error:", error);
+			// Password was reset successfully, just redirect to sign in
+			toast({ title: "Password updated", description: "Please sign in with your new password." });
+			router.navigate({ to: "/", search: { error: undefined } });
+			router.invalidate();
+		}
+	};
 
-			try {
-				const result = await signIn.email({
-					email: data.email,
-					password,
-				});
-
-				// Better Auth returns { data, error } - check if we got valid data
-				if (result.error || !result.data) {
-					console.warn("[ResetPasswordForm] Sign-in returned error:", result.error);
-					// Still navigate - the user can sign in manually
-					toast({ title: "Password updated", description: "Please sign in with your new password." });
-					router.navigate({ to: "/", search: { error: undefined } });
-					router.invalidate();
-					return;
-				}
-
-				toast({ title: "Password updated", description: "You're now signed in." });
-				router.invalidate();
-				router.navigate({ to: "/", search: { error: undefined } });
-			} catch (error) {
-				console.error("[ResetPasswordForm] Sign-in error:", error);
-				// Password was reset successfully, just redirect to sign in
-				toast({ title: "Password updated", description: "Please sign in with your new password." });
-				router.navigate({ to: "/", search: { error: undefined } });
-				router.invalidate();
-			}
-		},
+	const resetMutation = trpc.passwordReset.reset.useMutation({
+		onSuccess: handleSuccess,
 		onError: (error) => {
 			toast({
 				title: "Unable to reset password",
 				description: error.message ?? "Please request a new link.",
+				variant: "destructive",
+			});
+		},
+	});
+
+	const resetAuthedMutation = trpc.passwordReset.resetAuthed.useMutation({
+		onSuccess: handleSuccess,
+		onError: (error) => {
+			toast({
+				title: "Unable to reset password",
+				description: error.message ?? "Please try again.",
 				variant: "destructive",
 			});
 		},
@@ -89,7 +102,11 @@ export const ResetPasswordForm = ({ token }: Props) => {
 		}
 
 		startTransition(async () => {
-			await resetMutation.mutateAsync({ token, password });
+			if (token) {
+				await resetMutation.mutateAsync({ token, password });
+			} else {
+				await resetAuthedMutation.mutateAsync({ password });
+			}
 		});
 	};
 

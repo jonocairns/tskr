@@ -119,6 +119,20 @@ export const adminRouter = router({
 			throw new TRPCError({ code: "BAD_REQUEST", message: "No updates provided" });
 		}
 
+		let existingCredentialDisabled: boolean | null = null;
+		if (updates.credentialPasswordResetRequired !== undefined && updates.credentialDisabled === undefined) {
+			const credentialAccount = await prisma.account.findFirst({
+				where: { userId: id, providerId: "credential" },
+				select: { disabled: true },
+			});
+
+			if (!credentialAccount) {
+				throw new TRPCError({ code: "BAD_REQUEST", message: "User has no credential account" });
+			}
+
+			existingCredentialDisabled = credentialAccount.disabled;
+		}
+
 		// Validate disabling credential login
 		if (updates.credentialDisabled === true) {
 			if (!isGoogleAuthEnabled) {
@@ -154,8 +168,10 @@ export const adminRouter = router({
 					accountData.passwordResetRequired = false;
 				}
 			}
-			if (updates.credentialPasswordResetRequired !== undefined) {
-				accountData.passwordResetRequired = updates.credentialPasswordResetRequired;
+			if (updates.credentialPasswordResetRequired !== undefined && updates.credentialDisabled !== true) {
+				accountData.passwordResetRequired = existingCredentialDisabled
+					? false
+					: updates.credentialPasswordResetRequired;
 			}
 
 			const [user] = await prisma.$transaction([
