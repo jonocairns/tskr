@@ -6,11 +6,11 @@
 
 **Dev**: `pnpm dev` | `pnpm build` | `pnpm start`
 **DB**: `pnpm db:migrate` (dev) | `pnpm db:sync` (prod) | `pnpm db:bootstrap`
-**Quality**: `pnpm lint` | `pnpm compile` | `pnpm test [filename]` | `pnpm check` (all)
+**Quality**: `pnpm lint` | `pnpm compile` (tsgo) | `pnpm test [filename]` | `pnpm check` (all)
 
 ## Stack
 
-Next.js 16 + React 19 | Prisma + SQLite | tRPC + TanStack Query | NextAuth.js | Tailwind + Radix UI | Biome
+TanStack Start + TanStack Router + Vite | React 19 | Better Auth | Prisma + SQLite | tRPC + TanStack Query | Tailwind + Radix UI | Biome
 
 ## Core Concepts
 
@@ -33,15 +33,11 @@ Next.js 16 + React 19 | Prisma + SQLite | tRPC + TanStack Query | NextAuth.js | 
 - See [docs/TRPC.md](docs/TRPC.md)
 
 **Household Routing** (URL-based, NOT session-based):
-- Route: `/[householdId]/*`
-- Server pages: Use `getHouseholdContext(householdId)` for auth + membership
-- **tRPC procedures**: Use `protectedProcedure` + manually validate with:
-  - `validateHouseholdMembershipFromInput(userId, input)` - membership check
-  - `validateApproverRoleFromInput(userId, input)` - APPROVER/DICTATOR check
-  - `validateDictatorRoleFromInput(userId, input)` - DICTATOR check
-  - All inputs must include `householdId: z.string().min(1)`
+- Route: `/$householdId/*` (file routes in `src/routes`)
+- Server loaders: Use `createServerFn` + `getRequestHeaders` to validate auth/membership (see `src/routes/$householdId/_layout.tsx`)
+- **tRPC procedures**: Prefer `householdProcedure`/`approverProcedure`/`dictatorProcedure`; all inputs must include `householdId: z.string().min(1)`
 - **Client**: Get `householdId` from `useParams()`, pass to all tRPC calls
-- **Session**: Only stores `id`, `isSuperAdmin`, `hasGoogleAccount` (NOT household context)
+- **Session**: Only stores `id`, `isSuperAdmin`, `lastHouseholdId` (NOT household context)
 
 **Real-time**: SSE at `/api/stream`, pub/sub via `src/lib/eventsCore.ts`, `publishDashboardUpdate()`
 
@@ -53,7 +49,7 @@ Next.js 16 + React 19 | Prisma + SQLite | tRPC + TanStack Query | NextAuth.js | 
 
 ## Auth
 
-**Providers**: Credentials (bcrypt) + Google OAuth (optional)
+**Providers**: Better Auth (credentials + Google OAuth optional)
 
 **Super Admin**: Set `SUPER_ADMIN_EMAIL`, temp password logged. Use `SUPER_ADMIN_FORCE_PASSWORD=1` to rotate.
 
@@ -61,12 +57,13 @@ Next.js 16 + React 19 | Prisma + SQLite | tRPC + TanStack Query | NextAuth.js | 
 
 ## Env Vars
 
-**Required**: `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+**Required**: `BETTER_AUTH_SECRET` (or `NEXTAUTH_SECRET`), `APP_URL` (or `NEXTAUTH_URL`)
 
 **Optional**: `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `SUPER_ADMIN_FORCE_PASSWORD`, `VAPID_*`
 
 ## Notes
 
 - Biome for linting (not ESLint/Prettier)
+- Use `tsgo` for type checking (not `tsc`)
 - Files with `"server-only"` cannot be client-imported
 - NO useless comments
