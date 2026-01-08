@@ -1,6 +1,8 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
 
+import { auth } from "@/auth/auth";
 import { AuthSettingsCard } from "@/components/admin/AuthSettingsCard";
 import { UsersCard } from "@/components/admin/UsersCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -14,8 +16,17 @@ import type { HouseholdContext } from "../_layout";
 const isGoogleEnabled = Boolean(config.googleClientId && config.googleClientSecret);
 
 const loadAdmin = createServerFn({ method: "GET" })
-	.inputValidator((data: { householdId: string; isSuperAdmin: boolean }) => data)
-	.handler(async ({ data: { householdId, isSuperAdmin } }) => {
+	.inputValidator((data: { householdId: string }) => data)
+	.handler(async ({ data: { householdId } }) => {
+		const headers = getRequestHeaders();
+		const session = await auth.api.getSession({ headers });
+
+		if (!session?.user?.id) {
+			throw redirect({ to: "/", search: { error: undefined } });
+		}
+
+		const isSuperAdmin = (session.user as { isSuperAdmin?: boolean }).isSuperAdmin ?? false;
+
 		// Authorization check - only super admins can access
 		if (!isSuperAdmin) {
 			throw redirect({ to: "/$householdId", params: { householdId } });
@@ -66,7 +77,6 @@ export const Route = createFileRoute("/$householdId/_layout/admin")({
 		const data = await loadAdmin({
 			data: {
 				householdId: params.householdId,
-				isSuperAdmin: householdContext.session.user.isSuperAdmin,
 			},
 		});
 		return { ...data, householdContext };

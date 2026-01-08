@@ -1,24 +1,46 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-
+import { getRequestHeaders } from "@tanstack/react-start/server";
+import { auth } from "@/auth/auth";
 import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
-import type { HouseholdMembership } from "@/lib/households";
+import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
 
 import type { HouseholdContext } from "../_layout";
 
 const loadAssignments = createServerFn({ method: "GET" })
-	.inputValidator((data: { householdId: string; userId: string; membershipRole: HouseholdMembership["role"] }) => data)
-	.handler(async ({ data: { householdId, userId, membershipRole } }) => {
+	.inputValidator((data: { householdId: string }) => data)
+	.handler(async ({ data: { householdId } }) => {
+		const headers = getRequestHeaders();
+		const session = await auth.api.getSession({ headers });
+
+		if (!session?.user?.id) {
+			throw redirect({ to: "/", search: { error: undefined } });
+		}
+
+		const membership = await getHouseholdMembership(session.user.id, householdId);
+		if (!membership) {
+			const active = await getActiveHouseholdMembership(session.user.id);
+			if (active) {
+				throw redirect({
+					to: "/$householdId",
+					params: { householdId: active.householdId },
+					search: { error: "HouseholdAccessDenied" },
+				});
+			}
+			throw redirect({ to: "/landing", search: { error: "NoHouseholdMembership" } });
+		}
+
 		// Authorization check - DOERs cannot access assignments page
-		if (membershipRole === "DOER") {
+		if (membership.role === "DOER") {
 			throw redirect({ to: "/$householdId", params: { householdId } });
 		}
 
+		const userId = session.user.id;
 		const [members, presets, assignedTasks] = await Promise.all([
 			prisma.user.findMany({
 				where: { memberships: { some: { householdId } } },
@@ -82,8 +104,6 @@ export const Route = createFileRoute("/$householdId/_layout/assignments")({
 		const data = await loadAssignments({
 			data: {
 				householdId: params.householdId,
-				userId: householdContext.userId,
-				membershipRole: householdContext.membership.role,
 			},
 		});
 		return { ...data, householdContext };

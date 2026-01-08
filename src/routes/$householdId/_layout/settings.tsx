@@ -1,9 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
 
+import { auth } from "@/auth/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { SettingsContent } from "@/components/settings/SettingsContent";
+import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
 import { config } from "@/server-config";
 
@@ -12,8 +15,29 @@ import type { HouseholdContext } from "../_layout";
 const isGoogleEnabled = Boolean(config.googleClientId && config.googleClientSecret);
 
 const loadSettings = createServerFn({ method: "GET" })
-	.inputValidator((data: { userId: string }) => data)
-	.handler(async ({ data: { userId } }) => {
+	.inputValidator((data: { householdId: string }) => data)
+	.handler(async ({ data: { householdId } }) => {
+		const headers = getRequestHeaders();
+		const session = await auth.api.getSession({ headers });
+
+		if (!session?.user?.id) {
+			throw redirect({ to: "/", search: { error: undefined } });
+		}
+
+		const membership = await getHouseholdMembership(session.user.id, householdId);
+		if (!membership) {
+			const active = await getActiveHouseholdMembership(session.user.id);
+			if (active) {
+				throw redirect({
+					to: "/$householdId",
+					params: { householdId: active.householdId },
+					search: { error: "HouseholdAccessDenied" },
+				});
+			}
+			throw redirect({ to: "/landing", search: { error: "NoHouseholdMembership" } });
+		}
+
+		const userId = session.user.id;
 		// Check if user has a linked Google account
 		const googleAccount = isGoogleEnabled
 			? await prisma.account.findFirst({
@@ -29,10 +53,10 @@ const loadSettings = createServerFn({ method: "GET" })
 	});
 
 export const Route = createFileRoute("/$householdId/_layout/settings")({
-	loader: async ({ context }) => {
+	loader: async ({ params, context }) => {
 		const { householdContext } = context as { householdContext: HouseholdContext };
 		const data = await loadSettings({
-			data: { userId: householdContext.userId },
+			data: { householdId: params.householdId },
 		});
 		return { ...data, householdContext };
 	},

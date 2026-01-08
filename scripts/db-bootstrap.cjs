@@ -99,22 +99,23 @@ const main = async () => {
 		select: {
 			id: true,
 			isSuperAdmin: true,
-			passwordLoginDisabled: true,
-			passwordHash: true,
-			passwordResetRequired: true,
+			accounts: {
+				where: { providerId: "credential" },
+				select: { id: true, accountId: true, password: true, disabled: true },
+			},
 		},
 	});
 
 	const updates = {
 		isSuperAdmin: true,
-		passwordLoginDisabled: false,
 	};
 
 	let generatedPassword;
-	if (!existing || forceRotate || !existing.passwordHash) {
+	let passwordHash;
+	const credentialAccount = existing?.accounts?.[0] ?? null;
+	if (!existing || forceRotate || !credentialAccount?.password) {
 		generatedPassword = generatePassword();
-		updates.passwordHash = await hashPassword(generatedPassword);
-		updates.passwordResetRequired = true;
+		passwordHash = await hashPassword(generatedPassword);
 	}
 
 	let userId;
@@ -146,11 +147,27 @@ const main = async () => {
 		await prisma.account.create({
 			data: {
 				userId,
-				accountId: userId,
+				accountId: normalizedEmail,
 				providerId: "credential",
-				password: updates.passwordHash,
+				password: passwordHash,
+				passwordResetRequired: true,
+				disabled: false,
 			},
 		});
+	} else if (credentialAccount) {
+		const accountUpdates = {};
+		if (credentialAccount.disabled) {
+			accountUpdates.disabled = false;
+		}
+		if (credentialAccount.accountId !== normalizedEmail) {
+			accountUpdates.accountId = normalizedEmail;
+		}
+		if (Object.keys(accountUpdates).length > 0) {
+			await prisma.account.update({
+				where: { id: credentialAccount.id },
+				data: accountUpdates,
+			});
+		}
 	}
 
 	if (generatedPassword) {

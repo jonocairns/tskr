@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-
+import { getRequestHeaders } from "@tanstack/react-start/server";
+import { auth } from "@/auth/auth";
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";
 import { AuditLog } from "@/components/AuditLog";
@@ -15,13 +16,34 @@ import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";
-import type { HouseholdMembership } from "@/lib/households";
+import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
 
 import type { HouseholdContext } from "../_layout";
 
 const loadDashboard = createServerFn({ method: "GET" })
-	.inputValidator((data: { householdId: string; userId: string; membership: HouseholdMembership }) => data)
-	.handler(async ({ data: { householdId, userId, membership } }) => {
+	.inputValidator((data: { householdId: string }) => data)
+	.handler(async ({ data: { householdId } }) => {
+		const headers = getRequestHeaders();
+		const session = await auth.api.getSession({ headers });
+
+		if (!session?.user?.id) {
+			throw redirect({ to: "/", search: { error: undefined } });
+		}
+
+		const membership = await getHouseholdMembership(session.user.id, householdId);
+		if (!membership) {
+			const active = await getActiveHouseholdMembership(session.user.id);
+			if (active) {
+				throw redirect({
+					to: "/$householdId",
+					params: { householdId: active.householdId },
+					search: { error: "HouseholdAccessDenied" },
+				});
+			}
+			throw redirect({ to: "/landing", search: { error: "NoHouseholdMembership" } });
+		}
+
+		const userId = session.user.id;
 		const dashboardData = await getDashboardData(userId, householdId);
 
 		const { entries: leaderboardEntries, myPoints } = buildLeaderboardSummary({
@@ -66,8 +88,6 @@ export const Route = createFileRoute("/$householdId/_layout/")({
 		const data = await loadDashboard({
 			data: {
 				householdId: params.householdId,
-				userId: householdContext.userId,
-				membership: householdContext.membership,
 			},
 		});
 		return { ...data, householdContext };
