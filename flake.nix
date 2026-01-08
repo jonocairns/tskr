@@ -16,6 +16,7 @@
             nodejs_24
             corepack
             pnpm
+            gh
             openssl
             sqlite
             pkg-config
