@@ -1,16 +1,14 @@
 import { createRootRoute, HeadContent, Outlet, redirect, Scripts, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth, type Session } from "@/auth/auth";
+import type { Session } from "@/auth/auth";
 import { Providers } from "@/components/Providers";
 import appCss from "@/globals.css?url";
 import { checkPasswordResetRequired } from "@/lib/passwordReset";
+import { getValidSession } from "@/lib/sessionServer";
 
 const getSession = createServerFn({ method: "GET" }).handler(async () => {
-	const headers = getRequestHeaders();
-	const session = await auth.api.getSession({ headers });
-	return session;
+	return getValidSession();
 });
 
 const checkPasswordReset = createServerFn({ method: "GET" })

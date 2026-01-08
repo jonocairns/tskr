@@ -1,9 +1,8 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
 import { getActiveHouseholdMembership, getHouseholdMembership, type HouseholdMembership } from "@/lib/households";
+import { requireValidSession } from "@/lib/sessionServer";
 
 export type HouseholdContext = {
 	session: {
@@ -23,12 +22,7 @@ export type HouseholdContext = {
 const validateHouseholdAccess = createServerFn({ method: "GET" })
 	.inputValidator((data: { householdId: string }) => data)
 	.handler(async ({ data: { householdId } }): Promise<HouseholdContext> => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw redirect({ to: "/", search: { error: undefined } });
-		}
+		const session = await requireValidSession();
 
 		const userId = session.user.id;
 		const membership = await getHouseholdMembership(userId, householdId);

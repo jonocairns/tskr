@@ -1,25 +1,19 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { SettingsContent } from "@/components/settings/SettingsContent";
 import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
+import { requireValidSession } from "@/lib/sessionServer";
 import type { HouseholdContext } from "../_layout";
 
 const loadSettings = createServerFn({ method: "GET" })
 	.inputValidator((data: { householdId: string }) => data)
-	.handler(async ({ data: { householdId } }) => {
+		.handler(async ({ data: { householdId } }) => {
 		const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw redirect({ to: "/", search: { error: undefined } });
-		}
+		const session = await requireValidSession();
 
 		const membership = await getHouseholdMembership(session.user.id, householdId);
 		if (!membership) {

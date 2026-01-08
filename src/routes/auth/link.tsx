@@ -1,20 +1,14 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { useEffect, useRef } from "react";
 
-import { auth } from "@/auth/auth";
 import { getActiveHouseholdMembership } from "@/lib/households";
+import { requireValidSession } from "@/lib/sessionServer";
 
 const handleLinkCallback = createServerFn({ method: "GET" })
 	.inputValidator((data: { returnTo?: string }) => data)
 	.handler(async ({ data: { returnTo } }) => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw redirect({ to: "/", search: { error: undefined } });
-		}
+		const session = await requireValidSession();
 
 		// Get active household for redirect
 		const active = await getActiveHouseholdMembership(session.user.id);

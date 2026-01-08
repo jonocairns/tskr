@@ -1,16 +1,14 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
 import { AuthCta } from "@/components/AuthCta";
 import { PageShell } from "@/components/PageShell";
 import { getActiveHouseholdMembership } from "@/lib/households";
+import { getValidSession } from "@/lib/sessionServer";
 
 const loadAdminRedirect = createServerFn({ method: "GET" }).handler(async () => {
 	const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-	const headers = getRequestHeaders();
-	const session = await auth.api.getSession({ headers });
+	const session = await getValidSession();
 
 	if (!session?.user?.id) {
 		return {

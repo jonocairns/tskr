@@ -1,19 +1,17 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
 import { AuthCta } from "@/components/AuthCta";
 import { PageShell } from "@/components/PageShell";
 import { getAuthErrorMessage } from "@/lib/authError";
 import { getActiveHouseholdMembership } from "@/lib/households";
+import { getValidSession } from "@/lib/sessionServer";
 
 const loadIndexPage = createServerFn({ method: "GET" })
 	.inputValidator((data: { error?: string }) => data)
 	.handler(async ({ data }) => {
 		const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
+		const session = await getValidSession();
 
 		if (!session?.user?.id) {
 			const authError = data.error ? getAuthErrorMessage(data.error) : null;

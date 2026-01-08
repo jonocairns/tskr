@@ -1,26 +1,20 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
 import { AuthSettingsCard } from "@/components/admin/AuthSettingsCard";
 import { UsersCard } from "@/components/admin/UsersCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { getAppSettings } from "@/lib/appSettings";
 import { prisma } from "@/lib/prisma";
+import { requireValidSession } from "@/lib/sessionServer";
 import type { HouseholdContext } from "../_layout";
 
 const loadAdmin = createServerFn({ method: "GET" })
 	.inputValidator((data: { householdId: string }) => data)
-	.handler(async ({ data: { householdId } }) => {
+		.handler(async ({ data: { householdId } }) => {
 		const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw redirect({ to: "/", search: { error: undefined } });
-		}
+		const session = await requireValidSession();
 
 		const isSuperAdmin = (session.user as { isSuperAdmin?: boolean }).isSuperAdmin ?? false;
 

@@ -1,7 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
-import { auth } from "@/auth/auth";
 import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,18 +7,14 @@ import { PageShell } from "@/components/PageShell";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
+import { requireValidSession } from "@/lib/sessionServer";
 
 import type { HouseholdContext } from "../_layout";
 
 const loadAssignments = createServerFn({ method: "GET" })
 	.inputValidator((data: { householdId: string }) => data)
-	.handler(async ({ data: { householdId } }) => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw redirect({ to: "/", search: { error: undefined } });
-		}
+		.handler(async ({ data: { householdId } }) => {
+		const session = await requireValidSession();
 
 		const membership = await getHouseholdMembership(session.user.id, householdId);
 		if (!membership) {

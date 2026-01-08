@@ -1,7 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
-import { auth } from "@/auth/auth";
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";
 import { AuditLog } from "@/components/AuditLog";
@@ -17,18 +15,14 @@ import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
+import { requireValidSession } from "@/lib/sessionServer";
 
 import type { HouseholdContext } from "../_layout";
 
 const loadDashboard = createServerFn({ method: "GET" })
 	.inputValidator((data: { householdId: string }) => data)
-	.handler(async ({ data: { householdId } }) => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw redirect({ to: "/", search: { error: undefined } });
-		}
+		.handler(async ({ data: { householdId } }) => {
+		const session = await requireValidSession();
 
 		const membership = await getHouseholdMembership(session.user.id, householdId);
 		if (!membership) {
