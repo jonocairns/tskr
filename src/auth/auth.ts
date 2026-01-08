@@ -12,6 +12,65 @@ const scryptAsync = promisify(scrypt);
 const HASH_KEY_LENGTH = 64;
 const SALT_LENGTH = 16;
 
+const getProviderIdFromParams = (params: unknown): string | null => {
+	if (!params || typeof params !== "object") {
+		return null;
+	}
+
+	const record = params as Record<string, unknown>;
+	for (const key of ["providerId", "provider", "id"]) {
+		const value = record[key];
+		if (typeof value === "string" && value.length > 0) {
+			return value;
+		}
+	}
+
+	return null;
+};
+
+const getProviderIdFromPath = (path: unknown): string | null => {
+	if (typeof path !== "string") {
+		return null;
+	}
+
+	const match = path.match(/\/oauth2\/callback\/([^/?#]+)/) ?? path.match(/\/callback\/([^/?#]+)/) ?? null;
+
+	return match?.[1] ?? null;
+};
+
+const getProviderIdFromContext = (ctx: unknown): string | null => {
+	if (!ctx || typeof ctx !== "object") {
+		return null;
+	}
+
+	const context = ctx as { params?: unknown; path?: unknown; provider?: unknown };
+	const paramProvider = getProviderIdFromParams(context.params);
+	if (paramProvider) {
+		return paramProvider;
+	}
+
+	const provider = context.provider;
+	if (typeof provider === "string") {
+		return provider;
+	}
+	if (provider && typeof provider === "object" && "id" in provider) {
+		const providerId = (provider as { id?: unknown }).id;
+		if (typeof providerId === "string" && providerId.length > 0) {
+			return providerId;
+		}
+	}
+
+	return getProviderIdFromPath(context.path);
+};
+
+const isOAuthCallbackPath = (path: unknown): boolean => {
+	if (typeof path !== "string") {
+		return false;
+	}
+
+	return path.includes("/oauth2/callback") || path.includes("/callback");
+};
+
 const googleProvider =
 	config.googleClientId && config.googleClientSecret
 		? {
@@ -104,18 +163,9 @@ export const auth = betterAuth({
 			create: {
 				before: async (user, ctx) => {
 					console.log("[auth] user.create.before hook called with email:", user.email);
-					const providerId =
-						typeof ctx?.params === "object" && ctx?.params
-							? "providerId" in ctx.params && typeof ctx.params.providerId === "string"
-								? ctx.params.providerId
-								: "id" in ctx.params && typeof ctx.params.id === "string"
-									? ctx.params.id
-									: null
-							: null;
-					const isCallbackPath =
-						typeof ctx?.path === "string" &&
-						(ctx.path === "/oauth2/callback/:providerId" || ctx.path === "/callback/:id");
-					const shouldCheckGoogleSignup = providerId === "google" || (isCallbackPath && !providerId);
+					const providerId = getProviderIdFromContext(ctx);
+					const shouldCheckGoogleSignup =
+						providerId === "google" || (!providerId && isOAuthCallbackPath((ctx as { path?: unknown })?.path));
 					if (!shouldCheckGoogleSignup) {
 						return { data: user };
 					}

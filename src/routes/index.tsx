@@ -7,13 +7,11 @@ import { AuthCta } from "@/components/AuthCta";
 import { PageShell } from "@/components/PageShell";
 import { getAuthErrorMessage } from "@/lib/authError";
 import { getActiveHouseholdMembership } from "@/lib/households";
-import { config } from "@/server-config";
-
-const isGoogleEnabled = Boolean(config.googleClientId && config.googleClientSecret);
 
 const loadIndexPage = createServerFn({ method: "GET" })
 	.inputValidator((data: { error?: string }) => data)
 	.handler(async ({ data }) => {
+		const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 		const headers = getRequestHeaders();
 		const session = await auth.api.getSession({ headers });
 
@@ -22,7 +20,7 @@ const loadIndexPage = createServerFn({ method: "GET" })
 			return {
 				authenticated: false as const,
 				authError,
-				googleEnabled: isGoogleEnabled,
+				googleEnabled,
 			};
 		}
 

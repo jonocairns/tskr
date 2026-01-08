@@ -6,18 +6,16 @@ import { auth } from "@/auth/auth";
 import { AuthCta } from "@/components/AuthCta";
 import { PageShell } from "@/components/PageShell";
 import { getActiveHouseholdMembership } from "@/lib/households";
-import { config } from "@/server-config";
-
-const isGoogleEnabled = Boolean(config.googleClientId && config.googleClientSecret);
 
 const loadAdminRedirect = createServerFn({ method: "GET" }).handler(async () => {
+	const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 	const headers = getRequestHeaders();
 	const session = await auth.api.getSession({ headers });
 
 	if (!session?.user?.id) {
 		return {
 			authenticated: false as const,
-			googleEnabled: isGoogleEnabled,
+			googleEnabled,
 		};
 	}
 

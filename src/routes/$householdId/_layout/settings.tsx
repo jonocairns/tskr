@@ -8,15 +8,12 @@ import { PageShell } from "@/components/PageShell";
 import { SettingsContent } from "@/components/settings/SettingsContent";
 import { getActiveHouseholdMembership, getHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
-import { config } from "@/server-config";
-
 import type { HouseholdContext } from "../_layout";
-
-const isGoogleEnabled = Boolean(config.googleClientId && config.googleClientSecret);
 
 const loadSettings = createServerFn({ method: "GET" })
 	.inputValidator((data: { householdId: string }) => data)
 	.handler(async ({ data: { householdId } }) => {
+		const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 		const headers = getRequestHeaders();
 		const session = await auth.api.getSession({ headers });
 
@@ -39,7 +36,7 @@ const loadSettings = createServerFn({ method: "GET" })
 
 		const userId = session.user.id;
 		// Check if user has a linked Google account
-		const googleAccount = isGoogleEnabled
+		const googleAccount = googleEnabled
 			? await prisma.account.findFirst({
 					where: { userId, providerId: "google" },
 					select: { id: true },
@@ -48,7 +45,7 @@ const loadSettings = createServerFn({ method: "GET" })
 
 		return {
 			hasGoogleAccount: !!googleAccount,
-			googleEnabled: isGoogleEnabled,
+			googleEnabled,
 		};
 	});
 

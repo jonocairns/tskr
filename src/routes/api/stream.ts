@@ -36,7 +36,14 @@ export const Route = createFileRoute("/api/stream")({
 				const stream = new ReadableStream<Uint8Array>({
 					start(controller) {
 						const send = (payload: string) => {
-							controller.enqueue(encoder.encode(payload));
+							if (isClosed) {
+								return;
+							}
+							try {
+								controller.enqueue(encoder.encode(payload));
+							} catch {
+								isClosed = true;
+							}
 						};
 						const sendEvent = (event: string, data: unknown) => {
 							send(`event: ${event}\n`);

@@ -6,10 +6,6 @@ import { createTRPCContext } from "@/server/trpc";
 import { config } from "@/server-config";
 
 function validateOrigin(req: Request): boolean {
-	if (req.method === "GET") {
-		return true;
-	}
-
 	const origin = req.headers.get("origin");
 	if (origin) {
 		return isAllowedOrigin(origin);
@@ -25,7 +21,37 @@ function validateOrigin(req: Request): boolean {
 		}
 	}
 
+	const requestOrigin = getRequestOrigin(req);
+	if (requestOrigin && isAllowedOrigin(requestOrigin)) {
+		return true;
+	}
+
+	const host = req.headers.get("host");
+	if (host) {
+		const hostOrigin = getOriginFromHost(host);
+		if (hostOrigin && isAllowedOrigin(hostOrigin)) {
+			return true;
+		}
+	}
+
 	return false;
+}
+
+function getRequestOrigin(req: Request): string | null {
+	try {
+		return new URL(req.url).origin;
+	} catch {
+		return null;
+	}
+}
+
+function getOriginFromHost(host: string): string | null {
+	try {
+		const appOrigin = new URL(config.appUrl);
+		return new URL(`${appOrigin.protocol}//${host}`).origin;
+	} catch {
+		return null;
+	}
 }
 
 function isAllowedOrigin(origin: string): boolean {

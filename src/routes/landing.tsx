@@ -10,18 +10,16 @@ import { JoinCard } from "@/components/household/JoinCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { getActiveHouseholdMembership } from "@/lib/households";
-import { config } from "@/server-config";
-
-const isGoogleEnabled = Boolean(config.googleClientId && config.googleClientSecret);
 
 const loadLandingPage = createServerFn({ method: "GET" }).handler(async () => {
+	const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 	const headers = getRequestHeaders();
 	const session = await auth.api.getSession({ headers });
 
 	if (!session?.user?.id) {
 		return {
 			authenticated: false as const,
-			googleEnabled: isGoogleEnabled,
+			googleEnabled,
 		};
 	}
 

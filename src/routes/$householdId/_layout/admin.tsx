@@ -9,15 +9,12 @@ import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { getAppSettings } from "@/lib/appSettings";
 import { prisma } from "@/lib/prisma";
-import { config } from "@/server-config";
-
 import type { HouseholdContext } from "../_layout";
-
-const isGoogleEnabled = Boolean(config.googleClientId && config.googleClientSecret);
 
 const loadAdmin = createServerFn({ method: "GET" })
 	.inputValidator((data: { householdId: string }) => data)
 	.handler(async ({ data: { householdId } }) => {
+		const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 		const headers = getRequestHeaders();
 		const session = await auth.api.getSession({ headers });
 
@@ -52,7 +49,7 @@ const loadAdmin = createServerFn({ method: "GET" })
 
 		const userRows = users.map(({ accounts, ...user }) => {
 			const credentialAccount = accounts.find((a) => a.providerId === "credential");
-			const hasGoogleAccount = isGoogleEnabled && accounts.some((a) => a.providerId === "google");
+			const hasGoogleAccount = googleEnabled && accounts.some((a) => a.providerId === "google");
 			return {
 				...user,
 				createdAt: user.createdAt.toISOString(),
@@ -62,11 +59,11 @@ const loadAdmin = createServerFn({ method: "GET" })
 			};
 		});
 
-		const settings = isGoogleEnabled ? await getAppSettings() : null;
+		const settings = googleEnabled ? await getAppSettings() : null;
 
 		return {
 			userRows,
-			googleEnabled: isGoogleEnabled,
+			googleEnabled,
 			settings,
 		};
 	});
