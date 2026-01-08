@@ -102,10 +102,14 @@ export const ResetPasswordForm = ({ token }: Props) => {
 		}
 
 		startTransition(async () => {
-			if (token) {
-				await resetMutation.mutateAsync({ token, password });
-			} else {
-				await resetAuthedMutation.mutateAsync({ password });
+			try {
+				if (token) {
+					await resetMutation.mutateAsync({ token, password });
+				} else {
+					await resetAuthedMutation.mutateAsync({ password });
+				}
+			} catch (error) {
+				console.error("[ResetPasswordForm] Reset failed:", error);
 			}
 		});
 	};

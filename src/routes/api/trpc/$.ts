@@ -21,6 +21,11 @@ function validateOrigin(req: Request): boolean {
 		}
 	}
 
+	const forwardedOrigin = getForwardedOrigin(req);
+	if (forwardedOrigin && isAllowedOrigin(forwardedOrigin)) {
+		return true;
+	}
+
 	const requestOrigin = getRequestOrigin(req);
 	if (requestOrigin && isAllowedOrigin(requestOrigin)) {
 		return true;
@@ -35,6 +40,31 @@ function validateOrigin(req: Request): boolean {
 	}
 
 	return false;
+}
+
+function getForwardedOrigin(req: Request): string | null {
+	const forwardedHost = req.headers.get("x-forwarded-host");
+	if (!forwardedHost) {
+		return null;
+	}
+
+	const host = forwardedHost.split(",")[0]?.trim();
+	if (!host) {
+		return null;
+	}
+
+	const forwardedProto = req.headers.get("x-forwarded-proto");
+	const proto = forwardedProto?.split(",")[0]?.trim();
+
+	if (proto) {
+		try {
+			return new URL(`${proto}://${host}`).origin;
+		} catch {
+			return null;
+		}
+	}
+
+	return getOriginFromHost(host);
 }
 
 function getRequestOrigin(req: Request): string | null {

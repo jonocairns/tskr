@@ -160,53 +160,49 @@ export const auth = betterAuth({
 
 	databaseHooks: {
 		user: {
-			create: {
-				before: async (user, ctx) => {
-					console.log("[auth] user.create.before hook called with email:", user.email);
-					const providerId = getProviderIdFromContext(ctx);
-					const shouldCheckGoogleSignup =
-						providerId === "google" || (!providerId && isOAuthCallbackPath((ctx as { path?: unknown })?.path));
-					if (!shouldCheckGoogleSignup) {
-						return { data: user };
+				create: {
+					before: async (user, ctx) => {
+						const providerId = getProviderIdFromContext(ctx);
+						const shouldCheckGoogleSignup =
+							providerId === "google" || (!providerId && isOAuthCallbackPath((ctx as { path?: unknown })?.path));
+						if (!shouldCheckGoogleSignup) {
+							return { data: user };
 					}
 					// For Google sign-ups, check if new account creation is allowed
 					// Note: This only blocks NEW user creation, not account linking
 					const settings = await getAppSettings();
-					if (!settings.allowGoogleAccountCreation) {
-						// Check if user already exists by email (this would be a linking/sign-in scenario)
-						const existingUser = await prisma.user.findUnique({
-							where: { email: user.email },
-							select: { id: true },
-						});
-						console.log("[auth] Existing user found:", existingUser?.id ?? "none");
-						if (existingUser) {
-							// User exists - allow Better Auth to handle account linking
-							return { data: user };
+						if (!settings.allowGoogleAccountCreation) {
+							// Check if user already exists by email (this would be a linking/sign-in scenario)
+							const existingUser = await prisma.user.findUnique({
+								where: { email: user.email },
+								select: { id: true },
+							});
+							if (existingUser) {
+								// User exists - allow Better Auth to handle account linking
+								return { data: user };
+							}
+							// No existing user - block creation of new users via Google
+							return false;
 						}
-						// No existing user - block creation of new users via Google
-						console.log("[auth] Blocking new user creation via Google - allowGoogleAccountCreation is false");
-						return false;
-					}
-					return { data: user };
+						return { data: user };
+					},
 				},
-			},
 		},
 		account: {
 			create: {
 				after: async (account) => {
 					// When a Google account is linked, optionally update user profile
-					if (account.providerId === "google") {
-						// Check if user already has other accounts (linking scenario vs first sign-up)
-						const existingAccounts = await prisma.account.count({
-							where: { userId: account.userId },
-						});
+						if (account.providerId === "google") {
+							// Check if user already has other accounts (linking scenario vs first sign-up)
+							const existingAccounts = await prisma.account.count({
+								where: { userId: account.userId },
+							});
 
-						// If user has multiple accounts, don't overwrite their existing email/name
-						// This prevents credential account email from being replaced by Google email
-						if (existingAccounts > 1) {
-							console.log("[auth] User already has accounts, skipping profile update from Google");
-							return;
-						}
+							// If user has multiple accounts, don't overwrite their existing email/name
+							// This prevents credential account email from being replaced by Google email
+							if (existingAccounts > 1) {
+								return;
+							}
 
 						// First-time Google sign-up: update profile from Google
 						const googleProfile = await prisma.account.findUnique({
