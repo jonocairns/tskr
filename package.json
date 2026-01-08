@@ -21,6 +21,7 @@
 		"check": "pnpm lint && pnpm compile && pnpm test"
 	},
 	"dependencies": {
+		"@hattip/adapter-node": "^0.0.49",
 		"@prisma/adapter-better-sqlite3": "^7.2.0",
 		"@prisma/client": "7.2.0",
 		"@radix-ui/react-alert-dialog": "^1.1.15",

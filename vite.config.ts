@@ -2,11 +2,27 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
+import { muteWarningsPlugin } from "./muteWarningsPlugin";
+
 export default defineConfig({
 	plugins: [
-		viteTsConfigPaths({
-			projects: ["./tsconfig.json"],
-		}),
+		muteWarningsPlugin(["MODULE_LEVEL_DIRECTIVE"]),
+		viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
 		tanstackStart(),
 	],
+	build: {
+		rollupOptions: {
+			output: {
+				manualChunks(id) {
+					if (id.includes("node_modules")) {
+						if (id.includes("@tanstack")) return "tanstack";
+						if (id.includes("framer-motion")) return "framer-motion";
+						if (id.includes("radix-ui")) return "radix";
+						if (id.includes("lucide-react")) return "icons";
+						return "vendor";
+					}
+				},
+			},
+		},
+	},
 });

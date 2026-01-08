@@ -1,6 +1,4 @@
-import { createServer } from "node:http";
-import { Readable } from "node:stream";
-
+import { createServer } from "@hattip/adapter-node";
 // eslint-disable-next-line import/no-named-default
 import server from "../dist/server/server.js";
 
@@ -14,37 +12,10 @@ if (typeof handler !== "function") {
 	process.exit(1);
 }
 
-createServer(async (req, res) => {
-	try {
-		const url = new URL(req.url || "/", `http://${req.headers.host}`);
-		const body = req.method === "GET" || req.method === "HEAD" ? undefined : req;
-		const request = new Request(url, {
-			method: req.method,
-			headers: req.headers,
-			body,
-			duplex: body ? "half" : undefined,
-		});
+const app = createServer(async (ctx) => {
+	return handler(ctx.request);
+});
 
-		const response = await handler(request);
-
-		res.writeHead(response.status, Object.fromEntries(response.headers.entries()));
-
-		if (!response.body) {
-			res.end();
-			return;
-		}
-
-		const nodeStream = Readable.fromWeb(response.body);
-		nodeStream.on("error", (error) => {
-			console.error("Error streaming response", error);
-			res.destroy(error);
-		});
-		nodeStream.pipe(res);
-	} catch (error) {
-		console.error("Unhandled error in request handler", error);
-		res.statusCode = 500;
-		res.end("Internal Server Error");
-	}
-}).listen(PORT, HOST, () => {
+app.listen(PORT, HOST, () => {
 	console.log(`Server listening on http://${HOST}:${PORT}`);
 });

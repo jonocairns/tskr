@@ -1,5 +1,3 @@
-"use client";
-
 import { useRouter } from "@tanstack/react-router";
 import { RocketIcon } from "lucide-react";
 import { type FormEvent, useState, useTransition } from "react";

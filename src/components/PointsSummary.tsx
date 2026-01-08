@@ -1,5 +1,3 @@
-"use client";
-
 import { useRouter } from "@tanstack/react-router";
 import { GiftIcon, TrophyIcon } from "lucide-react";
 import { useState, useTransition } from "react";

@@ -1,5 +1,3 @@
-"use client";
-
 import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon, LinkIcon } from "lucide-react";
 import { useTheme } from "next-themes";

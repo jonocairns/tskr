@@ -1,5 +1,3 @@
-"use client";
-
 import { Link } from "@tanstack/react-router";
 import { ClipboardListIcon, HomeIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 

@@ -1,5 +1,3 @@
-"use client";
-
 import { ChromeIcon, PencilIcon, XIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";

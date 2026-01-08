@@ -1,5 +1,3 @@
-"use client";
-
 import { PageTransition } from "@/components/PageTransition";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { ThemeProvider } from "@/components/ThemeProvider";

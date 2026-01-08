@@ -1,5 +1,3 @@
-"use client";
-
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState, useTransition } from "react";
 

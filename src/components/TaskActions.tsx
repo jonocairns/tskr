@@ -1,5 +1,3 @@
-"use client";
-
 import { TaskActionsProvider } from "@/components/task-actions/Context";
 import { PresetActionsCard } from "@/components/task-actions/PresetActionsCard";
 import type { PresetSummary } from "@/components/task-actions/types";

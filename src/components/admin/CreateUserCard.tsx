@@ -1,5 +1,3 @@
-"use client";
-
 import { UserPlusIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 

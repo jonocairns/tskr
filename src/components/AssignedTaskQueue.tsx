@@ -1,5 +1,3 @@
-"use client";
-
 import { useRouter } from "@tanstack/react-router";
 import { CheckIcon } from "lucide-react";
 import { useEffect, useState } from "react";

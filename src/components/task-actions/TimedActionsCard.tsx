@@ -1,5 +1,3 @@
-"use client";
-
 import { useRouter } from "@tanstack/react-router";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
 import type { FormEvent } from "react";
