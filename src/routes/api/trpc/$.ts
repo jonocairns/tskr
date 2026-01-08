@@ -30,11 +30,18 @@ function validateOrigin(req: Request): boolean {
 
 function isAllowedOrigin(origin: string): boolean {
 	const appUrl = config.appUrl;
+	let appOrigin: string;
+
+	try {
+		appOrigin = new URL(appUrl).origin;
+	} catch {
+		return false;
+	}
 
 	if (config.isDev) {
 		try {
 			const originUrl = new URL(origin);
-			const appUrlObj = new URL(appUrl);
+			const appUrlObj = new URL(appOrigin);
 
 			if (originUrl.hostname === "localhost" || originUrl.hostname === "127.0.0.1") {
 				return appUrlObj.hostname === "localhost" || appUrlObj.hostname === "127.0.0.1";
@@ -44,7 +51,7 @@ function isAllowedOrigin(origin: string): boolean {
 		}
 	}
 
-	return origin === appUrl;
+	return origin === appOrigin;
 }
 
 async function handleRequest(req: Request) {

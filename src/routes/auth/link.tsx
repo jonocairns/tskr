@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { useEffect, useRef } from "react";
 
 import { auth } from "@/auth/auth";
 import { getActiveHouseholdMembership } from "@/lib/households";
@@ -53,12 +54,20 @@ export const Route = createFileRoute("/auth/link")({
 
 function LinkCallbackPage() {
 	const data = Route.useLoaderData();
+	const didRedirectRef = useRef(false);
 
 	// Set the success flag and redirect
-	if (typeof window !== "undefined") {
+	useEffect(() => {
+		if (didRedirectRef.current) {
+			return;
+		}
+		didRedirectRef.current = true;
+		if (typeof window === "undefined") {
+			return;
+		}
 		window.sessionStorage.setItem("googleLinkSuccess", "true");
 		window.location.href = data.redirectTo;
-	}
+	}, [data.redirectTo]);
 
 	return (
 		<div className="flex min-h-screen items-center justify-center">

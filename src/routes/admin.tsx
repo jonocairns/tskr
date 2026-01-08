@@ -14,8 +14,6 @@ const loadAdminRedirect = createServerFn({ method: "GET" }).handler(async () => 
 	const headers = getRequestHeaders();
 	const session = await auth.api.getSession({ headers });
 
-	console.log("[admin] Session user:", JSON.stringify(session?.user, null, 2));
-
 	if (!session?.user?.id) {
 		return {
 			authenticated: false as const,
@@ -24,7 +22,6 @@ const loadAdminRedirect = createServerFn({ method: "GET" }).handler(async () => 
 	}
 
 	const isSuperAdmin = (session.user as { isSuperAdmin?: boolean }).isSuperAdmin ?? false;
-	console.log("[admin] isSuperAdmin:", isSuperAdmin);
 
 	if (!isSuperAdmin) {
 		throw redirect({ to: "/", search: { error: undefined } });

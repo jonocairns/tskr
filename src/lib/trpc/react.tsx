@@ -10,7 +10,8 @@ export const trpc = createTRPCReact<AppRouter>();
 
 function getBaseUrl() {
 	if (typeof window !== "undefined") return "";
-	return "";
+	if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+	return process.env.APP_URL ?? process.env.NEXTAUTH_URL ?? `http://localhost:${process.env.PORT ?? 5173}`;
 }
 
 export function TRPCProvider({ children }: { children: React.ReactNode }) {

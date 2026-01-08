@@ -152,8 +152,9 @@ export const adminRouter = router({
 		try {
 			// Update user fields (email, name)
 			const userData: { email?: string; name?: string | null } = {};
+			const normalizedEmail = updates.email?.trim().toLowerCase();
 			if (updates.email !== undefined) {
-				userData.email = updates.email.trim().toLowerCase();
+				userData.email = normalizedEmail;
 			}
 			if (updates.name !== undefined) {
 				const trimmedName = updates.name?.trim() ?? "";
@@ -161,7 +162,10 @@ export const adminRouter = router({
 			}
 
 			// Update credential account fields
-			const accountData: { disabled?: boolean; passwordResetRequired?: boolean } = {};
+			const accountData: { disabled?: boolean; passwordResetRequired?: boolean; accountId?: string } = {};
+			if (normalizedEmail) {
+				accountData.accountId = normalizedEmail;
+			}
 			if (updates.credentialDisabled !== undefined) {
 				accountData.disabled = updates.credentialDisabled;
 				if (updates.credentialDisabled) {
