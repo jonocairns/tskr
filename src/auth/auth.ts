@@ -2,6 +2,7 @@ import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { tanstackStartCookies } from "better-auth/tanstack-start";
 
 import { getAppSettings } from "@/lib/appSettings";
 import { prisma } from "@/lib/prisma";
@@ -93,6 +94,10 @@ export const auth = betterAuth({
 			},
 		},
 	},
+
+	plugins: [
+		tanstackStartCookies(), // Must be last for proper cookie handling in TanStack Start
+	],
 
 	databaseHooks: {
 		user: {

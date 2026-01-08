@@ -1,34 +1,27 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
 import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
-import { getHouseholdMembership } from "@/lib/households";
+import type { HouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
 
+import type { HouseholdContext } from "../_layout";
+
 const loadAssignments = createServerFn({ method: "GET" })
-	.inputValidator((data: { householdId: string }) => data)
-	.handler(async ({ data: { householdId } }) => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw redirect({ to: "/", search: { error: undefined } });
-		}
-
-		const userId = session.user.id;
-		const membership = await getHouseholdMembership(userId, householdId);
-
-		if (!membership) {
-			throw redirect({ to: "/landing" });
-		}
-
-		if (membership.role === "DOER") {
+	.inputValidator(
+		(data: {
+			householdId: string;
+			userId: string;
+			membershipRole: HouseholdMembership["role"];
+		}) => data,
+	)
+	.handler(async ({ data: { householdId, userId, membershipRole } }) => {
+		// Authorization check - DOERs cannot access assignments page
+		if (membershipRole === "DOER") {
 			throw redirect({ to: "/$householdId", params: { householdId } });
 		}
 
@@ -83,17 +76,6 @@ const loadAssignments = createServerFn({ method: "GET" })
 			}));
 
 		return {
-			session: {
-				user: {
-					id: session.user.id,
-					name: session.user.name,
-					email: session.user.email,
-					image: session.user.image,
-				},
-			},
-			userId,
-			householdId,
-			membership,
 			members,
 			presetSummaries,
 			assignedTaskEntries,
@@ -101,12 +83,23 @@ const loadAssignments = createServerFn({ method: "GET" })
 	});
 
 export const Route = createFileRoute("/$householdId/_layout/assignments")({
-	loader: ({ params }) => loadAssignments({ data: { householdId: params.householdId } }),
+	loader: async ({ params, context }) => {
+		const { householdContext } = context as { householdContext: HouseholdContext };
+		const data = await loadAssignments({
+			data: {
+				householdId: params.householdId,
+				userId: householdContext.userId,
+				membershipRole: householdContext.membership.role,
+			},
+		});
+		return { ...data, householdContext };
+	},
 	component: AssignmentsPage,
 });
 
 function AssignmentsPage() {
 	const data = Route.useLoaderData();
+	const { householdContext } = data;
 
 	return (
 		<PageShell size="lg">
@@ -114,20 +107,20 @@ function AssignmentsPage() {
 				eyebrow="tskr"
 				title="Assignments"
 				description="Assign tasks and adjust cadence or recurrence."
-				backHref={`/${data.householdId}`}
+				backHref={`/${householdContext.householdId}`}
 				backLabel="Back to dashboard"
-				user={data.session.user}
-				household={{ id: data.householdId, role: data.membership.role }}
+				user={householdContext.session.user}
+				household={{ id: householdContext.householdId, role: householdContext.membership.role }}
 			/>
 
 			<AssignTaskCard
-				householdId={data.householdId}
+				householdId={householdContext.householdId}
 				members={data.members}
 				presets={data.presetSummaries}
-				currentUserId={data.userId}
+				currentUserId={householdContext.userId}
 			/>
 
-			<AssignedTasksManager householdId={data.householdId} initialTasks={data.assignedTaskEntries} />
+			<AssignedTasksManager householdId={householdContext.householdId} initialTasks={data.assignedTaskEntries} />
 		</PageShell>
 	);
 }

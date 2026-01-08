@@ -9,7 +9,7 @@ export default defineConfig({
 	plugins: [
 		muteWarningsPlugin(["MODULE_LEVEL_DIRECTIVE"]),
 		viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
-		tanstackStart({ server: { entry: "server-entry" } }),
+		tanstackStart(),
 		viteReact(),
 	],
 	build: {

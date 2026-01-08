@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
+import { auth, type Session } from "@/auth/auth";
 import { getActiveHouseholdMembership, getHouseholdMembership, type HouseholdMembership } from "@/lib/households";
 
 export type HouseholdContext = {
@@ -21,10 +21,14 @@ export type HouseholdContext = {
 };
 
 const validateHouseholdAccess = createServerFn({ method: "GET" })
-	.inputValidator((data: { householdId: string }) => data)
-	.handler(async ({ data: { householdId } }): Promise<HouseholdContext> => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
+	.inputValidator((data: { householdId: string; cachedSession?: Session | null }) => data)
+	.handler(async ({ data: { householdId, cachedSession } }): Promise<HouseholdContext> => {
+		// Use cached session if available, otherwise fetch fresh
+		let session = cachedSession;
+		if (!session) {
+			const headers = getRequestHeaders();
+			session = await auth.api.getSession({ headers });
+		}
 
 		if (!session?.user?.id) {
 			throw redirect({ to: "/", search: { error: undefined } });
@@ -62,9 +66,13 @@ const validateHouseholdAccess = createServerFn({ method: "GET" })
 	});
 
 export const Route = createFileRoute("/$householdId/_layout")({
-	beforeLoad: async ({ params }) => {
-		const context = await validateHouseholdAccess({ data: { householdId: params.householdId } });
-		return { householdContext: context };
+	beforeLoad: async ({ params, context }) => {
+		// Pass the session from root context to avoid re-fetching
+		const rootSession = (context as { session?: Session | null }).session;
+		const householdContext = await validateHouseholdAccess({
+			data: { householdId: params.householdId, cachedSession: rootSession },
+		});
+		return { householdContext };
 	},
 	component: HouseholdLayout,
 });

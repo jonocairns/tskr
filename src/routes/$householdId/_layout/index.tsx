@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { AssignedTaskQueue } from "@/components/AssignedTaskQueue";
 import { AuditLog } from "@/components/AuditLog";
@@ -17,25 +15,19 @@ import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";
-import { getHouseholdMembership } from "@/lib/households";
+import type { HouseholdMembership } from "@/lib/households";
+
+import type { HouseholdContext } from "../_layout";
 
 const loadDashboard = createServerFn({ method: "GET" })
-	.inputValidator((data: { householdId: string }) => data)
-	.handler(async ({ data: { householdId } }) => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw new Error("Unauthorized");
-		}
-
-		const userId = session.user.id;
-		const membership = await getHouseholdMembership(userId, householdId);
-
-		if (!membership) {
-			throw new Error("Not a member");
-		}
-
+	.inputValidator(
+		(data: {
+			householdId: string;
+			userId: string;
+			membership: HouseholdMembership;
+		}) => data,
+	)
+	.handler(async ({ data: { householdId, userId, membership } }) => {
 		const dashboardData = await getDashboardData(userId, householdId);
 
 		const { entries: leaderboardEntries, myPoints } = buildLeaderboardSummary({
@@ -56,18 +48,6 @@ const loadDashboard = createServerFn({ method: "GET" })
 			membership.role !== "DOER" && (dashboardData.hasApprovalMembers || approvalEntries.length > 0);
 
 		return {
-			session: {
-				user: {
-					id: session.user.id,
-					name: session.user.name,
-					email: session.user.email,
-					image: session.user.image,
-					isSuperAdmin: (session.user as { isSuperAdmin?: boolean }).isSuperAdmin ?? false,
-				},
-			},
-			userId,
-			householdId,
-			membership,
 			myPoints,
 			leaderboardEntries,
 			presetSummaries,
@@ -87,12 +67,23 @@ const loadDashboard = createServerFn({ method: "GET" })
 	});
 
 export const Route = createFileRoute("/$householdId/_layout/")({
-	loader: ({ params }) => loadDashboard({ data: { householdId: params.householdId } }),
+	loader: async ({ params, context }) => {
+		const { householdContext } = context as { householdContext: HouseholdContext };
+		const data = await loadDashboard({
+			data: {
+				householdId: params.householdId,
+				userId: householdContext.userId,
+				membership: householdContext.membership,
+			},
+		});
+		return { ...data, householdContext };
+	},
 	component: DashboardPage,
 });
 
 function DashboardPage() {
 	const data = Route.useLoaderData();
+	const { householdContext } = data;
 
 	return (
 		<PageShell>
@@ -100,8 +91,8 @@ function DashboardPage() {
 				eyebrow="tskr"
 				title="Dashboard"
 				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
-				user={data.session.user}
-				household={{ id: data.householdId, role: data.membership.role }}
+				user={householdContext.session.user}
+				household={{ id: householdContext.householdId, role: householdContext.membership.role }}
 			/>
 
 			<PointsSummary
@@ -112,24 +103,24 @@ function DashboardPage() {
 				pointsLastWeek={data.weeklyPoints}
 				lastTaskAt={data.lastTaskAt}
 				currentStreak={data.currentStreak}
-				householdId={data.householdId}
+				householdId={householdContext.householdId}
 			/>
 
 			{data.assignedTasks.length > 0 ? (
-				<AssignedTaskQueue entries={data.assignedTasks} householdId={data.householdId} />
+				<AssignedTaskQueue entries={data.assignedTasks} householdId={householdContext.householdId} />
 			) : null}
 
 			<TaskActions
-				householdId={data.householdId}
+				householdId={householdContext.householdId}
 				presets={data.presetSummaries}
-				currentUserId={data.userId}
-				currentUserRole={data.membership.role}
+				currentUserId={householdContext.userId}
+				currentUserRole={householdContext.membership.role}
 			/>
 
 			{data.showApprovals ? (
 				<ApprovalQueue
 					entries={data.approvalEntries}
-					currentUserId={data.userId}
+					currentUserId={householdContext.userId}
 					initialHasMore={data.hasMoreApprovals}
 				/>
 			) : null}
@@ -138,12 +129,12 @@ function DashboardPage() {
 
 			<AuditLog
 				entries={data.auditEntries}
-				currentUserId={data.userId}
+				currentUserId={householdContext.userId}
 				initialHasMore={data.hasMoreHistory}
-				householdId={data.householdId}
+				householdId={householdContext.householdId}
 			/>
 
-			<LiveRefresh householdId={data.householdId} />
+			<LiveRefresh householdId={householdContext.householdId} />
 		</PageShell>
 	);
 }

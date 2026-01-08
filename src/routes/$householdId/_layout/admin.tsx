@@ -1,39 +1,24 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "@/auth/auth";
 import { AuthSettingsCard } from "@/components/admin/AuthSettingsCard";
 import { UsersCard } from "@/components/admin/UsersCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { getAppSettings } from "@/lib/appSettings";
-import { getHouseholdMembership } from "@/lib/households";
 import { prisma } from "@/lib/prisma";
 import { config } from "@/server-config";
+
+import type { HouseholdContext } from "../_layout";
 
 const isGoogleEnabled = Boolean(config.googleClientId && config.googleClientSecret);
 
 const loadAdmin = createServerFn({ method: "GET" })
-	.inputValidator((data: { householdId: string }) => data)
-	.handler(async ({ data: { householdId } }) => {
-		const headers = getRequestHeaders();
-		const session = await auth.api.getSession({ headers });
-
-		if (!session?.user?.id) {
-			throw redirect({ to: "/", search: { error: undefined } });
-		}
-
-		const isSuperAdmin = (session.user as { isSuperAdmin?: boolean }).isSuperAdmin ?? false;
-
+	.inputValidator((data: { householdId: string; isSuperAdmin: boolean }) => data)
+	.handler(async ({ data: { householdId, isSuperAdmin } }) => {
+		// Authorization check - only super admins can access
 		if (!isSuperAdmin) {
 			throw redirect({ to: "/$householdId", params: { householdId } });
-		}
-
-		const membership = await getHouseholdMembership(session.user.id, householdId);
-
-		if (!membership) {
-			throw redirect({ to: "/landing" });
 		}
 
 		const users = await prisma.user.findMany({
@@ -69,17 +54,6 @@ const loadAdmin = createServerFn({ method: "GET" })
 		const settings = isGoogleEnabled ? await getAppSettings() : null;
 
 		return {
-			session: {
-				user: {
-					id: session.user.id,
-					name: session.user.name,
-					email: session.user.email,
-					image: session.user.image,
-					isSuperAdmin: true,
-				},
-			},
-			householdId,
-			membership,
 			userRows,
 			googleEnabled: isGoogleEnabled,
 			settings,
@@ -87,12 +61,22 @@ const loadAdmin = createServerFn({ method: "GET" })
 	});
 
 export const Route = createFileRoute("/$householdId/_layout/admin")({
-	loader: ({ params }) => loadAdmin({ data: { householdId: params.householdId } }),
+	loader: async ({ params, context }) => {
+		const { householdContext } = context as { householdContext: HouseholdContext };
+		const data = await loadAdmin({
+			data: {
+				householdId: params.householdId,
+				isSuperAdmin: householdContext.session.user.isSuperAdmin,
+			},
+		});
+		return { ...data, householdContext };
+	},
 	component: AdminPage,
 });
 
 function AdminPage() {
 	const data = Route.useLoaderData();
+	const { householdContext } = data;
 
 	return (
 		<PageShell size="lg">
@@ -100,15 +84,19 @@ function AdminPage() {
 				eyebrow="tskr"
 				title="Admin"
 				description="Generate reset links for user passwords."
-				backHref={`/${data.householdId}/settings`}
+				backHref={`/${householdContext.householdId}/settings`}
 				backLabel="Back to settings"
-				user={data.session.user}
-				household={{ id: data.householdId, role: data.membership.role }}
+				user={householdContext.session.user}
+				household={{ id: householdContext.householdId, role: householdContext.membership.role }}
 			/>
 			{data.googleEnabled && data.settings ? (
 				<AuthSettingsCard initialAllowGoogleAccountCreation={data.settings.allowGoogleAccountCreation} />
 			) : null}
-			<UsersCard users={data.userRows} currentUserId={data.session.user.id} googleEnabled={data.googleEnabled} />
+			<UsersCard
+				users={data.userRows}
+				currentUserId={householdContext.session.user.id}
+				googleEnabled={data.googleEnabled}
+			/>
 		</PageShell>
 	);
 }

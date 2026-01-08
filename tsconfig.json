@@ -18,6 +18,6 @@
 			"@/server-config": ["./server-config.ts"]
 		}
 	},
-	"include": ["**/*.ts", "**/*.tsx", "app/**/*"],
-	"exclude": ["node_modules", ".output", ".vinxi"]
+	"include": ["**/*.ts", "**/*.tsx"],
+	"exclude": ["node_modules"]
 }
