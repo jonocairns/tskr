@@ -31,7 +31,9 @@ function AuthErrorPage() {
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4">
 					<Button asChild size="lg">
-						<Link to="/">Back to sign in</Link>
+						<Link to="/" search={{ error: undefined }}>
+							Back to sign in
+						</Link>
 					</Button>
 					{key !== "Default" ? (
 						<p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">Error code: {key}</p>

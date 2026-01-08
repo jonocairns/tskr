@@ -106,17 +106,10 @@ export const auth = betterAuth({
 		},
 	},
 
-	advanced: {
-		// Sync user profile from OAuth provider on sign-in
-		generateId: () => {
-			return randomBytes(12).toString("base64url");
-		},
-	},
-
 	databaseHooks: {
 		user: {
 			create: {
-				before: async (user) => {
+				before: async (user, _ctx) => {
 					console.log("[auth] user.create.before hook called with email:", user.email);
 					// For social sign-ups, check if new account creation is allowed
 					// Note: This only blocks NEW user creation, not account linking
@@ -130,13 +123,13 @@ export const auth = betterAuth({
 						console.log("[auth] Existing user found:", existingUser?.id ?? "none");
 						if (existingUser) {
 							// User exists - allow Better Auth to handle account linking
-							return user;
+							return { data: user };
 						}
 						// No existing user - block creation of new users via Google
 						console.log("[auth] Blocking new user creation via Google - allowGoogleAccountCreation is false");
 						return false;
 					}
-					return user;
+					return { data: user };
 				},
 			},
 		},

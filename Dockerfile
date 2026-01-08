@@ -33,19 +33,19 @@ FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATABASE_URL="file:/data/dev.db"
-ENV NEXTAUTH_URL="http://localhost:3000"
+ENV APP_URL="http://localhost:3000"
 
 RUN groupadd -g 1001 nextjs \
   && useradd -m -u 1001 -g 1001 nextjs \
   && mkdir -p /data \
   && chown nextjs:nextjs /data
 
+COPY --from=builder --chown=nextjs:nextjs /app/dist ./dist
 COPY --from=builder --chown=nextjs:nextjs /app/public ./public
-COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=pruner --chown=nextjs:nextjs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nextjs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nextjs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=nextjs:nextjs /app/server ./server
 COPY --from=builder --chown=nextjs:nextjs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nextjs /app/docker-entrypoint.d ./docker-entrypoint.d
 COPY --from=builder --chown=nextjs:nextjs /app/docker-entrypoint.sh ./docker-entrypoint.sh
@@ -60,4 +60,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["node", "server.js"]
+CMD ["node", "server/server.js"]

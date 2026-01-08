@@ -108,7 +108,7 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 								<CardDescription>Manage users and system settings.</CardDescription>
 							</div>
 							<Button asChild variant="outline">
-								<Link to={`/${householdId}/admin`}>
+								<Link to="/$householdId/admin" params={{ householdId }}>
 									Admin Panel
 									<ArrowRightIcon className="ml-2 h-4 w-4" />
 								</Link>

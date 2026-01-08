@@ -27,7 +27,7 @@ const loadAdminRedirect = createServerFn({ method: "GET" }).handler(async () => 
 	console.log("[admin] isSuperAdmin:", isSuperAdmin);
 
 	if (!isSuperAdmin) {
-		throw redirect({ to: "/" });
+		throw redirect({ to: "/", search: { error: undefined } });
 	}
 
 	const active = await getActiveHouseholdMembership(session.user.id);

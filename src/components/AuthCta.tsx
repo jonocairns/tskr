@@ -53,7 +53,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 				}
 
 				router.invalidate();
-				router.navigate({ to: "/" });
+				router.navigate({ to: "/", search: { error: undefined } });
 			} catch (_error) {
 				toast({
 					title: "Unable to sign in",

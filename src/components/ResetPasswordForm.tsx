@@ -27,7 +27,7 @@ export const ResetPasswordForm = ({ token }: Props) => {
 		onSuccess: async (data) => {
 			if (!data.email) {
 				toast({ title: "Password updated" });
-				router.navigate({ to: "/" });
+				router.navigate({ to: "/", search: { error: undefined } });
 				router.invalidate();
 				return;
 			}
@@ -45,19 +45,19 @@ export const ResetPasswordForm = ({ token }: Props) => {
 					console.warn("[ResetPasswordForm] Sign-in returned error:", result.error);
 					// Still navigate - the user can sign in manually
 					toast({ title: "Password updated", description: "Please sign in with your new password." });
-					router.navigate({ to: "/" });
+					router.navigate({ to: "/", search: { error: undefined } });
 					router.invalidate();
 					return;
 				}
 
 				toast({ title: "Password updated", description: "You're now signed in." });
 				router.invalidate();
-				router.navigate({ to: "/" });
+				router.navigate({ to: "/", search: { error: undefined } });
 			} catch (error) {
 				console.error("[ResetPasswordForm] Sign-in error:", error);
 				// Password was reset successfully, just redirect to sign in
 				toast({ title: "Password updated", description: "Please sign in with your new password." });
-				router.navigate({ to: "/" });
+				router.navigate({ to: "/", search: { error: undefined } });
 				router.invalidate();
 			}
 		},

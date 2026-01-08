@@ -12,7 +12,7 @@ const handleLinkCallback = createServerFn({ method: "GET" })
 		const session = await auth.api.getSession({ headers });
 
 		if (!session?.user?.id) {
-			throw redirect({ to: "/" });
+			throw redirect({ to: "/", search: { error: undefined } });
 		}
 
 		// Get active household for redirect

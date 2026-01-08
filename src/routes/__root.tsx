@@ -54,7 +54,7 @@ export const Route = createRootRoute({
 
 		// Redirect unauthenticated users to login (except for public routes)
 		if (!session?.user?.id && !isPublicRoute) {
-			throw redirect({ to: "/" });
+			throw redirect({ to: "/", search: { error: undefined } });
 		}
 
 		// Check if user needs to reset their password

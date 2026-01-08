@@ -54,21 +54,21 @@ export const UserMenu = ({ user, household }: Props) => {
 				{householdId ? (
 					<>
 						<DropdownMenuItem asChild>
-							<Link to={`/${householdId}/household`}>
+							<Link to="/$householdId/household" params={{ householdId }}>
 								<HomeIcon className="mr-2 h-4 w-4" />
 								Household
 							</Link>
 						</DropdownMenuItem>
 						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (
 							<DropdownMenuItem asChild>
-								<Link to={`/${householdId}/assignments`}>
+								<Link to="/$householdId/assignments" params={{ householdId }}>
 									<ClipboardListIcon className="mr-2 h-4 w-4" />
 									Assignments
 								</Link>
 							</DropdownMenuItem>
 						) : null}
 						<DropdownMenuItem asChild>
-							<Link to={`/${householdId}/settings`}>
+							<Link to="/$householdId/settings" params={{ householdId }}>
 								<SettingsIcon className="mr-2 h-4 w-4" />
 								Settings
 							</Link>
