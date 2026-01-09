@@ -8,9 +8,9 @@ import { getAppSettings } from "@/lib/appSettings";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getProfileEmail, getProfileImage, getProfileName } from "@/lib/authProfile";
 import { isLoginRateLimited } from "@/lib/loginRateLimit";
-import { checkRateLimit } from "@/lib/rateLimit";
 import { createPasswordResetToken } from "@/lib/passwordReset";
 import { verifyPassword } from "@/lib/passwords";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { config } from "@/server-config";
 import { prisma } from "./prisma";
 

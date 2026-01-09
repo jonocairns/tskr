@@ -2,11 +2,10 @@ import "server-only";
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-
-import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { hashPasswordResetToken } from "@/lib/passwordReset";
 import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { publicProcedure, router } from "@/server/trpc";
 
 const resetPasswordSchema = z.object({
