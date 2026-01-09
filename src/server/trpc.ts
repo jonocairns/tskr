@@ -131,31 +131,6 @@ export const approverProcedure = <TInput extends z.ZodTypeAny>(inputSchema: TInp
 export const dictatorProcedure = <TInput extends z.ZodTypeAny>(inputSchema: TInput) =>
 	householdProcedure(inputSchema).use(validateDictator);
 
-export async function validateHouseholdMembershipFromInput(
-	userId: string,
-	input: { householdId: string },
-): Promise<{ householdId: string; membership: HouseholdMembership }> {
-	const { householdId } = input;
-
-	if (!householdId) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "householdId is required",
-		});
-	}
-
-	const membership = await getHouseholdMembership(userId, householdId);
-
-	if (!membership) {
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message: "You are not a member of this household",
-		});
-	}
-
-	return { householdId, membership };
-}
-
 const isSuperAdmin = t.middleware(({ ctx, next }) => {
 	if (!ctx.session?.user?.id) {
 		throw new TRPCError({ code: "UNAUTHORIZED" });

@@ -35,10 +35,7 @@ Next.js 16 + React 19 | Prisma + SQLite | tRPC + TanStack Query | NextAuth.js | 
 **Household Routing** (URL-based, NOT session-based):
 - Route: `/[householdId]/*`
 - Server pages: Use `getHouseholdContext(householdId)` for auth + membership
-- **tRPC procedures**: Use `protectedProcedure` + manually validate with:
-  - `validateHouseholdMembershipFromInput(userId, input)` - membership check
-  - `validateApproverRoleFromInput(userId, input)` - APPROVER/DICTATOR check
-  - `validateDictatorRoleFromInput(userId, input)` - DICTATOR check
+- **tRPC procedures**: Use `householdProcedure`, `approverProcedure`, or `dictatorProcedure` (validates membership via middleware)
   - All inputs must include `householdId: z.string().min(1)`
 - **Client**: Get `householdId` from `useParams()`, pass to all tRPC calls
 - **Session**: Only stores `id`, `isSuperAdmin`, `hasGoogleAccount` (NOT household context)
