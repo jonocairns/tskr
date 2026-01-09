@@ -3,7 +3,7 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { checkRateLimit } from "@/lib/loginRateLimit";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { hashPasswordResetToken } from "@/lib/passwordReset";
 import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
@@ -15,11 +15,11 @@ const resetPasswordSchema = z.object({
 });
 
 export const passwordResetRouter = router({
-	reset: publicProcedure.input(resetPasswordSchema).mutation(async ({ input }) => {
-		// Rate limiting - using a generic key since we don't have IP access easily in tRPC
-		// In production, you might want to pass IP through context
-		const rateKey = `password-reset:${input.token}`;
-		if (!checkRateLimit(rateKey).ok) {
+	reset: publicProcedure.input(resetPasswordSchema).mutation(async ({ input, ctx }) => {
+		const clientIp = getClientIp(ctx.req);
+		const rateKey = `password-reset:ip:${clientIp ?? "unknown"}`;
+		// 10 attempts per 10 minutes per IP
+		if (!checkRateLimit(rateKey, 10 * 60_000, 10).ok) {
 			throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many requests" });
 		}
 

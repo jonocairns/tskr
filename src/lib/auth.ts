@@ -8,6 +8,7 @@ import { getAppSettings } from "@/lib/appSettings";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
 import { getProfileEmail, getProfileImage, getProfileName } from "@/lib/authProfile";
 import { isLoginRateLimited } from "@/lib/loginRateLimit";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { createPasswordResetToken } from "@/lib/passwordReset";
 import { verifyPassword } from "@/lib/passwords";
 import { config } from "@/server-config";
@@ -143,24 +144,31 @@ export const authOptions: NextAuthOptions = {
 	callbacks: {
 		signIn: async ({ user, account }) => {
 			if (account?.provider === "google") {
-				const settings = await getAppSettings();
-				if (!settings.allowGoogleAccountCreation) {
-					const providerAccountId = account.providerAccountId;
-					if (!providerAccountId) {
+				const providerAccountId = account.providerAccountId;
+				if (!providerAccountId) {
+					return false;
+				}
+
+				const existingAccount = await prisma.account.findUnique({
+					where: {
+						provider_providerAccountId: {
+							provider: "google",
+							providerAccountId,
+						},
+					},
+					select: { id: true },
+				});
+
+				// For new accounts, apply rate limiting and check if creation is allowed
+				if (!existingAccount) {
+					// Rate limit new Google account creation: 10 per hour globally
+					const rateCheck = checkRateLimit("google-signup:global", 60 * 60_000, 10);
+					if (!rateCheck.ok) {
 						return false;
 					}
 
-					const existingAccount = await prisma.account.findUnique({
-						where: {
-							provider_providerAccountId: {
-								provider: "google",
-								providerAccountId,
-							},
-						},
-						select: { id: true },
-					});
-
-					if (!existingAccount) {
+					const settings = await getAppSettings();
+					if (!settings.allowGoogleAccountCreation) {
 						return false;
 					}
 				}
