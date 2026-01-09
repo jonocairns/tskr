@@ -5,8 +5,20 @@ type RateLimitEntry = {
 	resetAt: number;
 };
 
+export type RateLimitResult = {
+	ok: boolean;
+	resetAt: number;
+};
+
+type HeadersLike = Headers | Record<string, string | string[] | undefined> | Record<string, unknown>;
+
+export type RequestLike = {
+	headers?: HeadersLike | null;
+};
+
 declare global {
 	var rateLimitStore: Map<string, RateLimitEntry> | undefined;
+	var rateLimitCleanupInterval: NodeJS.Timeout | undefined;
 }
 
 const store = globalThis.rateLimitStore ?? new Map<string, RateLimitEntry>();
@@ -24,11 +36,14 @@ const cleanupExpiredEntries = () => {
 	}
 };
 
-if (typeof setInterval !== "undefined") {
-	setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
+if (typeof setInterval !== "undefined" && !globalThis.rateLimitCleanupInterval) {
+	globalThis.rateLimitCleanupInterval = setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
+	// In Node.js, unref the interval so it doesn't keep the process alive
+	globalThis.rateLimitCleanupInterval.unref?.();
 }
 
-export const checkRateLimit = (key: string, windowMs: number, max: number) => {
+export const checkRateLimit = (options: { key: string; windowMs: number; max: number }): RateLimitResult => {
+	const { key, windowMs, max } = options;
 	const now = Date.now();
 	const entry = store.get(key);
 	if (!entry || entry.resetAt <= now) {
@@ -45,12 +60,13 @@ export const checkRateLimit = (key: string, windowMs: number, max: number) => {
 	return { ok: true, resetAt: entry.resetAt };
 };
 
-export const getHeaderValue = (req: unknown, key: string) => {
+export const getHeaderValue = (options: { req: RequestLike | null | undefined; key: string }): string | undefined => {
+	const { req, key } = options;
 	if (!req || typeof req !== "object") {
 		return undefined;
 	}
 
-	const headers = (req as { headers?: unknown }).headers;
+	const headers = req.headers;
 	if (!headers) {
 		return undefined;
 	}
@@ -74,11 +90,11 @@ export const getHeaderValue = (req: unknown, key: string) => {
 	return undefined;
 };
 
-export const getClientIp = (req: unknown) => {
-	const forwarded = getHeaderValue(req, "x-forwarded-for");
+export const getClientIp = (req: RequestLike | null | undefined): string | undefined => {
+	const forwarded = getHeaderValue({ req, key: "x-forwarded-for" });
 	if (forwarded) {
 		return forwarded.split(",")[0]?.trim() || undefined;
 	}
 
-	return getHeaderValue(req, "x-real-ip") ?? undefined;
+	return getHeaderValue({ req, key: "x-real-ip" }) ?? undefined;
 };

@@ -1,7 +1,7 @@
 import { checkRateLimit, getClientIp, getHeaderValue, isLoginRateLimited } from "../src/lib/loginRateLimit";
 
 const clearRateLimit = () => {
-	(globalThis as { loginRateLimit?: Map<string, unknown> }).loginRateLimit?.clear();
+	(globalThis as { rateLimitStore?: Map<string, unknown> }).rateLimitStore?.clear();
 };
 
 beforeEach(() => {
@@ -60,7 +60,7 @@ describe("basic rate limiting", () => {
 
 		isLoginRateLimited(email, req);
 
-		const keys = Array.from((globalThis as { loginRateLimit?: Map<string, unknown> }).loginRateLimit?.keys() ?? []);
+		const keys = Array.from((globalThis as { rateLimitStore?: Map<string, unknown> }).rateLimitStore?.keys() ?? []);
 
 		expect(keys).toEqual(
 			expect.arrayContaining([`login:email:${email}`, "login:ip:203.0.113.12", `login:ip:203.0.113.12:email:${email}`]),
@@ -76,105 +76,99 @@ describe("getHeaderValue", () => {
 				: { get: (key: string) => (key.toLowerCase() === "x-real-ip" ? "203.0.113.5" : null) };
 		const req = { headers };
 
-		expect(getHeaderValue(req, "x-real-ip")).toBe("203.0.113.5");
+		expect(getHeaderValue({ req: req, key: "x-real-ip" })).toBe("203.0.113.5");
 	});
 
 	test("reads lowercase header keys from a plain object", () => {
 		const req = { headers: { "x-real-ip": "203.0.113.6" } };
 
-		expect(getHeaderValue(req, "X-Real-IP")).toBe("203.0.113.6");
+		expect(getHeaderValue({ req: req, key: "X-Real-IP" })).toBe("203.0.113.6");
 	});
 
 	test("joins array header values for plain objects", () => {
 		const req = { headers: { "x-forwarded-for": ["198.51.100.1", "198.51.100.2"] } };
 
-		expect(getHeaderValue(req, "x-forwarded-for")).toBe("198.51.100.1,198.51.100.2");
+		expect(getHeaderValue({ req: req, key: "x-forwarded-for" })).toBe("198.51.100.1,198.51.100.2");
 	});
 
 	test("ignores missing header containers", () => {
-		expect(getHeaderValue({}, "x-real-ip")).toBeUndefined();
-		expect(getHeaderValue({ headers: null }, "x-real-ip")).toBeUndefined();
+		expect(getHeaderValue({ req: {}, key: "x-real-ip" })).toBeUndefined();
+		expect(getHeaderValue({ req: { headers: null }, key: "x-real-ip" })).toBeUndefined();
 	});
 
 	test("handles undefined req", () => {
-		expect(getHeaderValue(undefined, "x-real-ip")).toBeUndefined();
+		expect(getHeaderValue({ req: undefined, key: "x-real-ip" })).toBeUndefined();
 	});
 
 	test("handles null req", () => {
-		expect(getHeaderValue(null, "x-real-ip")).toBeUndefined();
-	});
-
-	test("handles non-object req", () => {
-		expect(getHeaderValue("not an object", "x-real-ip")).toBeUndefined();
-		expect(getHeaderValue(123, "x-real-ip")).toBeUndefined();
-		expect(getHeaderValue(true, "x-real-ip")).toBeUndefined();
+		expect(getHeaderValue({ req: null, key: "x-real-ip" })).toBeUndefined();
 	});
 
 	test("handles empty headers object", () => {
 		const req = { headers: {} };
-		expect(getHeaderValue(req, "x-real-ip")).toBeUndefined();
+		expect(getHeaderValue({ req: req, key: "x-real-ip" })).toBeUndefined();
 	});
 
 	test("handles undefined header value", () => {
 		const req = { headers: { "x-real-ip": undefined } };
-		expect(getHeaderValue(req, "x-real-ip")).toBeUndefined();
+		expect(getHeaderValue({ req: req, key: "x-real-ip" })).toBeUndefined();
 	});
 
 	test("handles empty string header value", () => {
 		const req = { headers: { "x-real-ip": "" } };
-		expect(getHeaderValue(req, "x-real-ip")).toBe("");
+		expect(getHeaderValue({ req: req, key: "x-real-ip" })).toBe("");
 	});
 
 	test("handles whitespace-only header value", () => {
 		const req = { headers: { "x-real-ip": "   " } };
-		expect(getHeaderValue(req, "x-real-ip")).toBe("   ");
+		expect(getHeaderValue({ req: req, key: "x-real-ip" })).toBe("   ");
 	});
 
 	test("handles empty array header value", () => {
 		const req = { headers: { "x-forwarded-for": [] } };
-		expect(getHeaderValue(req, "x-forwarded-for")).toBe("");
+		expect(getHeaderValue({ req: req, key: "x-forwarded-for" })).toBe("");
 	});
 
 	test("handles array with empty strings", () => {
 		const req = { headers: { "x-forwarded-for": ["", "", ""] } };
-		expect(getHeaderValue(req, "x-forwarded-for")).toBe(",,");
+		expect(getHeaderValue({ req: req, key: "x-forwarded-for" })).toBe(",,");
 	});
 
 	test("handles array with mixed values", () => {
 		const req = { headers: { "x-forwarded-for": ["198.51.100.1", "", "198.51.100.2"] } };
-		expect(getHeaderValue(req, "x-forwarded-for")).toBe("198.51.100.1,,198.51.100.2");
+		expect(getHeaderValue({ req: req, key: "x-forwarded-for" })).toBe("198.51.100.1,,198.51.100.2");
 	});
 
 	test("handles numeric header value", () => {
 		const req = { headers: { "x-custom": 12345 } };
-		expect(getHeaderValue(req, "x-custom")).toBeUndefined();
+		expect(getHeaderValue({ req: req, key: "x-custom" })).toBeUndefined();
 	});
 
 	test("handles boolean header value", () => {
 		const req = { headers: { "x-custom": true } };
-		expect(getHeaderValue(req, "x-custom")).toBeUndefined();
+		expect(getHeaderValue({ req: req, key: "x-custom" })).toBeUndefined();
 	});
 
 	test("handles object header value", () => {
 		const req = { headers: { "x-custom": { nested: "value" } } };
-		expect(getHeaderValue(req, "x-custom")).toBeUndefined();
+		expect(getHeaderValue({ req: req, key: "x-custom" })).toBeUndefined();
 	});
 
 	test("prefers exact case match over lowercase", () => {
 		const req = { headers: { "X-Real-IP": "203.0.113.1", "x-real-ip": "203.0.113.2" } };
-		expect(getHeaderValue(req, "X-Real-IP")).toBe("203.0.113.1");
+		expect(getHeaderValue({ req: req, key: "X-Real-IP" })).toBe("203.0.113.1");
 	});
 
 	test("handles Headers object with null return", () => {
 		const headers = { get: () => null };
 		const req = { headers };
-		expect(getHeaderValue(req, "x-real-ip")).toBeUndefined();
+		expect(getHeaderValue({ req: req, key: "x-real-ip" })).toBeUndefined();
 	});
 
 	test("handles Headers object with undefined return", () => {
 		const headers = { get: () => undefined };
 		const req = { headers };
-		expect(getHeaderValue(req, "x-real-ip")).toBeUndefined();
+		expect(getHeaderValue({ req: req, key: "x-real-ip" })).toBeUndefined();
 	});
 });
 
@@ -268,32 +262,32 @@ describe("getClientIp", () => {
 
 describe("checkRateLimit", () => {
 	test("returns ok true for first attempt", () => {
-		const result = checkRateLimit("test:key");
+		const result = checkRateLimit("login:test:key");
 		expect(result.ok).toBe(true);
 		expect(result.resetAt).toBeGreaterThan(Date.now());
 	});
 
 	test("increments count on subsequent attempts", () => {
-		checkRateLimit("test:key");
-		checkRateLimit("test:key");
-		const result = checkRateLimit("test:key");
+		checkRateLimit("login:test:key");
+		checkRateLimit("login:test:key");
+		const result = checkRateLimit("login:test:key");
 		expect(result.ok).toBe(true);
 	});
 
 	test("blocks at exactly the limit", () => {
 		for (let i = 0; i < 10; i += 1) {
-			expect(checkRateLimit("test:key").ok).toBe(true);
+			expect(checkRateLimit("login:test:key").ok).toBe(true);
 		}
-		expect(checkRateLimit("test:key").ok).toBe(false);
+		expect(checkRateLimit("login:test:key").ok).toBe(false);
 	});
 
 	test("remains blocked after reaching limit", () => {
 		for (let i = 0; i < 10; i += 1) {
-			checkRateLimit("test:key");
+			checkRateLimit("login:test:key");
 		}
-		expect(checkRateLimit("test:key").ok).toBe(false);
-		expect(checkRateLimit("test:key").ok).toBe(false);
-		expect(checkRateLimit("test:key").ok).toBe(false);
+		expect(checkRateLimit("login:test:key").ok).toBe(false);
+		expect(checkRateLimit("login:test:key").ok).toBe(false);
+		expect(checkRateLimit("login:test:key").ok).toBe(false);
 	});
 
 	test("resets after window expires", () => {
@@ -302,14 +296,14 @@ describe("checkRateLimit", () => {
 		jest.setSystemTime(startTime);
 
 		try {
-			const first = checkRateLimit("test:key");
+			const first = checkRateLimit("login:test:key");
 			for (let i = 0; i < 9; i += 1) {
-				checkRateLimit("test:key");
+				checkRateLimit("login:test:key");
 			}
-			expect(checkRateLimit("test:key").ok).toBe(false);
+			expect(checkRateLimit("login:test:key").ok).toBe(false);
 
 			jest.setSystemTime(first.resetAt + 1);
-			expect(checkRateLimit("test:key").ok).toBe(true);
+			expect(checkRateLimit("login:test:key").ok).toBe(true);
 		} finally {
 			jest.useRealTimers();
 		}
@@ -317,19 +311,19 @@ describe("checkRateLimit", () => {
 
 	test("maintains separate counters for different keys", () => {
 		for (let i = 0; i < 10; i += 1) {
-			checkRateLimit("key1");
+			checkRateLimit("login:key1");
 		}
-		expect(checkRateLimit("key1").ok).toBe(false);
-		expect(checkRateLimit("key2").ok).toBe(true);
+		expect(checkRateLimit("login:key1").ok).toBe(false);
+		expect(checkRateLimit("login:key2").ok).toBe(true);
 	});
 
 	test("handles empty string key", () => {
-		const result = checkRateLimit("");
+		const result = checkRateLimit("login:");
 		expect(result.ok).toBe(true);
 	});
 
 	test("handles very long key", () => {
-		const longKey = "x".repeat(1000);
+		const longKey = `login:${"x".repeat(1000)}` as `login:${string}`;
 		const result = checkRateLimit(longKey);
 		expect(result.ok).toBe(true);
 	});
@@ -340,17 +334,17 @@ describe("checkRateLimit", () => {
 	});
 
 	test("preserves resetAt across attempts within window", () => {
-		const first = checkRateLimit("test:key");
-		const second = checkRateLimit("test:key");
+		const first = checkRateLimit("login:test:key");
+		const second = checkRateLimit("login:test:key");
 		expect(second.resetAt).toBe(first.resetAt);
 	});
 
 	test("updates resetAt after window expires", () => {
 		jest.useFakeTimers();
 		try {
-			const first = checkRateLimit("test:key");
+			const first = checkRateLimit("login:test:key");
 			jest.setSystemTime(first.resetAt + 1000);
-			const second = checkRateLimit("test:key");
+			const second = checkRateLimit("login:test:key");
 			expect(second.resetAt).toBeGreaterThan(first.resetAt);
 		} finally {
 			jest.useRealTimers();
@@ -399,29 +393,23 @@ describe("isLoginRateLimited", () => {
 		expect(isLoginRateLimited("user@example.com", {})).toBe(true);
 	});
 
-	test("handles malformed request object", () => {
-		expect(isLoginRateLimited("user@example.com", "not an object")).toBe(false);
-		expect(isLoginRateLimited("user@example.com", 123)).toBe(false);
-		expect(isLoginRateLimited("user@example.com", null)).toBe(false);
-	});
-
 	test("tracks three rate limit keys when ip present", () => {
-		const req = { headers: { "x-real-ip": "203.0.113.10" } };
-		isLoginRateLimited("user@example.com", req);
+		const req = { headers: { "x-real-ip": "203.0.113.50" } };
+		isLoginRateLimited("track3@example.com", req);
 
-		const keys = Array.from((globalThis as { loginRateLimit?: Map<string, unknown> }).loginRateLimit?.keys() ?? []);
+		const keys = Array.from((globalThis as { rateLimitStore?: Map<string, unknown> }).rateLimitStore?.keys() ?? []);
 		expect(keys).toHaveLength(3);
-		expect(keys).toContain("login:email:user@example.com");
-		expect(keys).toContain("login:ip:203.0.113.10");
-		expect(keys).toContain("login:ip:203.0.113.10:email:user@example.com");
+		expect(keys).toContain("login:email:track3@example.com");
+		expect(keys).toContain("login:ip:203.0.113.50");
+		expect(keys).toContain("login:ip:203.0.113.50:email:track3@example.com");
 	});
 
 	test("tracks one rate limit key when ip missing", () => {
-		isLoginRateLimited("user@example.com", undefined);
+		isLoginRateLimited("track1@example.com", undefined);
 
-		const keys = Array.from((globalThis as { loginRateLimit?: Map<string, unknown> }).loginRateLimit?.keys() ?? []);
+		const keys = Array.from((globalThis as { rateLimitStore?: Map<string, unknown> }).rateLimitStore?.keys() ?? []);
 		expect(keys).toHaveLength(1);
-		expect(keys).toContain("login:email:user@example.com");
+		expect(keys).toContain("login:email:track1@example.com");
 	});
 
 	test("handles empty email", () => {
@@ -442,7 +430,7 @@ describe("concurrent requests", () => {
 	test("handles concurrent rate limit checks", () => {
 		const results: boolean[] = [];
 		for (let i = 0; i < 15; i += 1) {
-			results.push(!checkRateLimit("concurrent:key").ok);
+			results.push(!checkRateLimit("login:concurrent:key").ok);
 		}
 
 		const blockedCount = results.filter(Boolean).length;
@@ -452,7 +440,7 @@ describe("concurrent requests", () => {
 	test("handles concurrent login attempts from same email", () => {
 		const results: boolean[] = [];
 		for (let i = 0; i < 15; i += 1) {
-			results.push(isLoginRateLimited("user@example.com", undefined));
+			results.push(isLoginRateLimited("concurrent@example.com", undefined));
 		}
 
 		const blockedCount = results.filter(Boolean).length;
@@ -460,10 +448,10 @@ describe("concurrent requests", () => {
 	});
 
 	test("handles concurrent login attempts from same ip", () => {
-		const req = { headers: { "x-real-ip": "203.0.113.10" } };
+		const req = { headers: { "x-real-ip": "203.0.113.99" } };
 		const results: boolean[] = [];
 		for (let i = 0; i < 15; i += 1) {
-			results.push(isLoginRateLimited(`user${i}@example.com`, req));
+			results.push(isLoginRateLimited(`concurrent${i}@example.com`, req));
 		}
 
 		const blockedCount = results.filter(Boolean).length;
