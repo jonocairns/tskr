@@ -4,14 +4,13 @@ import { getServerSession, type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
-import { getAppSettings } from "@/lib/appSettings";
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
-import { getProfileEmail, getProfileImage, getProfileName } from "@/lib/authProfile";
-import { isLoginRateLimited } from "@/lib/loginRateLimit";
-import { createPasswordResetToken } from "@/lib/passwordReset";
-import { verifyPassword } from "@/lib/passwords";
-import { checkRateLimit } from "@/lib/rateLimit";
 import { config } from "@/server-config";
+import { authorize } from "./auth/authorize";
+import { jwt } from "./auth/jwt";
+import { linkAccount } from "./auth/linkAccount";
+import { session } from "./auth/session";
+import { signIn } from "./auth/signIn";
 import { prisma } from "./prisma";
 
 const { googleClientId, googleClientSecret } = config;
@@ -19,8 +18,6 @@ const { googleClientId, googleClientSecret } = config;
 if (!isGoogleAuthEnabled && config.isDev) {
 	console.warn("Google OAuth is disabled. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it.");
 }
-
-const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 export const authOptions: NextAuthOptions = {
 	adapter: PrismaAdapter(prisma as PrismaClient),
@@ -31,46 +28,7 @@ export const authOptions: NextAuthOptions = {
 				email: { label: "Email", type: "email" },
 				password: { label: "Password", type: "password" },
 			},
-			authorize: async (credentials, req) => {
-				const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
-				const password = typeof credentials?.password === "string" ? credentials.password : "";
-
-				if (!email || !password) {
-					return null;
-				}
-
-				if (isLoginRateLimited(email, req)) {
-					return null;
-				}
-
-				const user = await prisma.user.findUnique({
-					where: { email },
-					select: {
-						id: true,
-						email: true,
-						name: true,
-						image: true,
-						passwordHash: true,
-						passwordLoginDisabled: true,
-					},
-				});
-
-				if (!user?.passwordHash || user.passwordLoginDisabled) {
-					return null;
-				}
-
-				const isValid = await verifyPassword(password, user.passwordHash);
-				if (!isValid) {
-					return null;
-				}
-
-				return {
-					id: user.id,
-					email: user.email,
-					name: user.name,
-					image: user.image,
-				};
-			},
+			authorize,
 		}),
 		...(isGoogleAuthEnabled
 			? [
@@ -93,165 +51,12 @@ export const authOptions: NextAuthOptions = {
 		error: "/auth/error",
 	},
 	events: {
-		linkAccount: async ({ user, account, profile }) => {
-			if (account?.provider !== "google") {
-				return;
-			}
-
-			const profileEmail = getProfileEmail(profile);
-			const profileName = getProfileName(profile);
-			const profileImage = getProfileImage(profile);
-			if (!profileEmail && !profileName && !profileImage) {
-				return;
-			}
-
-			const updates: { email?: string; name?: string | null; image?: string } = {};
-
-			if (profileEmail) {
-				const normalizedEmail = normalizeEmail(profileEmail);
-				if (normalizedEmail && user.email?.toLowerCase() !== normalizedEmail) {
-					const existing = await prisma.user.findUnique({
-						where: { email: normalizedEmail },
-						select: { id: true },
-					});
-
-					if (existing && existing.id !== user.id) {
-						console.warn("Skipping Google email sync because the email is already in use.");
-					} else {
-						updates.email = normalizedEmail;
-					}
-				}
-			}
-
-			if (profileName && profileName !== user.name) {
-				updates.name = profileName;
-			}
-
-			if (profileImage && profileImage !== user.image) {
-				updates.image = profileImage;
-			}
-
-			if (Object.keys(updates).length === 0) {
-				return;
-			}
-
-			await prisma.user.update({
-				where: { id: user.id },
-				data: updates,
-			});
-		},
+		linkAccount,
 	},
 	callbacks: {
-		signIn: async ({ user, account }) => {
-			if (account?.provider === "google") {
-				const providerAccountId = account.providerAccountId;
-				if (!providerAccountId) {
-					return false;
-				}
-
-				const existingAccount = await prisma.account.findUnique({
-					where: {
-						provider_providerAccountId: {
-							provider: "google",
-							providerAccountId,
-						},
-					},
-					select: { id: true },
-				});
-
-				// For new accounts, check if creation is allowed and apply rate limiting
-				if (!existingAccount) {
-					const settings = await getAppSettings();
-					if (!settings.allowGoogleAccountCreation) {
-						return false;
-					}
-
-					// Rate limit new Google account creation: 10 per hour globally
-					const rateCheck = checkRateLimit({ key: "google-signup:global", windowMs: 60 * 60_000, max: 10 });
-					if (!rateCheck.ok) {
-						return false;
-					}
-				}
-			}
-
-			if (!user?.id) {
-				return true;
-			}
-
-			const dbUser = await prisma.user.findUnique({
-				where: { id: user.id },
-				select: { passwordResetRequired: true, passwordLoginDisabled: true },
-			});
-
-			if (dbUser?.passwordResetRequired && !dbUser.passwordLoginDisabled) {
-				const { token } = await createPasswordResetToken(user.id);
-				return new URL(`/reset-password/${token}`, config.appUrl).toString();
-			}
-
-			return true;
-		},
-		jwt: async ({ token, user, trigger }) => {
-			if (user?.id) {
-				token.sub = user.id;
-			}
-
-			// Track token creation time and last activity
-			const now = Math.floor(Date.now() / 1000);
-
-			// Set iat (issued at) on first creation
-			if (!token.iat) {
-				token.iat = now;
-			}
-
-			// Update lastActivity on every request (for idle timeout)
-			// But only if this isn't the initial token creation
-			if (trigger === "update" || token.lastActivity !== undefined) {
-				token.lastActivity = now;
-			} else if (!token.lastActivity) {
-				// First time seeing this token, set lastActivity to iat
-				token.lastActivity = token.iat;
-			}
-
-			return token;
-		},
-		session: async ({ session, token }) => {
-			if (session.user && token.sub) {
-				const dbUser = await prisma.user.findUnique({
-					where: { id: token.sub },
-					select: {
-						name: true,
-						email: true,
-						image: true,
-						isSuperAdmin: true,
-						accounts: {
-							where: { provider: "google" },
-							select: { id: true },
-							take: 1,
-						},
-					},
-				});
-
-				if (!dbUser) {
-					session.user = undefined;
-					return session;
-				}
-
-				session.user.id = token.sub;
-				session.user.name = dbUser.name;
-				session.user.email = dbUser.email;
-				session.user.image = dbUser.image;
-				session.user.isSuperAdmin = dbUser.isSuperAdmin ?? false;
-				session.user.hasGoogleAccount = isGoogleAuthEnabled && dbUser.accounts.length > 0;
-			}
-
-			// Pass JWT timestamps to session for validation in tRPC middleware
-			// These are used for session expiry and idle timeout checks
-			return {
-				...session,
-				iat: token.iat,
-				lastActivity: token.lastActivity,
-			};
-		},
+		signIn,
+		jwt,
+		session,
 	},
 };
 
