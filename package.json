@@ -16,7 +16,7 @@
 		"db:setup": "prisma migrate deploy && node ./scripts/db-bootstrap.cjs",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
-		"compile": "tsgo --pretty",
+		"compile": "tsc --pretty",
 		"test": "jest",
 		"check": "pnpm lint && pnpm compile && pnpm test"
 	},
@@ -63,7 +63,6 @@
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
 		"@types/web-push": "^3.6.4",
-		"@typescript/native-preview": "7.0.0-dev.20251228.1",
 		"autoprefixer": "^10.4.20",
 		"jest": "^29.7.0",
 		"postcss": "^8.4.49",

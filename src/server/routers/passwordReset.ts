@@ -18,7 +18,7 @@ export const passwordResetRouter = router({
 		const clientIp = getClientIp(ctx.req);
 		const rateKey = `password-reset:ip:${clientIp ?? "unknown"}`;
 		// 10 attempts per 10 minutes per IP
-		if (!checkRateLimit(rateKey, 10 * 60_000, 10).ok) {
+		if (!checkRateLimit({ key: rateKey, windowMs: 10 * 60_000, max: 10 }).ok) {
 			throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many requests" });
 		}
 

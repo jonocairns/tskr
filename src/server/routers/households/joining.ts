@@ -17,7 +17,11 @@ export const householdJoiningRouter = router({
 		const userId = ctx.session.user.id;
 
 		const rateKey = `join:${userId}`;
-		const rateCheck = checkRateLimit(rateKey, config.joinRateLimitWindowMs, config.joinRateLimitMax);
+		const rateCheck = checkRateLimit({
+			key: rateKey,
+			windowMs: config.joinRateLimitWindowMs,
+			max: config.joinRateLimitMax,
+		});
 		if (!rateCheck.ok) {
 			const retryAfterSeconds = Math.max(1, Math.ceil((rateCheck.resetAt - Date.now()) / 1000));
 			throw new TRPCError({

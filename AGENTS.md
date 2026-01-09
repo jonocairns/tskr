@@ -6,7 +6,7 @@
 
 **Dev**: `pnpm dev` | `pnpm build` | `pnpm start`
 **DB**: `pnpm db:migrate` (dev) | `pnpm db:sync` (prod) | `pnpm db:bootstrap`
-**Quality**: `pnpm lint` | `pnpm compile` (uses tsgo) | `pnpm test [filename]` | `pnpm check` (all)
+**Quality**: `pnpm lint` | `pnpm compile` | `pnpm test [filename]` | `pnpm check` (all)
 
 ## Stack
 
@@ -64,7 +64,6 @@ Next.js 16 + React 19 | Prisma + SQLite | tRPC + TanStack Query | NextAuth.js | 
 
 ## Notes
 
-- Use `tsgo` for type checking (not `tsc`)
 - Biome for linting (not ESLint/Prettier)
 - Files with `"server-only"` cannot be client-imported
 - NO useless comments

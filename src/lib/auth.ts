@@ -162,7 +162,7 @@ export const authOptions: NextAuthOptions = {
 				// For new accounts, apply rate limiting and check if creation is allowed
 				if (!existingAccount) {
 					// Rate limit new Google account creation: 10 per hour globally
-					const rateCheck = checkRateLimit("google-signup:global", 60 * 60_000, 10);
+					const rateCheck = checkRateLimit({ key: "google-signup:global", windowMs: 60 * 60_000, max: 10 });
 					if (!rateCheck.ok) {
 						return false;
 					}
