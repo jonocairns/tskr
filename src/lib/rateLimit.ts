@@ -18,7 +18,7 @@ export type RequestLike = {
 
 declare global {
 	var rateLimitStore: Map<string, RateLimitEntry> | undefined;
-	var rateLimitCleanupInterval: NodeJS.Timeout | undefined;
+	var rateLimitLastCleanup: number | undefined;
 }
 
 const store = globalThis.rateLimitStore ?? new Map<string, RateLimitEntry>();
@@ -27,8 +27,17 @@ if (!globalThis.rateLimitStore) {
 	globalThis.rateLimitStore = store;
 }
 
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 const cleanupExpiredEntries = () => {
 	const now = Date.now();
+
+	if (globalThis.rateLimitLastCleanup && now - globalThis.rateLimitLastCleanup < CLEANUP_INTERVAL_MS) {
+		return;
+	}
+
+	globalThis.rateLimitLastCleanup = now;
+
 	for (const [key, entry] of store.entries()) {
 		if (entry.resetAt <= now) {
 			store.delete(key);
@@ -36,14 +45,11 @@ const cleanupExpiredEntries = () => {
 	}
 };
 
-if (typeof setInterval !== "undefined" && !globalThis.rateLimitCleanupInterval) {
-	globalThis.rateLimitCleanupInterval = setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
-	// In Node.js, unref the interval so it doesn't keep the process alive
-	globalThis.rateLimitCleanupInterval.unref?.();
-}
-
 export const checkRateLimit = (options: { key: string; windowMs: number; max: number }): RateLimitResult => {
 	const { key, windowMs, max } = options;
+
+	cleanupExpiredEntries();
+
 	const now = Date.now();
 	const entry = store.get(key);
 	if (!entry || entry.resetAt <= now) {
