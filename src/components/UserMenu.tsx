@@ -68,9 +68,10 @@ export const UserMenu = ({ user, household }: Props) => {
 								Settings
 							</Link>
 						</DropdownMenuItem>
+						<DropdownMenuSeparator />
 					</>
 				) : null}
-				<DropdownMenuSeparator />
+
 				<DropdownMenuItem
 					className="text-red-600 font-semibold opacity-100 hover:text-red-600 focus:text-red-600"
 					onSelect={() => signOut()}
