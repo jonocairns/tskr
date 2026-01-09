@@ -159,16 +159,16 @@ export const authOptions: NextAuthOptions = {
 					select: { id: true },
 				});
 
-				// For new accounts, apply rate limiting and check if creation is allowed
+				// For new accounts, check if creation is allowed and apply rate limiting
 				if (!existingAccount) {
-					// Rate limit new Google account creation: 10 per hour globally
-					const rateCheck = checkRateLimit({ key: "google-signup:global", windowMs: 60 * 60_000, max: 10 });
-					if (!rateCheck.ok) {
+					const settings = await getAppSettings();
+					if (!settings.allowGoogleAccountCreation) {
 						return false;
 					}
 
-					const settings = await getAppSettings();
-					if (!settings.allowGoogleAccountCreation) {
+					// Rate limit new Google account creation: 10 per hour globally
+					const rateCheck = checkRateLimit({ key: "google-signup:global", windowMs: 60 * 60_000, max: 10 });
+					if (!rateCheck.ok) {
 						return false;
 					}
 				}
