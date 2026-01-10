@@ -28,6 +28,7 @@ const store = globalThis.rateLimitStore;
 
 const cleanupExpiredEntries = () => {
 	const now = Date.now();
+	// If lastCleanup is undefined, it becomes 0, ensuring cleanup runs on first call
 	const lastCleanup = globalThis.rateLimitLastCleanup ?? 0;
 
 	if (now - lastCleanup < CLEANUP_INTERVAL_MS) {
@@ -98,8 +99,10 @@ export const getClientIp = (req: RequestLike | null | undefined) => {
 	const forwarded = getHeaderValue({ req, key: "x-forwarded-for" });
 
 	if (forwarded) {
-		return forwarded.split(",")[0]?.trim() || undefined;
+		const firstIp = forwarded.split(",")[0]?.trim();
+		return firstIp ?? undefined;
 	}
 
-	return getHeaderValue({ req, key: "x-real-ip" });
+	const realIp = getHeaderValue({ req, key: "x-real-ip" });
+	return realIp ?? undefined;
 };
