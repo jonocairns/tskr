@@ -21,6 +21,7 @@
             pkg-config
             docker
             docker-compose
+            gh
           ];
           shellHook = ''
             export PATH=$PATH:./node_modules/.bin

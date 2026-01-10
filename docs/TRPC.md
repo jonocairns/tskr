@@ -90,14 +90,10 @@ const schema = z.object({
 });
 
 export const myRouter = router({
-  update: protectedProcedure
-    .input(schema)
+  update: householdProcedure(schema)
     .mutation(async ({ ctx, input }) => {
-      // MUST manually validate household membership
-      const { householdId, membership } = await validateHouseholdMembershipFromInput(
-        ctx.session.user.id,
-        input
-      );
+      // Middleware validates membership, ctx.household available
+      const { id, membership } = ctx.household;
       // Now safe to use
     }),
 });
