@@ -98,11 +98,13 @@ export const getHeaderValue = (options: { req: RequestLike | null | undefined; k
 export const getClientIp = (req: RequestLike | null | undefined) => {
 	const forwarded = getHeaderValue({ req, key: "x-forwarded-for" });
 
-	if (forwarded) {
+	if (forwarded === "") {
+		return getHeaderValue({ req, key: "x-real-ip" }) ?? undefined;
+	}
+
+	if (forwarded !== undefined) {
 		const firstIp = forwarded.split(",")[0]?.trim();
-		if (firstIp) {
-			return firstIp;
-		}
+		return firstIp || undefined;
 	}
 
 	const realIp = getHeaderValue({ req, key: "x-real-ip" });
