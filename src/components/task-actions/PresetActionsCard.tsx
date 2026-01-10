@@ -1,20 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
 import { PresetActionsDrawer } from "@/components/task-actions/PresetActionsDrawer";
+import { TaskConfirmationDialog } from "@/components/task-actions/TaskConfirmationDialog";
+import { TaskGrid } from "@/components/task-actions/TaskGrid";
+import { TaskSearchBar } from "@/components/task-actions/TaskSearchBar";
 import type { PresetTemplate } from "@/components/task-actions/types";
 import { normalizeText } from "@/components/task-actions/utils";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+import { useLogMutation } from "@/hooks/useLogMutation";
+import { usePresetMutations } from "@/hooks/usePresetMutations";
 import { useToast } from "@/hooks/useToast";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
-import { trpc } from "@/lib/trpc/react";
 
 export const PresetActionsCard = () => {
 	const {
@@ -33,120 +33,21 @@ export const PresetActionsCard = () => {
 		logPreset,
 	} = useTaskActions();
 	const [isEditDrawerOpen, setEditDrawerOpen] = useState(false);
+	const [lastPressedTaskId, setLastPressedTaskId] = useState<string | null>(null);
+	const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+	const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
-	const router = useRouter();
 	const { toast } = useToast();
-	const utils = trpc.useUtils();
 	const canManagePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = currentUserRole !== "DOER";
 	const [searchQuery, setSearchQuery] = useState("");
 
-	const createPresetMutation = trpc.presets.create.useMutation({
-		onSuccess: (data) => {
-			setCustomPresets((prev) => [
-				{
-					...data.preset,
-					bucket: data.preset.bucket as DurationKey,
-					createdAt: data.preset.createdAt.toISOString(),
-				},
-				...prev,
-			]);
-			toast({
-				title: "Preset added",
-				description: "Chore added to your presets.",
-			});
-		},
-		onError: (error) => {
-			toast({
-				title: "Unable to add preset",
-				description: error.message ?? "Please try again.",
-				variant: "destructive",
-			});
-		},
+	const { createPresetMutation, updatePresetMutation, deletePresetMutation } = usePresetMutations({
+		customPresets,
+		setCustomPresets,
 	});
 
-	const updatePresetMutation = trpc.presets.update.useMutation({
-		onMutate: async (variables) => {
-			const previousPresets = customPresets;
-			setCustomPresets((prev) =>
-				prev.map((preset) =>
-					preset.id === variables.id
-						? {
-								...preset,
-								label: variables.label ?? preset.label,
-								bucket: variables.bucket ?? preset.bucket,
-								approvalOverride: variables.approvalOverride ?? preset.approvalOverride,
-							}
-						: preset,
-				),
-			);
-			return { previousPresets };
-		},
-		onError: (error, _variables, context) => {
-			if (context?.previousPresets) {
-				setCustomPresets(context.previousPresets);
-			}
-			toast({
-				title: "Unable to update preset",
-				description: error.message ?? "Please try again.",
-				variant: "destructive",
-			});
-		},
-		onSuccess: (data) => {
-			setCustomPresets((prev) =>
-				prev.map((preset) =>
-					preset.id === data.preset.id
-						? {
-								...data.preset,
-								bucket: data.preset.bucket as DurationKey,
-								createdAt: data.preset.createdAt.toISOString(),
-							}
-						: preset,
-				),
-			);
-			toast({ title: "Preset updated" });
-		},
-	});
-
-	const deletePresetMutation = trpc.presets.delete.useMutation({
-		onMutate: async (variables) => {
-			const previousPresets = customPresets;
-			setCustomPresets((prev) => prev.filter((item) => item.id !== variables.id));
-			return { previousPresets };
-		},
-		onError: (error, _variables, context) => {
-			if (context?.previousPresets) {
-				setCustomPresets(context.previousPresets);
-			}
-			toast({
-				title: "Unable to delete preset",
-				description: error.message ?? "Please try again.",
-				variant: "destructive",
-			});
-		},
-		onSuccess: () => {
-			toast({ title: "Preset deleted" });
-		},
-	});
-
-	const createLogMutation = trpc.logs.create.useMutation({
-		onSuccess: (data) => {
-			const isPending = data.entry.status === "PENDING";
-			toast({
-				title: isPending ? "Submitted for approval" : "Task logged",
-				description: isPending ? "Task logged and waiting for approval." : "Time-based task recorded and points added.",
-			});
-			utils.logs.invalidate();
-			router.refresh();
-		},
-		onError: (error) => {
-			toast({
-				title: "Unable to log task",
-				description: error.message ?? "Please try again.",
-				variant: "destructive",
-			});
-		},
-	});
+	const createLogMutation = useLogMutation();
 
 	const editablePresets = customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId);
 	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
@@ -308,6 +209,32 @@ export const PresetActionsCard = () => {
 		return success;
 	};
 
+	const handleTaskClick = (taskId: string) => {
+		if (lastPressedTaskId === taskId) {
+			// Same task pressed consecutively, show confirmation dialog
+			setPendingTaskId(taskId);
+			setConfirmDialogOpen(true);
+		} else {
+			// Different task or first press, log immediately
+			setLastPressedTaskId(taskId);
+			logPreset({ presetId: taskId });
+		}
+	};
+
+	const handleConfirmLog = () => {
+		if (pendingTaskId) {
+			logPreset({ presetId: pendingTaskId });
+			setLastPressedTaskId(pendingTaskId);
+		}
+		setConfirmDialogOpen(false);
+		setPendingTaskId(null);
+	};
+
+	const handleCancelLog = () => {
+		setConfirmDialogOpen(false);
+		setPendingTaskId(null);
+	};
+
 	return (
 		<>
 			<Card>
@@ -325,57 +252,13 @@ export const PresetActionsCard = () => {
 					</div>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="grid gap-2">
-						<div className="flex items-center justify-between gap-2">
-							<Label htmlFor="task-search">Search tasks</Label>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								onClick={() => setSearchQuery("")}
-								disabled={searchQuery.trim().length === 0}
-							>
-								Clear
-							</Button>
-						</div>
-						<Input
-							id="task-search"
-							type="search"
-							placeholder="Filter tasks by name"
-							value={searchQuery}
-							onChange={(event) => setSearchQuery(event.target.value)}
-						/>
-					</div>
-					<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-						{presetOptions.length === 0 ? (
-							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">No saved tasks yet.</p>
-						) : filteredPresets.length === 0 ? (
-							<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">No tasks match that search.</p>
-						) : (
-							filteredPresets.map((task) => {
-								const bucket = DURATION_BUCKETS.find((b) => b.key === task.bucket);
-								return (
-									<Button
-										key={task.id}
-										variant="outline"
-										className="flex h-auto flex-col items-start gap-1 py-3"
-										onClick={() => logPreset({ presetId: task.id })}
-										disabled={disabled}
-									>
-										<div className="flex w-full items-center justify-between gap-2">
-											<span className="font-semibold">{task.label}</span>
-											<div className="flex items-center gap-1">
-												<Badge variant="secondary">{bucket?.label}</Badge>
-											</div>
-										</div>
-										<span className="text-xs text-muted-foreground">
-											{bucket?.points ?? 0} pts · {bucket?.window}
-										</span>
-									</Button>
-								);
-							})
-						)}
-					</div>
+					<TaskSearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} onClear={() => setSearchQuery("")} />
+					<TaskGrid
+						presetOptions={presetOptions}
+						filteredPresets={filteredPresets}
+						disabled={disabled}
+						onTaskClick={handleTaskClick}
+					/>
 				</CardContent>
 			</Card>
 			<PresetActionsDrawer
@@ -395,6 +278,12 @@ export const PresetActionsCard = () => {
 				currentUserId={currentUserId}
 				canEditApprovalOverride={canEditApprovalOverride}
 				canManagePresets={canManagePresets}
+			/>
+			<TaskConfirmationDialog
+				open={confirmDialogOpen}
+				onOpenChange={setConfirmDialogOpen}
+				onConfirm={handleConfirmLog}
+				onCancel={handleCancelLog}
 			/>
 		</>
 	);
