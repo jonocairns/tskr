@@ -377,7 +377,9 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 					<AlertDialogHeader>
 						<div className="flex items-center justify-between gap-4">
 							<AlertDialogTitle>Edit user</AlertDialogTitle>
-							{googleEnabled && activeRow?.hasGoogleAccount ? <ChromeIcon className="h-5 w-5 text-emerald-500" /> : null}
+							{googleEnabled && activeRow?.hasGoogleAccount ? (
+								<ChromeIcon className="h-5 w-5 text-emerald-500" />
+							) : null}
 						</div>
 						<AlertDialogDescription>
 							Update profile details, login methods, or generate a reset link.

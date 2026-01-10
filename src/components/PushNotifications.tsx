@@ -61,7 +61,9 @@ const describeError = (error: unknown): { name: string; message: string } => {
 	return { name: "Error", message: "Unknown error" };
 };
 
-const extractSubscriptionKeys = (subscription: PushSubscription): {
+const extractSubscriptionKeys = (
+	subscription: PushSubscription,
+): {
 	endpoint: string;
 	keys: { p256dh: string; auth: string };
 } | null => {
@@ -352,9 +354,7 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 		</div>
 	);
 
-	const helperTextElement = helperText ? (
-		<p className="text-sm text-muted-foreground">{helperText}</p>
-	) : null;
+	const helperTextElement = helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null;
 
 	if (variant === "section") {
 		return (
@@ -368,9 +368,7 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	return (
 		<Card>
 			<CardContent className="pt-6">
-				<div className="space-y-2">
-					{helperTextElement}
-				</div>
+				<div className="space-y-2">{helperTextElement}</div>
 				{controls}
 			</CardContent>
 		</Card>
