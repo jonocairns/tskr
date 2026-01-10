@@ -23,11 +23,7 @@ const toUint8Array = (base64String: string) => {
 	return outputArray;
 };
 
-const subscribeWithTimeout = async (
-	registration: ServiceWorkerRegistration,
-	publicKey: string,
-	timeoutMs = 10000,
-) => {
+const subscribeWithTimeout = async (registration: ServiceWorkerRegistration, publicKey: string, timeoutMs = 10000) => {
 	let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
 	try {
