@@ -31,12 +31,7 @@ export const authOptions: NextAuthOptions = {
 			authorize,
 		}),
 		...(isGoogleAuthEnabled
-			? [
-					GoogleProvider({
-						clientId: googleClientId ?? "",
-						clientSecret: googleClientSecret ?? "",
-					}),
-				]
+			? [GoogleProvider({ clientId: googleClientId ?? "", clientSecret: googleClientSecret ?? "" })]
 			: []),
 	],
 	session: {
