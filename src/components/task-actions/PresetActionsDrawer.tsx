@@ -13,6 +13,8 @@ import type { DurationKey } from "@/lib/points";
 import { DURATION_BUCKETS } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
+type ApprovalOverrideOption = "DEFAULT" | "REQUIRE" | "SKIP";
+
 const BUCKET_WINDOW_SHORT: Record<DurationKey, string> = {
 	TINY: "<1m",
 	QUICK: "1-5m",
@@ -61,6 +63,19 @@ type Props = {
 	canManagePresets: boolean;
 };
 
+const resolveApprovalOverride = (
+	canEdit: boolean,
+	value: ApprovalOverrideOption,
+): "REQUIRE" | "SKIP" | null | undefined => {
+	if (!canEdit) {
+		return undefined;
+	}
+	if (value === "DEFAULT") {
+		return null;
+	}
+	return value;
+};
+
 export function PresetActionsDrawer({
 	isOpen,
 	onClose,
@@ -78,15 +93,15 @@ export function PresetActionsDrawer({
 	currentUserId,
 	canEditApprovalOverride,
 	canManagePresets,
-}: Props) {
+}: Props): React.ReactNode {
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
-	const [customApprovalOverride, setCustomApprovalOverride] = useState<"DEFAULT" | "REQUIRE" | "SKIP">("DEFAULT");
+	const [customApprovalOverride, setCustomApprovalOverride] = useState<ApprovalOverrideOption>("DEFAULT");
 	const [customIsShared, setCustomIsShared] = useState(true);
 	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
 	const [editLabel, setEditLabel] = useState("");
 	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
-	const [editApprovalOverride, setEditApprovalOverride] = useState<"DEFAULT" | "REQUIRE" | "SKIP">("DEFAULT");
+	const [editApprovalOverride, setEditApprovalOverride] = useState<ApprovalOverrideOption>("DEFAULT");
 	const [editIsShared, setEditIsShared] = useState(true);
 
 	useEffect(() => {
@@ -103,45 +118,37 @@ export function PresetActionsDrawer({
 		}
 	}, [isOpen, defaultBucket]);
 
+	const resetCustomForm = (): void => {
+		setCustomLabel("");
+		setCustomBucket(defaultBucket);
+		setCustomApprovalOverride("DEFAULT");
+		setCustomIsShared(true);
+	};
+
 	const canCreate = customLabel.trim().length >= 2;
-	const canLogTimed = canCreate;
 	const canUpdate = editLabel.trim().length >= 2;
 
 	if (!isOpen) return null;
 
-	const handleCreatePreset = async () => {
+	const handleCreatePreset = async (): Promise<void> => {
 		if (!canCreate) return;
-		const approvalOverride = canEditApprovalOverride
-			? customApprovalOverride === "DEFAULT"
-				? null
-				: customApprovalOverride
-			: undefined;
+		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
 		const success = await onCreatePreset(customLabel, customBucket, customIsShared, approvalOverride);
 		if (success) {
-			setCustomLabel("");
-			setCustomBucket(defaultBucket);
-			setCustomApprovalOverride("DEFAULT");
-			setCustomIsShared(true);
+			resetCustomForm();
 		}
 	};
 
-	const handleCreatePresetFromTemplate = async (template: PresetTemplate) => {
-		const approvalOverride = canEditApprovalOverride
-			? customApprovalOverride === "DEFAULT"
-				? null
-				: customApprovalOverride
-			: undefined;
+	const handleCreatePresetFromTemplate = async (template: PresetTemplate): Promise<void> => {
+		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
 		const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride);
 		if (success) {
-			setCustomLabel("");
-			setCustomBucket(defaultBucket);
-			setCustomApprovalOverride("DEFAULT");
-			setCustomIsShared(true);
+			resetCustomForm();
 		}
 	};
 
-	const handleLogTimed = async () => {
-		if (!canLogTimed) return;
+	const handleLogTimed = async (): Promise<void> => {
+		if (!canCreate) return;
 		const success = await onLogTimed(customLabel, customBucket);
 		if (success) {
 			setCustomLabel("");
@@ -150,7 +157,7 @@ export function PresetActionsDrawer({
 		}
 	};
 
-	const startEdit = (preset: PresetSummary) => {
+	const startEdit = (preset: PresetSummary): void => {
 		setEditingPresetId(preset.id);
 		setEditLabel(preset.label);
 		setEditBucket(preset.bucket);
@@ -158,7 +165,7 @@ export function PresetActionsDrawer({
 		setEditIsShared(preset.isShared);
 	};
 
-	const cancelEdit = () => {
+	const cancelEdit = (): void => {
 		setEditingPresetId(null);
 		setEditLabel("");
 		setEditBucket(defaultBucket);
@@ -166,21 +173,17 @@ export function PresetActionsDrawer({
 		setEditIsShared(true);
 	};
 
-	const handleUpdatePreset = async (event: FormEvent<HTMLFormElement>, presetId: string) => {
+	const handleUpdatePreset = async (event: FormEvent<HTMLFormElement>, presetId: string): Promise<void> => {
 		event.preventDefault();
 		if (!canUpdate) return;
-		const approvalOverride = canEditApprovalOverride
-			? editApprovalOverride === "DEFAULT"
-				? null
-				: editApprovalOverride
-			: undefined;
+		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, editApprovalOverride);
 		const success = await onUpdatePreset(presetId, editLabel, editBucket, editIsShared, approvalOverride);
 		if (success) {
 			setEditingPresetId(null);
 		}
 	};
 
-	const handleDeletePreset = async (presetId: string) => {
+	const handleDeletePreset = async (presetId: string): Promise<void> => {
 		const success = await onDeletePreset(presetId);
 		if (success && editingPresetId === presetId) {
 			setEditingPresetId(null);
@@ -300,7 +303,7 @@ export function PresetActionsDrawer({
 										variant="secondary"
 										className="w-full"
 										onClick={handleLogTimed}
-										disabled={disabled || !canLogTimed}
+										disabled={disabled || !canCreate}
 									>
 										{isPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 										Log one off task

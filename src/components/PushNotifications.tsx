@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc/react";
 
 type Status = "loading" | "unsupported" | "blocked" | "ready" | "subscribed";
 
-const toUint8Array = (base64String: string) => {
+const toUint8Array = (base64String: string): Uint8Array => {
 	const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
 	const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 	const rawData = atob(base64);
@@ -23,13 +23,18 @@ const toUint8Array = (base64String: string) => {
 	return outputArray;
 };
 
-const subscribeWithTimeout = async (registration: ServiceWorkerRegistration, publicKey: string, timeoutMs = 10000) => {
+const subscribeWithTimeout = async (
+	registration: ServiceWorkerRegistration,
+	publicKey: string,
+	timeoutMs = 10000,
+): Promise<PushSubscription> => {
 	let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
 	try {
+		const applicationServerKey = toUint8Array(publicKey);
 		const subscribePromise = registration.pushManager.subscribe({
 			userVisibleOnly: true,
-			applicationServerKey: toUint8Array(publicKey),
+			applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
 		});
 
 		const timeoutPromise = new Promise<never>((_resolve, reject) => {
@@ -38,12 +43,39 @@ const subscribeWithTimeout = async (registration: ServiceWorkerRegistration, pub
 			}, timeoutMs);
 		});
 
-		return (await Promise.race([subscribePromise, timeoutPromise])) as PushSubscription;
+		return await Promise.race([subscribePromise, timeoutPromise]);
 	} finally {
 		if (timeoutId) {
 			clearTimeout(timeoutId);
 		}
 	}
+};
+
+const describeError = (error: unknown): { name: string; message: string } => {
+	if (error instanceof Error) {
+		return { name: error.name, message: error.message };
+	}
+	if (typeof error === "string") {
+		return { name: "Error", message: error };
+	}
+	return { name: "Error", message: "Unknown error" };
+};
+
+const extractSubscriptionKeys = (subscription: PushSubscription): {
+	endpoint: string;
+	keys: { p256dh: string; auth: string };
+} | null => {
+	const json = subscription.toJSON();
+	if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+		return null;
+	}
+	return {
+		endpoint: json.endpoint,
+		keys: {
+			p256dh: json.keys.p256dh,
+			auth: json.keys.auth,
+		},
+	};
 };
 
 type Props = {
@@ -105,18 +137,6 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	});
 
 	const hasVapidKey = vapidPublicKey.length > 0;
-
-	const describeError = (error: unknown) => {
-		if (error instanceof Error) {
-			return { name: error.name, message: error.message };
-		}
-
-		if (typeof error === "string") {
-			return { name: "Error", message: error };
-		}
-
-		return { name: "Error", message: "Unknown error" };
-	};
 
 	useEffect(() => {
 		let active = true;
@@ -219,24 +239,15 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 			}
 
 			const existing = await activeRegistration.pushManager.getSubscription();
-			if (existing) {
-				const json = existing.toJSON();
-				if (json.endpoint && json.keys?.p256dh && json.keys?.auth) {
-					await subscribeMutation.mutateAsync({
-						endpoint: json.endpoint,
-						keys: {
-							p256dh: json.keys.p256dh,
-							auth: json.keys.auth,
-						},
-					});
-
-					setStatus("subscribed");
-					toast({
-						title: "Notifications enabled",
-						description: "You will now receive task updates.",
-					});
-					return;
-				}
+			const existingKeys = existing ? extractSubscriptionKeys(existing) : null;
+			if (existingKeys) {
+				await subscribeMutation.mutateAsync(existingKeys);
+				setStatus("subscribed");
+				toast({
+					title: "Notifications enabled",
+					description: "You will now receive task updates.",
+				});
+				return;
 			}
 
 			const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
@@ -246,20 +257,12 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 			}
 
 			const subscription = await subscribeWithTimeout(activeRegistration, vapidPublicKey);
-
-			const json = subscription.toJSON();
-			if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+			const subscriptionKeys = extractSubscriptionKeys(subscription);
+			if (!subscriptionKeys) {
 				throw new Error("Invalid subscription data");
 			}
 
-			await subscribeMutation.mutateAsync({
-				endpoint: json.endpoint,
-				keys: {
-					p256dh: json.keys.p256dh,
-					auth: json.keys.auth,
-				},
-			});
-
+			await subscribeMutation.mutateAsync(subscriptionKeys);
 			setStatus("subscribed");
 			toast({
 				title: "Notifications enabled",
@@ -324,6 +327,14 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 		}
 	};
 
+	const handleToggle = (checked: boolean) => {
+		if (checked) {
+			handleEnable();
+		} else {
+			handleDisable();
+		}
+	};
+
 	const controls = (
 		<div className="flex items-center gap-3">
 			<Button type="button" variant="outline" size="sm" onClick={handleTest} disabled={isTesting || !isSubscribed}>
@@ -334,21 +345,21 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 					id="push-notifications-toggle"
 					checked={isSubscribed}
 					disabled={toggleDisabled}
-					onCheckedChange={(checked) => (checked ? handleEnable() : handleDisable())}
+					onCheckedChange={handleToggle}
 				/>
 				<span className="text-sm text-muted-foreground">{isSubscribed ? "On" : "Off"}</span>
 			</div>
 		</div>
 	);
 
-	const content = (
-		<div className="space-y-2">{helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null}</div>
-	);
+	const helperTextElement = helperText ? (
+		<p className="text-sm text-muted-foreground">{helperText}</p>
+	) : null;
 
 	if (variant === "section") {
 		return (
 			<>
-				{content.props.children ? content : null}
+				{helperTextElement}
 				{controls}
 			</>
 		);
@@ -357,7 +368,9 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	return (
 		<Card>
 			<CardContent className="pt-6">
-				{content}
+				<div className="space-y-2">
+					{helperTextElement}
+				</div>
 				{controls}
 			</CardContent>
 		</Card>

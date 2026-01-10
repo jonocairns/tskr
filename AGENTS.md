@@ -67,3 +67,86 @@ Next.js 16 + React 19 | Prisma + SQLite | tRPC + TanStack Query | NextAuth.js | 
 - Biome for linting (not ESLint/Prettier)
 - Files with `"server-only"` cannot be client-imported
 - NO useless comments
+
+## Code Style Preferences
+
+### Function Declarations
+
+**Prefer `const` arrow functions over `function` declarations:**
+
+```typescript
+// ✅ Preferred
+const handleClick = async () => {
+  // implementation
+};
+
+const calculateTotal = (items: Item[]) => {
+  // implementation
+};
+
+// ❌ Avoid
+async function handleClick() {
+  // implementation
+}
+
+function calculateTotal(items: Item[]) {
+  // implementation
+}
+```
+
+**Rationale:**
+- Ensures functions cannot be reassigned
+- More consistent with modern React patterns (especially hooks)
+- Hoisting behavior is more predictable
+- Popular convention in the React community
+
+### JSX Conditional Rendering
+
+**Prefer explicit ternaries with `null` over `&&` operator:**
+
+```typescript
+// ✅ Preferred
+{condition ? <Component /> : null}
+{enabled ? <div>Content</div> : null}
+
+// ❌ Avoid
+{condition && <Component />}
+{enabled && <div>Content</div>}
+```
+
+**Rationale:**
+- Makes the intent explicit that nothing should render when false
+- Avoids potential bugs with falsy values (0, "", etc.) being rendered
+- More consistent and predictable behavior
+
+### Return Types
+
+**Use implicit return types instead of explicit annotations:**
+
+```typescript
+// ✅ Preferred
+const calculateTotal = (items: Item[]) => {
+  return items.reduce((sum, item) => sum + item.price, 0);
+};
+
+const fetchUser = async (id: string) => {
+  const user = await db.user.findUnique({ where: { id } });
+  return user;
+};
+
+// ❌ Avoid
+const calculateTotal = (items: Item[]): number => {
+  return items.reduce((sum, item) => sum + item.price, 0);
+};
+
+const fetchUser = async (id: string): Promise<User | null> => {
+  const user = await db.user.findUnique({ where: { id } });
+  return user;
+};
+```
+
+**Rationale:**
+- TypeScript infers return types accurately
+- Reduces visual noise and boilerplate
+- Keeps code cleaner and more maintainable
+- Explicit return types are only needed for public APIs or when inference fails

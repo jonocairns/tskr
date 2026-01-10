@@ -57,20 +57,33 @@ type Props = {
 	googleEnabled: boolean;
 };
 
+const TableHeaderRow = ({ googleEnabled }: { googleEnabled: boolean }) => (
+	<TableRow>
+		<TableHead>Name</TableHead>
+		<TableHead>Email</TableHead>
+		<TableHead>Role</TableHead>
+		<TableHead>Reset required</TableHead>
+		<TableHead>Created</TableHead>
+		{googleEnabled ? <TableHead className="text-center">Google linked</TableHead> : null}
+		<TableHead>Password login</TableHead>
+		<TableHead>Actions</TableHead>
+	</TableRow>
+);
+
 export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Props) => {
 	const { toast } = useToast();
 	const [draft, setDraft] = useState<Draft | null>(null);
 
-	const rowsById = useMemo(() => {
-		const map = new Map<string, RowState>();
-		for (const row of rows) {
-			map.set(row.id, row);
-		}
-		return map;
-	}, [rows]);
+	const rowsById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
+
+	const findRowByEmail = (email: string) => rows.find((r) => r.email?.toLowerCase() === email.toLowerCase());
 
 	const setRow = (id: string, updater: (row: RowState) => RowState) => {
 		setRows((current) => current.map((row) => (row.id === id ? updater(row) : row)));
+	};
+
+	const updateDraft = (updates: Partial<Draft>) => {
+		setDraft((current) => (current ? { ...current, ...updates } : current));
 	};
 
 	const openEditor = (row: RowState) => {
@@ -83,9 +96,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 		});
 	};
 
-	const closeEditor = () => {
-		setDraft(null);
-	};
+	const closeEditor = () => setDraft(null);
 
 	const updateUserMutation = trpc.admin.updateUser.useMutation({
 		onMutate: ({ id }) => {
@@ -136,13 +147,13 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 
 	const createPasswordResetMutation = trpc.admin.createPasswordReset.useMutation({
 		onMutate: ({ email }) => {
-			const row = Array.from(rowsById.values()).find((r) => r.email?.toLowerCase() === email.toLowerCase());
+			const row = findRowByEmail(email);
 			if (row) {
 				setRow(row.id, (current) => ({ ...current, isResetting: true }));
 			}
 		},
 		onSuccess: (result, variables) => {
-			const row = Array.from(rowsById.values()).find((r) => r.email?.toLowerCase() === variables.email.toLowerCase());
+			const row = findRowByEmail(variables.email);
 			if (row) {
 				setRow(row.id, (current) => ({
 					...current,
@@ -154,7 +165,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			toast({ title: "Reset link created" });
 		},
 		onError: (error, variables) => {
-			const row = Array.from(rowsById.values()).find((r) => r.email?.toLowerCase() === variables.email.toLowerCase());
+			const row = findRowByEmail(variables.email);
 			if (row) {
 				setRow(row.id, (current) => ({ ...current, isResetting: false }));
 			}
@@ -300,102 +311,73 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 	const canSave = Boolean(draft && hasChanges && draftEmail.length > 0 && !isBusy);
 	const columnCount = googleEnabled ? 8 : 7;
 
-	if (rows.length === 0) {
-		return (
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Name</TableHead>
-						<TableHead>Email</TableHead>
-						<TableHead>Role</TableHead>
-						<TableHead>Reset required</TableHead>
-						<TableHead>Created</TableHead>
-						{googleEnabled ? <TableHead className="text-center">Google linked</TableHead> : null}
-						<TableHead>Password login</TableHead>
-						<TableHead>Actions</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					<TableRow>
-						<TableCell colSpan={columnCount} className="text-center">
-							No users yet.
-						</TableCell>
-					</TableRow>
-				</TableBody>
-			</Table>
-		);
-	}
-
 	return (
 		<>
 			<Table>
 				<TableHeader>
-					<TableRow>
-						<TableHead>Name</TableHead>
-						<TableHead>Email</TableHead>
-						<TableHead>Role</TableHead>
-						<TableHead>Reset required</TableHead>
-						<TableHead>Created</TableHead>
-						{googleEnabled ? <TableHead className="text-center">Google linked</TableHead> : null}
-						<TableHead>Password login</TableHead>
-						<TableHead>Actions</TableHead>
-					</TableRow>
+					<TableHeaderRow googleEnabled={googleEnabled} />
 				</TableHeader>
 				<TableBody>
-					{rows.map((row) => {
-						const createdLabel = new Date(row.createdAt).toLocaleDateString();
-						const isSelf = currentUserId === row.id;
+					{rows.length === 0 ? (
+						<TableRow>
+							<TableCell colSpan={columnCount} className="text-center">
+								No users yet.
+							</TableCell>
+						</TableRow>
+					) : (
+						rows.map((row) => {
+							const createdLabel = new Date(row.createdAt).toLocaleDateString();
+							const isSelf = currentUserId === row.id;
 
-						return (
-							<TableRow key={row.id}>
-								<TableCell>{row.name ?? "—"}</TableCell>
-								<TableCell>{row.email ?? "—"}</TableCell>
-								<TableCell>{row.isSuperAdmin ? "Super admin" : "User"}</TableCell>
-								<TableCell>{row.passwordResetRequired ? "Yes" : "No"}</TableCell>
-								<TableCell>{createdLabel}</TableCell>
-								{googleEnabled ? (
-									<TableCell className="text-center">
-										{row.hasGoogleAccount ? (
-											<>
-												<ChromeIcon className="inline h-4 w-4 text-emerald-500" />
-												<span className="sr-only">Google linked</span>
-											</>
-										) : (
-											<>
-												<XIcon className="inline h-4 w-4 text-muted-foreground" />
-												<span className="sr-only">Not linked</span>
-											</>
-										)}
+							return (
+								<TableRow key={row.id}>
+									<TableCell>{row.name ?? "—"}</TableCell>
+									<TableCell>{row.email ?? "—"}</TableCell>
+									<TableCell>{row.isSuperAdmin ? "Super admin" : "User"}</TableCell>
+									<TableCell>{row.passwordResetRequired ? "Yes" : "No"}</TableCell>
+									<TableCell>{createdLabel}</TableCell>
+									{googleEnabled ? (
+										<TableCell className="text-center">
+											{row.hasGoogleAccount ? (
+												<>
+													<ChromeIcon className="inline h-4 w-4 text-emerald-500" />
+													<span className="sr-only">Google linked</span>
+												</>
+											) : (
+												<>
+													<XIcon className="inline h-4 w-4 text-muted-foreground" />
+													<span className="sr-only">Not linked</span>
+												</>
+											)}
+										</TableCell>
+									) : null}
+									<TableCell>{row.passwordLoginDisabled ? "Disabled" : "Allowed"}</TableCell>
+									<TableCell>
+										<Button
+											type="button"
+											size="icon"
+											variant="ghost"
+											onClick={() => openEditor(row)}
+											aria-label="Edit user"
+											className="h-9 w-9"
+										>
+											<PencilIcon className="h-5 w-5" />
+										</Button>
+										{isSelf ? <span className="sr-only">You</span> : null}
 									</TableCell>
-								) : null}
-								<TableCell>{row.passwordLoginDisabled ? "Disabled" : "Allowed"}</TableCell>
-								<TableCell>
-									<Button
-										type="button"
-										size="icon"
-										variant="ghost"
-										onClick={() => openEditor(row)}
-										aria-label="Edit user"
-										className="h-9 w-9"
-									>
-										<PencilIcon className="h-5 w-5" />
-									</Button>
-									{isSelf ? <span className="sr-only">You</span> : null}
-								</TableCell>
-							</TableRow>
-						);
-					})}
+								</TableRow>
+							);
+						})
+					)}
 				</TableBody>
 			</Table>
 
-			<AlertDialog open={editorOpen} onOpenChange={(open) => (!open ? closeEditor() : null)}>
+			<AlertDialog open={editorOpen} onOpenChange={(open) => !open && closeEditor()}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<div className="flex items-center justify-between gap-4">
 							<AlertDialogTitle>Edit user</AlertDialogTitle>
-							{googleEnabled && activeRow?.hasGoogleAccount ? (
-								<ChromeIcon className="h-5 w-5 text-emerald-500" />
-							) : null}
+							{googleEnabled && activeRow?.hasGoogleAccount ? <ChromeIcon className="h-5 w-5 text-emerald-500" /> : null}
 						</div>
 						<AlertDialogDescription>
 							Update profile details, login methods, or generate a reset link.
@@ -409,9 +391,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 									<Input
 										id="admin-user-name"
 										value={draft.name}
-										onChange={(event) =>
-											setDraft((current) => (current ? { ...current, name: event.target.value } : current))
-										}
+										onChange={(event) => updateDraft({ name: event.target.value })}
 										disabled={isBusy}
 									/>
 								</div>
@@ -421,9 +401,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 										id="admin-user-email"
 										type="email"
 										value={draft.email}
-										onChange={(event) =>
-											setDraft((current) => (current ? { ...current, email: event.target.value } : current))
-										}
+										onChange={(event) => updateDraft({ email: event.target.value })}
 										disabled={isBusy}
 									/>
 								</div>
@@ -437,16 +415,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 									</div>
 									<Switch
 										checked={allowPassword}
-										onCheckedChange={(checked) =>
-											setDraft((current) =>
-												current
-													? {
-															...current,
-															passwordLoginDisabled: !checked,
-														}
-													: current,
-											)
-										}
+										onCheckedChange={(checked) => updateDraft({ passwordLoginDisabled: !checked })}
 										disabled={passwordToggleDisabled}
 									/>
 								</div>
@@ -457,16 +426,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 									</div>
 									<Switch
 										checked={draft.passwordResetRequired}
-										onCheckedChange={(checked) =>
-											setDraft((current) =>
-												current
-													? {
-															...current,
-															passwordResetRequired: checked,
-														}
-													: current,
-											)
-										}
+										onCheckedChange={(checked) => updateDraft({ passwordResetRequired: checked })}
 										disabled={isBusy || draft.passwordLoginDisabled}
 									/>
 								</div>
