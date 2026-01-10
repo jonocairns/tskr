@@ -109,7 +109,7 @@ export const presetsRouter = router({
 			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
 		}
 
-		if (updates.isShared !== undefined && !isOwner) {
+		if (updates.isShared !== undefined && updates.isShared !== preset.isShared && !isOwner) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can change sharing" });
 		}
 
