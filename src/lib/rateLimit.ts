@@ -100,7 +100,9 @@ export const getClientIp = (req: RequestLike | null | undefined) => {
 
 	if (forwarded) {
 		const firstIp = forwarded.split(",")[0]?.trim();
-		return firstIp ?? undefined;
+		if (firstIp) {
+			return firstIp;
+		}
 	}
 
 	const realIp = getHeaderValue({ req, key: "x-real-ip" });
