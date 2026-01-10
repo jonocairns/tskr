@@ -93,7 +93,7 @@ export function PresetActionsDrawer({
 	currentUserId,
 	canEditApprovalOverride,
 	canManagePresets,
-}: Props): React.ReactNode {
+}: Props) {
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
 	const [customApprovalOverride, setCustomApprovalOverride] = useState<ApprovalOverrideOption>("DEFAULT");

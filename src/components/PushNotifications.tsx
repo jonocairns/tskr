@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc/react";
 
 type Status = "loading" | "unsupported" | "blocked" | "ready" | "subscribed";
 
-const toUint8Array = (base64String: string): Uint8Array => {
+const toUint8Array = (base64String: string) => {
 	const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
 	const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 	const rawData = atob(base64);
@@ -27,14 +27,14 @@ const subscribeWithTimeout = async (
 	registration: ServiceWorkerRegistration,
 	publicKey: string,
 	timeoutMs = 10000,
-): Promise<PushSubscription> => {
+) => {
 	let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
 	try {
 		const applicationServerKey = toUint8Array(publicKey);
 		const subscribePromise = registration.pushManager.subscribe({
 			userVisibleOnly: true,
-			applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
+			applicationServerKey,
 		});
 
 		const timeoutPromise = new Promise<never>((_resolve, reject) => {
@@ -51,7 +51,7 @@ const subscribeWithTimeout = async (
 	}
 };
 
-const describeError = (error: unknown): { name: string; message: string } => {
+const describeError = (error: unknown) => {
 	if (error instanceof Error) {
 		return { name: error.name, message: error.message };
 	}
@@ -61,12 +61,7 @@ const describeError = (error: unknown): { name: string; message: string } => {
 	return { name: "Error", message: "Unknown error" };
 };
 
-const extractSubscriptionKeys = (
-	subscription: PushSubscription,
-): {
-	endpoint: string;
-	keys: { p256dh: string; auth: string };
-} | null => {
+const extractSubscriptionKeys = (subscription: PushSubscription) => {
 	const json = subscription.toJSON();
 	if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
 		return null;
