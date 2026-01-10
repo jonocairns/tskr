@@ -21,18 +21,17 @@ declare global {
 	var rateLimitLastCleanup: number | undefined;
 }
 
-const store = globalThis.rateLimitStore ?? new Map<string, RateLimitEntry>();
-
-if (!globalThis.rateLimitStore) {
-	globalThis.rateLimitStore = store;
-}
-
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+globalThis.rateLimitStore ??= new Map<string, RateLimitEntry>();
+const store = globalThis.rateLimitStore;
 
 const cleanupExpiredEntries = () => {
 	const now = Date.now();
+	// If lastCleanup is undefined, it becomes 0, ensuring cleanup runs on first call
+	const lastCleanup = globalThis.rateLimitLastCleanup ?? 0;
 
-	if (globalThis.rateLimitLastCleanup && now - globalThis.rateLimitLastCleanup < CLEANUP_INTERVAL_MS) {
+	if (now - lastCleanup < CLEANUP_INTERVAL_MS) {
 		return;
 	}
 
@@ -45,13 +44,14 @@ const cleanupExpiredEntries = () => {
 	}
 };
 
-export const checkRateLimit = (options: { key: string; windowMs: number; max: number }): RateLimitResult => {
+export const checkRateLimit = (options: { key: string; windowMs: number; max: number }) => {
 	const { key, windowMs, max } = options;
 
 	cleanupExpiredEntries();
 
 	const now = Date.now();
 	const entry = store.get(key);
+
 	if (!entry || entry.resetAt <= now) {
 		const resetAt = now + windowMs;
 		store.set(key, { count: 1, resetAt });
@@ -66,41 +66,47 @@ export const checkRateLimit = (options: { key: string; windowMs: number; max: nu
 	return { ok: true, resetAt: entry.resetAt };
 };
 
-export const getHeaderValue = (options: { req: RequestLike | null | undefined; key: string }): string | undefined => {
-	const { req, key } = options;
-	if (!req || typeof req !== "object") {
-		return undefined;
-	}
-
-	const headers = req.headers;
-	if (!headers) {
-		return undefined;
-	}
-
+const extractHeaderValue = (headers: HeadersLike, key: string) => {
 	if (typeof (headers as Headers).get === "function") {
 		return (headers as Headers).get(key) ?? undefined;
 	}
 
-	if (typeof headers === "object" && headers) {
-		const value =
-			(headers as Record<string, string | string[] | undefined>)[key] ??
-			(headers as Record<string, string | string[] | undefined>)[key.toLowerCase()];
-		if (Array.isArray(value)) {
-			return value.join(",");
-		}
-		if (typeof value === "string") {
-			return value;
-		}
+	const record = headers as Record<string, string | string[] | undefined>;
+	const value = record[key] ?? record[key.toLowerCase()];
+
+	if (Array.isArray(value)) {
+		return value.join(",");
+	}
+
+	if (typeof value === "string") {
+		return value;
 	}
 
 	return undefined;
 };
 
-export const getClientIp = (req: RequestLike | null | undefined): string | undefined => {
-	const forwarded = getHeaderValue({ req, key: "x-forwarded-for" });
-	if (forwarded) {
-		return forwarded.split(",")[0]?.trim() || undefined;
+export const getHeaderValue = (options: { req: RequestLike | null | undefined; key: string }) => {
+	const { req, key } = options;
+
+	if (!req?.headers) {
+		return undefined;
 	}
 
-	return getHeaderValue({ req, key: "x-real-ip" }) ?? undefined;
+	return extractHeaderValue(req.headers, key);
+};
+
+export const getClientIp = (req: RequestLike | null | undefined) => {
+	const forwarded = getHeaderValue({ req, key: "x-forwarded-for" });
+
+	if (forwarded === "") {
+		return getHeaderValue({ req, key: "x-real-ip" }) ?? undefined;
+	}
+
+	if (forwarded !== undefined) {
+		const firstIp = forwarded.split(",")[0]?.trim();
+		return firstIp || undefined;
+	}
+
+	const realIp = getHeaderValue({ req, key: "x-real-ip" });
+	return realIp ?? undefined;
 };
