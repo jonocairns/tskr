@@ -52,7 +52,7 @@ type Draft = {
 
 type Props = {
 	rows: RowState[];
-	setRows: Dispatch<SetStateAction<RowState[]>>;
+	setRowsAction: Dispatch<SetStateAction<RowState[]>>;
 	currentUserId?: string;
 	googleEnabled: boolean;
 };
@@ -70,7 +70,7 @@ const TableHeaderRow = ({ googleEnabled }: { googleEnabled: boolean }) => (
 	</TableRow>
 );
 
-export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Props) => {
+export const UsersTable = ({ rows, setRowsAction, currentUserId, googleEnabled }: Props) => {
 	const { toast } = useToast();
 	const [draft, setDraft] = useState<Draft | null>(null);
 
@@ -79,7 +79,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 	const findRowByEmail = (email: string) => rows.find((r) => r.email?.toLowerCase() === email.toLowerCase());
 
 	const setRow = (id: string, updater: (row: RowState) => RowState) => {
-		setRows((current) => current.map((row) => (row.id === id ? updater(row) : row)));
+		setRowsAction((current) => current.map((row) => (row.id === id ? updater(row) : row)));
 	};
 
 	const updateDraft = (updates: Partial<Draft>) => {
@@ -131,7 +131,7 @@ export const UsersTable = ({ rows, setRows, currentUserId, googleEnabled }: Prop
 			setRow(id, (current) => ({ ...current, isDeleting: true }));
 		},
 		onSuccess: (_, variables) => {
-			setRows((current) => current.filter((item) => item.id !== variables.id));
+			setRowsAction((current) => current.filter((item) => item.id !== variables.id));
 			closeEditor();
 			toast({ title: "User deleted" });
 		},

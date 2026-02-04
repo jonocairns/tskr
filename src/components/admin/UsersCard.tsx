@@ -41,10 +41,10 @@ export const UsersCard = ({ users, currentUserId, googleEnabled }: Props) => {
 					<CardTitle>Users</CardTitle>
 					<CardDescription>Manage users and generate password reset links.</CardDescription>
 				</div>
-				<CreateUserDialog onCreated={handleUserCreated} />
+				<CreateUserDialog onCreatedAction={handleUserCreated} />
 			</CardHeader>
 			<CardContent>
-				<UsersTable rows={rows} setRows={setRows} currentUserId={currentUserId} googleEnabled={googleEnabled} />
+				<UsersTable rows={rows} setRowsAction={setRows} currentUserId={currentUserId} googleEnabled={googleEnabled} />
 			</CardContent>
 		</Card>
 	);
