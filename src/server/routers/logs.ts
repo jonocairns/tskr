@@ -257,12 +257,39 @@ export const logsRouter = router({
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Already reverted" });
 			}
 
-			await prisma.pointLog.update({
-				where: { id: input.id },
-				data: {
-					revertedAt: new Date(),
-					revertedById: userId,
-				},
+			await prisma.$transaction(async (tx) => {
+				await tx.pointLog.update({
+					where: { id: input.id },
+					data: {
+						revertedAt: new Date(),
+						revertedById: userId,
+					},
+				});
+
+				if (log.assignedTaskId) {
+					const task = await tx.assignedTask.findFirst({
+						where: { id: log.assignedTaskId, householdId: log.householdId },
+						select: { id: true, status: true, isRecurring: true, cadenceTarget: true },
+					});
+
+					if (task && !task.isRecurring && task.status === "COMPLETED") {
+						const approvedCount = await tx.pointLog.count({
+							where: {
+								assignedTaskId: task.id,
+								householdId: log.householdId,
+								revertedAt: null,
+								status: "APPROVED",
+							},
+						});
+
+						if (approvedCount < task.cadenceTarget) {
+							await tx.assignedTask.update({
+								where: { id: task.id },
+								data: { status: "ACTIVE" },
+							});
+						}
+					}
+				}
 			});
 
 			return { ok: true };
