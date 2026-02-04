@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 type Props = {
 	children: ReactNode;
-	onReset?: () => void;
+	onResetAction?: () => void;
 };
 
 type State = {
@@ -81,7 +81,7 @@ export class TRPCErrorBoundary extends Component<Props, State> {
 	}
 
 	private handleReset = () => {
-		this.props.onReset?.();
+		this.props.onResetAction?.();
 		this.setState({ hasError: false, error: null });
 	};
 
@@ -105,5 +105,5 @@ export function TRPCErrorBoundaryWithQueryInvalidation({ children }: { children:
 		queryClient.invalidateQueries();
 	};
 
-	return <TRPCErrorBoundary onReset={handleReset}>{children}</TRPCErrorBoundary>;
+	return <TRPCErrorBoundary onResetAction={handleReset}>{children}</TRPCErrorBoundary>;
 }

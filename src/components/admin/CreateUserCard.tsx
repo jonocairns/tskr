@@ -23,10 +23,10 @@ import { trpc } from "@/lib/trpc/react";
 const MIN_PASSWORD_LENGTH = 8;
 
 type Props = {
-	onCreated?: (user: UserRow) => void;
+	onCreatedAction?: (user: UserRow) => void;
 };
 
-export const CreateUserDialog = ({ onCreated }: Props) => {
+export const CreateUserDialog = ({ onCreatedAction }: Props) => {
 	const { toast } = useToast();
 	const [open, setOpen] = useState(false);
 	const [name, setName] = useState("");
@@ -49,8 +49,8 @@ export const CreateUserDialog = ({ onCreated }: Props) => {
 			setOpen(false);
 			toast({ title: "User created" });
 
-			if (result.user && onCreated) {
-				onCreated(result.user);
+			if (result.user && onCreatedAction) {
+				onCreatedAction(result.user);
 			}
 		},
 		onError: (error) => {
