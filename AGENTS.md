@@ -152,7 +152,7 @@ const fetchUser = async (id: string): Promise<User | null> => {
 - Explicit return types are only needed for public APIs or when inference fails
 
 ## Review guidelines
-- Leave comments only for material issues likely to impact users, data integrity, security, or production stability.
-- Treat these as P1: authz bypass, household isolation leaks, data loss/corruption, unsafe migrations, points/rewards miscounts, hot‑path performance regressions.
+- Comment only on issues likely to break production or materially harm users/data.
+- Focus on auth/roles, household isolation, data integrity, migrations, points/rewards, hot‑path performance.
 - Skip: *.lock, *.snap, *.generated.*, vendor/, node_modules/, *.min.*, dist/, build/.
-- Ignore style/format/type issues; CI covers those.
+
