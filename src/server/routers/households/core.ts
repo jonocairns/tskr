@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { getTimeZoneOptions, isValidTimeZone } from "@/lib/timeZones";
 import { dictatorProcedure, householdProcedure, router } from "@/server/trpc";
 
 const getCurrentSchema = z.object({
@@ -15,6 +16,7 @@ const updateSchema = z
 		householdId: z.string().min(1),
 		name: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 		rewardThreshold: z.number().int().min(1, "Threshold must be at least 1").max(10000, "Threshold is too high"),
+		timeZone: z.string().trim().min(1).refine(isValidTimeZone, "Invalid time zone"),
 		progressBarColor: z
 			.string()
 			.regex(/^#([0-9a-fA-F]{6})$/, "Color must be a 6-digit hex value")
@@ -36,6 +38,7 @@ export const householdCoreRouter = router({
 			select: {
 				id: true,
 				name: true,
+				timeZone: true,
 				createdById: true,
 				rewardThreshold: true,
 				progressBarColor: true,
@@ -46,16 +49,17 @@ export const householdCoreRouter = router({
 			throw new TRPCError({ code: "NOT_FOUND", message: "Household not found" });
 		}
 
-		return { household };
+		return { household, timeZones: getTimeZoneOptions() };
 	}),
 
 	updateCurrent: dictatorProcedure(updateSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const hasNameUpdate = input.name !== undefined && input.name.trim().length > 0;
 		const hasThresholdUpdate = input.rewardThreshold !== undefined;
+		const hasTimeZoneUpdate = input.timeZone !== undefined && input.timeZone.trim().length > 0;
 		const hasColorUpdate = input.progressBarColor !== undefined;
 
-		if (!hasNameUpdate && !hasThresholdUpdate && !hasColorUpdate) {
+		if (!hasNameUpdate && !hasThresholdUpdate && !hasTimeZoneUpdate && !hasColorUpdate) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "No updates provided" });
 		}
 
@@ -66,11 +70,13 @@ export const householdCoreRouter = router({
 				...(hasThresholdUpdate && input.rewardThreshold !== undefined
 					? { rewardThreshold: input.rewardThreshold }
 					: {}),
+				...(hasTimeZoneUpdate && input.timeZone ? { timeZone: input.timeZone.trim() } : {}),
 				...(hasColorUpdate && input.progressBarColor !== undefined ? { progressBarColor: input.progressBarColor } : {}),
 			},
 			select: {
 				id: true,
 				name: true,
+				timeZone: true,
 				rewardThreshold: true,
 				progressBarColor: true,
 			},
