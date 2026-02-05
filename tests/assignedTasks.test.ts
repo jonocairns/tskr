@@ -436,3 +436,20 @@ test("handles fractional cadence intervals (90 minutes)", () => {
 	expect(state.isActive).toBe(false);
 	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
 });
+
+test("sub-day cadence follows wall-clock time on DST fallback", () => {
+	const timeZone = "America/New_York";
+	const now = atLocal(2024, 11, 4, 3, 30);
+	const expectedReset = atLocal(2024, 11, 4, 5, 0);
+
+	const state = computeAssignedTaskState({
+		task: { cadenceTarget: 1, cadenceIntervalMinutes: 90, isRecurring: true },
+		logs: [],
+		now,
+		timeZone,
+	});
+
+	expect(state.progress).toBe(0);
+	expect(state.isActive).toBe(true);
+	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
+});

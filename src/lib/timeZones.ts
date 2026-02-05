@@ -60,7 +60,9 @@ export const getTimeZoneOptions = () => {
 	}
 	try {
 		const supported = getSupportedTimeZones();
-		const options = (supported ?? FALLBACK_TIME_ZONES).filter(isTimeZoneSupported);
+		const baseOptions = (supported ?? FALLBACK_TIME_ZONES).filter(isTimeZoneSupported);
+		const options =
+			!baseOptions.includes("UTC") && isTimeZoneSupported("UTC") ? [...baseOptions, "UTC"] : baseOptions;
 		cachedTimeZoneOptions = options.length > 0 ? options : FALLBACK_TIME_ZONES;
 		return cachedTimeZoneOptions;
 	} catch {
@@ -120,6 +122,11 @@ export const addDaysInTimeZone = (date: Date, days: number, timeZone: string) =>
 	return toDate(zonedDateTime);
 };
 
+export const addMinutesInTimeZone = (date: Date, minutes: number, timeZone: string) => {
+	const zonedDateTime = toZonedDateTime(date, timeZone).add({ minutes });
+	return toDate(zonedDateTime);
+};
+
 export const addMonthsInTimeZone = (date: Date, months: number, timeZone: string) => {
 	const zonedDateTime = toZonedDateTime(date, timeZone).add({ months });
 	return toDate(zonedDateTime);
@@ -138,6 +145,13 @@ export const getStartOfDayInTimeZone = (date: Date, timeZone: string) => {
 		millisecond: 0,
 	});
 	return toDate(start);
+};
+
+export const getMinutesSinceStartOfDayInTimeZone = (date: Date, timeZone: string) => {
+	const zonedDateTime = toZonedDateTime(date, timeZone);
+	return Math.floor(
+		zonedDateTime.hour * 60 + zonedDateTime.minute + zonedDateTime.second / 60 + zonedDateTime.millisecond / 60000,
+	);
 };
 
 export const getStartOfWeekInTimeZone = (date: Date, timeZone: string) => {
