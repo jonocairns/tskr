@@ -15,22 +15,33 @@ type AssignedTaskRecord = {
 
 const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
-export function buildAssignedTaskEntries(tasks: AssignedTaskRecord[], now = new Date()): AssignedTaskEntry[] {
+type BuildAssignedTaskEntriesInput = {
+	tasks: AssignedTaskRecord[];
+	now?: Date;
+	timeZone: string;
+};
+
+export const buildAssignedTaskEntries = ({
+	tasks,
+	now = new Date(),
+	timeZone,
+}: BuildAssignedTaskEntriesInput): AssignedTaskEntry[] => {
 	return tasks.flatMap((task) => {
 		if (task.status !== "ACTIVE" || !task.preset) {
 			return [];
 		}
 
 		const bucket = isDurationKey(task.preset.bucket) ? task.preset.bucket : "QUICK";
-		const state = computeAssignedTaskState(
-			{
+		const state = computeAssignedTaskState({
+			task: {
 				cadenceTarget: task.cadenceTarget,
 				cadenceIntervalMinutes: task.cadenceIntervalMinutes,
 				isRecurring: task.isRecurring,
 			},
-			task.logs,
+			logs: task.logs,
 			now,
-		);
+			timeZone,
+		});
 
 		if (!state.isActive) {
 			return [];
@@ -53,4 +64,4 @@ export function buildAssignedTaskEntries(tasks: AssignedTaskRecord[], now = new 
 			},
 		];
 	});
-}
+};

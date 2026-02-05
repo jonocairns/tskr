@@ -21,6 +21,7 @@
 		"check": "pnpm lint && pnpm compile && pnpm test"
 	},
 	"dependencies": {
+		"@js-temporal/polyfill": "^0.5.1",
 		"@next-auth/prisma-adapter": "^1.0.7",
 		"@prisma/adapter-better-sqlite3": "^7.3.0",
 		"@prisma/client": "7.3.0",

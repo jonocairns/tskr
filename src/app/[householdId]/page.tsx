@@ -42,6 +42,7 @@ export default async function DashboardPage({ params }: Props) {
 		weeklyPoints,
 		rewardThreshold,
 		progressBarColor,
+		timeZone,
 		hasApprovalMembers,
 		lastTaskAt,
 		currentStreak,
@@ -80,6 +81,7 @@ export default async function DashboardPage({ params }: Props) {
 				pointsLastWeek={weeklyPoints}
 				lastTaskAt={lastTaskAt?.toISOString() ?? null}
 				currentStreak={currentStreak}
+				timeZone={timeZone}
 				householdId={householdId}
 			/>
 
