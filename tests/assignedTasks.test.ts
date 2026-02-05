@@ -165,6 +165,46 @@ test("weekly recurring tasks reset on Mondays", () => {
 	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
 });
 
+test("fortnightly recurring tasks reset every other Monday", () => {
+	const completedAt = atLocal(2024, 1, 3, 15, 30);
+	const logs = [{ createdAt: completedAt }];
+	const expectedReset = atLocal(2024, 1, 15, 0, 0);
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 20160,
+			isRecurring: true,
+		},
+		logs,
+		atLocal(2024, 1, 5, 12, 0),
+	);
+
+	expect(state.progress).toBe(1);
+	expect(state.isActive).toBe(false);
+	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
+});
+
+test("multi-day recurring tasks reset on anchored day blocks", () => {
+	const completedAt = atLocal(2024, 1, 1, 23, 0);
+	const logs = [{ createdAt: completedAt }];
+	const expectedReset = atLocal(2024, 1, 4, 0, 0);
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 2880,
+			isRecurring: true,
+		},
+		logs,
+		atLocal(2024, 1, 2, 12, 0),
+	);
+
+	expect(state.progress).toBe(0);
+	expect(state.isActive).toBe(true);
+	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
+});
+
 test("handles cadenceTarget of zero by treating it as 1", () => {
 	const logs = [{ createdAt: atLocal(2024, 1, 1, 0, 0) }];
 	const expectedReset = atLocal(2024, 1, 1, 1, 0);
@@ -287,6 +327,46 @@ test("monthly recurring tasks reset at the start of the month", () => {
 
 	expect(state.progress).toBe(0);
 	expect(state.isActive).toBe(true);
+	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
+});
+
+test("quarterly recurring tasks reset at the start of the quarter", () => {
+	const completedAt = atLocal(2024, 2, 15, 10, 30);
+	const logs = [{ createdAt: completedAt }];
+	const expectedReset = atLocal(2024, 4, 1, 0, 0);
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 129600,
+			isRecurring: true,
+		},
+		logs,
+		atLocal(2024, 3, 10, 12, 0),
+	);
+
+	expect(state.progress).toBe(1);
+	expect(state.isActive).toBe(false);
+	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
+});
+
+test("yearly recurring tasks reset at the start of the year", () => {
+	const completedAt = atLocal(2024, 2, 1, 10, 30);
+	const logs = [{ createdAt: completedAt }];
+	const expectedReset = atLocal(2025, 1, 1, 0, 0);
+
+	const state = computeAssignedTaskState(
+		{
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 525600,
+			isRecurring: true,
+		},
+		logs,
+		atLocal(2024, 7, 4, 12, 0),
+	);
+
+	expect(state.progress).toBe(1);
+	expect(state.isActive).toBe(false);
 	expect(state.nextResetAt?.getTime()).toBe(expectedReset.getTime());
 });
 
