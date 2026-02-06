@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 
 import { isGoogleAuthEnabled } from "@/lib/authConfig";
+import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
 import { prisma } from "../prisma";
 
 export const session: NonNullable<NextAuthOptions["callbacks"]>["session"] = async ({ session, token }) => {
@@ -12,6 +13,7 @@ export const session: NonNullable<NextAuthOptions["callbacks"]>["session"] = asy
 				email: true,
 				image: true,
 				isSuperAdmin: true,
+				language: true,
 				accounts: {
 					where: { provider: "google" },
 					select: { id: true },
@@ -30,6 +32,7 @@ export const session: NonNullable<NextAuthOptions["callbacks"]>["session"] = asy
 		session.user.email = dbUser.email;
 		session.user.image = dbUser.image;
 		session.user.isSuperAdmin = dbUser.isSuperAdmin ?? false;
+		session.user.language = dbUser.language ?? DEFAULT_LANGUAGE;
 		session.user.hasGoogleAccount = isGoogleAuthEnabled && dbUser.accounts.length > 0;
 	}
 

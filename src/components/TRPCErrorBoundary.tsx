@@ -3,9 +3,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
 import { Component, type ReactNode } from "react";
-
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/Card";
+import { getAppErrorCode, getErrorMessage } from "@/lib/appErrors";
+import { useTranslation } from "@/lib/i18nClient";
 
 type Props = {
 	children: ReactNode;
@@ -17,32 +18,27 @@ type State = {
 	error: Error | null;
 };
 
-function ErrorFallback({ error, onReset, onReload }: { error: Error; onReset: () => void; onReload: () => void }) {
-	const isTRPCError = error instanceof TRPCClientError;
-
-	let errorMessage = "An unexpected error occurred";
-	let errorCode: string | undefined;
-
-	if (isTRPCError) {
-		errorMessage = error.message || "A server error occurred";
-		errorCode = error.data?.code;
-	} else if (error?.message) {
-		errorMessage = error.message;
-	}
+const ErrorFallback = ({ error, onReset, onReload }: { error: Error; onReset: () => void; onReload: () => void }) => {
+	const { t } = useTranslation(["translation", "errors"]);
+	const appErrorCode = getAppErrorCode(error);
+	const errorMessage = getErrorMessage(error, t, appErrorCode);
+	const errorDescription = appErrorCode
+		? t("Error: {{code}}", { code: appErrorCode })
+		: t("We encountered an unexpected error");
 
 	return (
 		<div className="flex min-h-screen items-center justify-center p-4">
 			<Card className="w-full max-w-md">
 				<CardHeader>
-					<CardTitle className="text-destructive">Something went wrong</CardTitle>
-					<CardDescription>{errorCode ? `Error: ${errorCode}` : "We encountered an unexpected error"}</CardDescription>
+					<CardTitle className="text-destructive">{t("Something went wrong")}</CardTitle>
+					<CardDescription>{errorDescription}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<p className="text-sm text-muted-foreground">{errorMessage}</p>
 					{process.env.NODE_ENV === "development" && error && (
 						<details className="mt-4">
 							<summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-								Error details (dev only)
+								{t("Error details (dev only)")}
 							</summary>
 							<pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">{error.stack || error.toString()}</pre>
 						</details>
@@ -50,16 +46,16 @@ function ErrorFallback({ error, onReset, onReload }: { error: Error; onReset: ()
 				</CardContent>
 				<CardFooter className="flex gap-2">
 					<Button onClick={onReset} variant="outline" className="flex-1">
-						Try again
+						{t("Try again")}
 					</Button>
 					<Button onClick={onReload} className="flex-1">
-						Reload page
+						{t("Reload page")}
 					</Button>
 				</CardFooter>
 			</Card>
 		</div>
 	);
-}
+};
 
 export class TRPCErrorBoundary extends Component<Props, State> {
 	constructor(props: Props) {
@@ -98,7 +94,7 @@ export class TRPCErrorBoundary extends Component<Props, State> {
 	}
 }
 
-export function TRPCErrorBoundaryWithQueryInvalidation({ children }: { children: ReactNode }) {
+export const TRPCErrorBoundaryWithQueryInvalidation = ({ children }: { children: ReactNode }) => {
 	const queryClient = useQueryClient();
 
 	const handleReset = () => {
@@ -106,4 +102,4 @@ export function TRPCErrorBoundaryWithQueryInvalidation({ children }: { children:
 	};
 
 	return <TRPCErrorBoundary onResetAction={handleReset}>{children}</TRPCErrorBoundary>;
-}
+};

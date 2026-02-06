@@ -9,6 +9,7 @@ import { householdsRouter } from "./households/index";
 import { logsRouter } from "./logs";
 import { passwordResetRouter } from "./passwordReset";
 import { presetsRouter } from "./presets";
+import { profileRouter } from "./profile";
 import { pushRouter } from "./push";
 
 export const appRouter = router({
@@ -19,6 +20,7 @@ export const appRouter = router({
 	households: householdsRouter,
 	logs: logsRouter,
 	passwordReset: passwordResetRouter,
+	profile: profileRouter,
 	presets: presetsRouter,
 	push: pushRouter,
 });

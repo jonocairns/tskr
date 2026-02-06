@@ -35,7 +35,30 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"style": {
+				"noRestrictedImports": {
+					"level": "error",
+					"options": {
+						"paths": {
+							"react-i18next": "Use @/lib/i18nClient instead.",
+							"i18next": "Use @/lib/i18n or @/lib/i18nServer instead."
+						}
+					}
+				}
+			}
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["src/lib/i18n.ts", "src/lib/i18nServer.ts", "src/lib/i18nClient.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": "off"
+					}
+				}
+			}
+		}
+	]
 }
