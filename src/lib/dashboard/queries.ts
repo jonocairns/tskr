@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { LogStatus } from "@prisma/client";
 
 import { buildAssignedTaskEntries } from "@/lib/dashboard/assigned";
+import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from "@/lib/formatDate";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_TIME_ZONE, getTimeZoneDayNumber } from "@/lib/timeZones";
 
@@ -63,7 +64,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		}),
 		prisma.household.findUnique({
 			where: { id: householdId },
-			select: { rewardThreshold: true, progressBarColor: true, timeZone: true },
+			select: { rewardThreshold: true, progressBarColor: true, timeZone: true, dateFormat: true, timeFormat: true },
 		}),
 		prisma.user.findMany({
 			where: { memberships: { some: { householdId } } },
@@ -192,6 +193,8 @@ export async function getDashboardData(userId: string, householdId: string) {
 		rewardThreshold: household?.rewardThreshold ?? 50,
 		progressBarColor: household?.progressBarColor ?? null,
 		timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,
+		dateFormat: household?.dateFormat ?? DEFAULT_DATE_FORMAT,
+		timeFormat: household?.timeFormat ?? DEFAULT_TIME_FORMAT,
 		users,
 		recentLogs: trimmedLogs,
 		hasMoreHistory,

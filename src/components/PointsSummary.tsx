@@ -9,7 +9,7 @@ import { CardContent, CardDescription, CardHeader, CardTitle } from "@/component
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/useToast";
-import { formatDate } from "@/lib/formatDate";
+import { type DateFormat, formatDate } from "@/lib/formatDate";
 import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
 import { getTimeZoneDayNumber, resolveTimeZone } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
@@ -24,6 +24,7 @@ type Props = {
 	lastTaskAt: string | null;
 	currentStreak: number;
 	timeZone: string;
+	dateFormat: DateFormat;
 };
 
 export const PointsSummary = ({
@@ -36,6 +37,7 @@ export const PointsSummary = ({
 	lastTaskAt,
 	currentStreak,
 	timeZone,
+	dateFormat,
 }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const [isSubmitting, setSubmitting] = useState(false);
@@ -140,7 +142,11 @@ export const PointsSummary = ({
 				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-2">
 					<Stat label="Tasks (7 days)" value={tasksLastWeek.toLocaleString()} />
 					<Stat label="Points (7 days)" value={`${pointsLastWeek.toLocaleString()} pts`} muted={pointsLastWeek < 0} />
-					<Stat label="Last task logged" value={formatLastTaskAt(lastTaskAt, resolvedTimeZone)} muted={!lastTaskAt} />
+					<Stat
+						label="Last task logged"
+						value={formatLastTaskAt(lastTaskAt, resolvedTimeZone, dateFormat)}
+						muted={!lastTaskAt}
+					/>
 					<Stat label="Current streak" value={formatStreak(currentStreak)} muted={currentStreak === 0} />
 				</div>
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -166,7 +172,7 @@ function Stat({ label, value, muted }: { label: string; value: string | number; 
 	);
 }
 
-const formatLastTaskAt = (lastTaskAt: string | null, timeZone: string) => {
+const formatLastTaskAt = (lastTaskAt: string | null, timeZone: string, dateFormat: DateFormat) => {
 	if (!lastTaskAt) {
 		return "No tasks yet";
 	}
@@ -186,7 +192,7 @@ const formatLastTaskAt = (lastTaskAt: string | null, timeZone: string) => {
 		return `${diffDays} days ago`;
 	}
 
-	return formatDate(last, timeZone);
+	return formatDate(last, { timeZone, dateFormat });
 };
 
 function formatStreak(currentStreak: number) {

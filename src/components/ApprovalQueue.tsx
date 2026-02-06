@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
-import { formatDateTime } from "@/lib/formatDate";
+import { type DateFormat, type TimeFormat, formatDateTime } from "@/lib/formatDate";
 import { trpc } from "@/lib/trpc/react";
 
 export type ApprovalEntry = {
@@ -23,9 +23,12 @@ type Props = {
 	entries: ApprovalEntry[];
 	currentUserId: string;
 	initialHasMore: boolean;
+	timeZone: string;
+	dateFormat: DateFormat;
+	timeFormat: TimeFormat;
 };
 
-export const ApprovalQueue = ({ entries, currentUserId, initialHasMore }: Props) => {
+export const ApprovalQueue = ({ entries, currentUserId, initialHasMore, timeZone, dateFormat, timeFormat }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const utils = trpc.useUtils();
@@ -82,7 +85,7 @@ export const ApprovalQueue = ({ entries, currentUserId, initialHasMore }: Props)
 										<div className="text-xs text-muted-foreground">{entry.userName}</div>
 									</TableCell>
 									<TableCell className="text-sm text-muted-foreground">
-										{formatDateTime(entry.createdAt)}
+										{formatDateTime(entry.createdAt, { timeZone, dateFormat, timeFormat })}
 									</TableCell>
 									<TableCell className="text-right font-semibold">
 										{entry.points > 0 ? "+" : ""}
