@@ -61,8 +61,7 @@ export const getTimeZoneOptions = () => {
 	try {
 		const supported = getSupportedTimeZones();
 		const baseOptions = (supported ?? FALLBACK_TIME_ZONES).filter(isTimeZoneSupported);
-		const options =
-			!baseOptions.includes("UTC") && isTimeZoneSupported("UTC") ? [...baseOptions, "UTC"] : baseOptions;
+		const options = !baseOptions.includes("UTC") && isTimeZoneSupported("UTC") ? [...baseOptions, "UTC"] : baseOptions;
 		cachedTimeZoneOptions = options.length > 0 ? options : FALLBACK_TIME_ZONES;
 		return cachedTimeZoneOptions;
 	} catch {
