@@ -9,8 +9,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { TRPCErrorBoundaryWithQueryInvalidation } from "@/components/TRPCErrorBoundary";
 import { Toaster } from "@/components/ui/Toaster";
 import i18n from "@/lib/i18n";
-import { DEFAULT_LANGUAGE, normalizeLanguage } from "@/lib/i18nConfig";
 import { I18nextProvider } from "@/lib/i18nClient";
+import { DEFAULT_LANGUAGE, normalizeLanguage } from "@/lib/i18nConfig";
 import { TRPCProvider } from "@/lib/trpc/react";
 
 export const Providers = ({

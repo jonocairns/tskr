@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const localesRoot = path.join(process.cwd(), "src", "locales");
 const outputPath = path.join(localesRoot, "supported.json");

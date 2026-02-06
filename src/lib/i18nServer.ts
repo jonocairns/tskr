@@ -2,12 +2,7 @@ import "server-only";
 
 import i18next, { type i18n as I18n } from "i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
-import {
-	DEFAULT_LANGUAGE,
-	SUPPORTED_LANGUAGES,
-	SUPPORTED_NAMESPACES,
-	normalizeLanguage,
-} from "@/lib/i18nConfig";
+import { DEFAULT_LANGUAGE, normalizeLanguage, SUPPORTED_LANGUAGES, SUPPORTED_NAMESPACES } from "@/lib/i18nConfig";
 
 const serverInstances = new Map<string, Promise<I18n>>();
 
@@ -43,9 +38,11 @@ const initServerI18n = async (lng: string) => {
 
 export const getServerT = async (lng = DEFAULT_LANGUAGE) => {
 	const normalized = normalizeLanguage(lng || DEFAULT_LANGUAGE);
-	if (!serverInstances.has(normalized)) {
-		serverInstances.set(normalized, initServerI18n(normalized));
+	let instancePromise = serverInstances.get(normalized);
+	if (!instancePromise) {
+		instancePromise = initServerI18n(normalized);
+		serverInstances.set(normalized, instancePromise);
 	}
-	const instance = await serverInstances.get(normalized);
-	return instance!.t.bind(instance);
+	const instance = await instancePromise;
+	return instance.t.bind(instance);
 };
