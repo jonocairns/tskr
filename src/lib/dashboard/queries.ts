@@ -3,6 +3,7 @@ import { LogStatus } from "@prisma/client";
 
 import { buildAssignedTaskEntries } from "@/lib/dashboard/assigned";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_TIME_ZONE, getTimeZoneDayNumber } from "@/lib/timeZones";
 
 const HISTORY_LIMIT = 10;
 const APPROVALS_LIMIT = 10;
@@ -62,7 +63,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		}),
 		prisma.household.findUnique({
 			where: { id: householdId },
-			select: { rewardThreshold: true, progressBarColor: true },
+			select: { rewardThreshold: true, progressBarColor: true, timeZone: true },
 		}),
 		prisma.user.findMany({
 			where: { memberships: { some: { householdId } } },
@@ -190,46 +191,40 @@ export async function getDashboardData(userId: string, householdId: string) {
 		firstActivity,
 		rewardThreshold: household?.rewardThreshold ?? 50,
 		progressBarColor: household?.progressBarColor ?? null,
+		timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,
 		users,
 		recentLogs: trimmedLogs,
 		hasMoreHistory,
 		pendingLogs: trimmedApprovals,
 		hasMoreApprovals,
 		presets,
-		assignedTasks: buildAssignedTaskEntries(assignedTasks),
+		assignedTasks: buildAssignedTaskEntries({
+			tasks: assignedTasks,
+			timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,
+		}),
 		weeklyTaskCount,
 		weeklyPoints: weeklyPointSum._sum?.points ?? 0,
 		hasApprovalMembers: approvalMemberCount > 0,
 		lastTaskAt: taskLogDates[0]?.createdAt ?? null,
-		currentStreak: getCurrentStreak(taskLogDates),
+		currentStreak: getCurrentStreak(taskLogDates, household?.timeZone ?? DEFAULT_TIME_ZONE),
 	};
 }
 
-export function getCurrentStreak(taskLogDates: Array<{ createdAt: Date }>) {
+export function getCurrentStreak(taskLogDates: Array<{ createdAt: Date }>, timeZone: string) {
 	if (taskLogDates.length === 0) {
 		return 0;
 	}
 
-	const dayKeys = new Set(taskLogDates.map((log) => toDayKey(log.createdAt)));
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
+	const dayNumbers = new Set(taskLogDates.map((log) => getTimeZoneDayNumber(log.createdAt, timeZone)));
+	const todayNumber = getTimeZoneDayNumber(new Date(), timeZone);
 
 	let streak = 0;
 	while (true) {
-		const day = new Date(today);
-		day.setDate(day.getDate() - streak);
-		if (!dayKeys.has(toDayKey(day))) {
+		if (!dayNumbers.has(todayNumber - streak)) {
 			break;
 		}
 		streak += 1;
 	}
 
 	return streak;
-}
-
-export function toDayKey(date: Date) {
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	const day = String(date.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
 }

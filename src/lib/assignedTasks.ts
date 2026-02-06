@@ -1,3 +1,19 @@
+import { Temporal } from "@js-temporal/polyfill";
+
+import {
+	addDaysInTimeZone,
+	addMonthsInTimeZone,
+	addYearsInTimeZone,
+	getMinutesSinceStartOfDayInTimeZone,
+	getStartOfDayInTimeZone,
+	getStartOfMonthInTimeZone,
+	getStartOfQuarterInTimeZone,
+	getStartOfWeekInTimeZone,
+	getStartOfYearInTimeZone,
+	getTimeZoneDateFromDayMinutes,
+	getTimeZoneDayNumber,
+} from "@/lib/timeZones";
+
 export type AssignedTaskLog = {
 	createdAt: Date;
 };
@@ -14,111 +30,98 @@ export type AssignedTaskState = {
 	nextResetAt: Date | null;
 };
 
-const startOfDay = (date: Date) => {
-	const start = new Date(date);
-	start.setHours(0, 0, 0, 0);
-	return start;
+const startOfDay = (date: Date, timeZone: string) => {
+	return getStartOfDayInTimeZone(date, timeZone);
 };
 
-const MINUTES_IN_DAY = 1440;
-const MINUTES_IN_WEEK = 10080;
-const MINUTES_IN_FORTNIGHT = 20160;
-const MINUTES_IN_MONTH = 43200;
-const MINUTES_IN_QUARTER = 129600;
-const MINUTES_IN_YEAR = 525600;
+const MINUTES_IN_DAY = Temporal.Duration.from({ days: 1 }).total({ unit: "minutes" });
+const MINUTES_IN_WEEK = Temporal.Duration.from({ days: 7 }).total({ unit: "minutes" });
+const MINUTES_IN_FORTNIGHT = Temporal.Duration.from({ days: 14 }).total({ unit: "minutes" });
+const MINUTES_IN_MONTH = Temporal.Duration.from({ days: 30 }).total({ unit: "minutes" });
+const MINUTES_IN_QUARTER = Temporal.Duration.from({ days: 90 }).total({ unit: "minutes" });
+const MINUTES_IN_YEAR = Temporal.Duration.from({ days: 365 }).total({ unit: "minutes" });
 
-const startOfWeek = (date: Date) => {
-	const start = startOfDay(date);
-	const day = start.getDay();
-	const diff = (day + 6) % 7;
-	start.setDate(start.getDate() - diff);
-	return start;
+const startOfWeek = (date: Date, timeZone: string) => {
+	return getStartOfWeekInTimeZone(date, timeZone);
 };
 
-const startOfMonth = (date: Date) => {
-	return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+const addDays = (date: Date, days: number, timeZone: string) => {
+	return addDaysInTimeZone(date, days, timeZone);
 };
 
-const startOfQuarter = (date: Date) => {
-	const quarterStartMonth = Math.floor(date.getMonth() / 3) * 3;
-	return new Date(date.getFullYear(), quarterStartMonth, 1, 0, 0, 0, 0);
+const getEpochAnchor = (timeZone: string) => {
+	return new Date(
+		Temporal.ZonedDateTime.from({ timeZone, year: 1970, month: 1, day: 1 }).toInstant().epochMilliseconds,
+	);
 };
 
-const startOfYear = (date: Date) => {
-	return new Date(date.getFullYear(), 0, 1, 0, 0, 0, 0);
-};
-
-const dayNumber = (date: Date) => {
-	return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000);
-};
-
-const addDays = (date: Date, days: number) => {
-	const next = new Date(date);
-	next.setDate(next.getDate() + days);
-	return next;
-};
-
-const getPeriodBounds = (now: Date, intervalMinutes: number) => {
-	const intervalMs = intervalMinutes * 60_000;
-
+const getPeriodBounds = (now: Date, intervalMinutes: number, timeZone: string) => {
 	if (intervalMinutes === MINUTES_IN_DAY) {
-		const periodStart = startOfDay(now);
-		return { periodStart, periodEnd: addDays(periodStart, 1) };
+		const periodStart = startOfDay(now, timeZone);
+		return { periodStart, periodEnd: addDays(periodStart, 1, timeZone) };
 	}
 
 	if (intervalMinutes === MINUTES_IN_WEEK) {
-		const periodStart = startOfWeek(now);
-		return { periodStart, periodEnd: addDays(periodStart, 7) };
+		const periodStart = startOfWeek(now, timeZone);
+		return { periodStart, periodEnd: addDays(periodStart, 7, timeZone) };
 	}
 
 	if (intervalMinutes === MINUTES_IN_FORTNIGHT) {
-		const anchor = startOfWeek(new Date(1970, 0, 1));
-		const weeksSinceAnchor = Math.floor((dayNumber(startOfWeek(now)) - dayNumber(anchor)) / 7);
-		const periodStart = addDays(anchor, Math.floor(weeksSinceAnchor / 2) * 14);
-		return { periodStart, periodEnd: addDays(periodStart, 14) };
+		const anchorBase = getEpochAnchor(timeZone);
+		const anchor = getStartOfWeekInTimeZone(anchorBase, timeZone);
+		const weeksSinceAnchor = Math.floor(
+			(getTimeZoneDayNumber(getStartOfWeekInTimeZone(now, timeZone), timeZone) -
+				getTimeZoneDayNumber(anchor, timeZone)) /
+				7,
+		);
+		const periodStart = addDays(anchor, Math.floor(weeksSinceAnchor / 2) * 14, timeZone);
+		return { periodStart, periodEnd: addDays(periodStart, 14, timeZone) };
 	}
 
 	if (intervalMinutes === MINUTES_IN_MONTH) {
-		const periodStart = startOfMonth(now);
-		const periodEnd = new Date(periodStart);
-		periodEnd.setMonth(periodEnd.getMonth() + 1);
-		return { periodStart, periodEnd };
+		const periodStart = getStartOfMonthInTimeZone(now, timeZone);
+		return { periodStart, periodEnd: addMonthsInTimeZone(periodStart, 1, timeZone) };
 	}
 
 	if (intervalMinutes === MINUTES_IN_QUARTER) {
-		const periodStart = startOfQuarter(now);
-		const periodEnd = new Date(periodStart);
-		periodEnd.setMonth(periodEnd.getMonth() + 3);
-		return { periodStart, periodEnd };
+		const periodStart = getStartOfQuarterInTimeZone(now, timeZone);
+		return { periodStart, periodEnd: addMonthsInTimeZone(periodStart, 3, timeZone) };
 	}
 
 	if (intervalMinutes === MINUTES_IN_YEAR) {
-		const periodStart = startOfYear(now);
-		const periodEnd = new Date(periodStart);
-		periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-		return { periodStart, periodEnd };
+		const periodStart = getStartOfYearInTimeZone(now, timeZone);
+		return { periodStart, periodEnd: addYearsInTimeZone(periodStart, 1, timeZone) };
 	}
 
 	if (intervalMinutes % MINUTES_IN_DAY === 0) {
 		const daysInterval = Math.max(1, intervalMinutes / MINUTES_IN_DAY);
-		const anchor = startOfDay(new Date(1970, 0, 1));
-		const daysSinceAnchor = dayNumber(now) - dayNumber(anchor);
-		const periodStart = addDays(anchor, Math.floor(daysSinceAnchor / daysInterval) * daysInterval);
-		return { periodStart, periodEnd: addDays(periodStart, daysInterval) };
+		const anchorBase = getEpochAnchor(timeZone);
+		const anchor = startOfDay(anchorBase, timeZone);
+		const daysSinceAnchor = getTimeZoneDayNumber(now, timeZone) - getTimeZoneDayNumber(anchor, timeZone);
+		const periodStart = addDays(anchor, Math.floor(daysSinceAnchor / daysInterval) * daysInterval, timeZone);
+		return { periodStart, periodEnd: addDays(periodStart, daysInterval, timeZone) };
 	}
 
-	const start = startOfDay(now);
-	const minutesSinceMidnight = Math.floor((now.getTime() - start.getTime()) / 60_000);
+	const minutesSinceMidnight = getMinutesSinceStartOfDayInTimeZone(now, timeZone);
 	const periodStartMinutes = Math.floor(minutesSinceMidnight / intervalMinutes) * intervalMinutes;
-	const periodStart = new Date(start.getTime() + periodStartMinutes * 60_000);
-	return { periodStart, periodEnd: new Date(periodStart.getTime() + intervalMs) };
+	const periodStart = getTimeZoneDateFromDayMinutes(now, periodStartMinutes, timeZone);
+	const periodEnd = getTimeZoneDateFromDayMinutes(now, periodStartMinutes + intervalMinutes, timeZone);
+	return { periodStart, periodEnd };
 };
 
-export function computeAssignedTaskState(
-	task: AssignedTaskConfig,
-	logs: AssignedTaskLog[],
+type ComputeAssignedTaskStateInput = {
+	task: AssignedTaskConfig;
+	logs: AssignedTaskLog[];
+	now?: Date;
+	timeZone: string;
+};
+
+export const computeAssignedTaskState = ({
+	task,
+	logs,
 	now = new Date(),
-): AssignedTaskState {
+	timeZone,
+}: ComputeAssignedTaskStateInput): AssignedTaskState => {
 	const target = Math.max(task.cadenceTarget, 1);
 	const intervalMinutes = Math.max(task.cadenceIntervalMinutes, 1);
 	const sortedLogs = [...logs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
@@ -131,7 +134,7 @@ export function computeAssignedTaskState(
 			: { progress: totalCount, isActive: true, nextResetAt: null };
 	}
 
-	const { periodStart, periodEnd } = getPeriodBounds(now, intervalMinutes);
+	const { periodStart, periodEnd } = getPeriodBounds(now, intervalMinutes, timeZone);
 	const periodCount = sortedLogs.filter((log) => log.createdAt >= periodStart && log.createdAt < periodEnd).length;
 
 	if (periodCount >= target) {
@@ -139,4 +142,4 @@ export function computeAssignedTaskState(
 	}
 
 	return { progress: periodCount, isActive: true, nextResetAt: periodEnd };
-}
+};

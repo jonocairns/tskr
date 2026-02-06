@@ -76,6 +76,7 @@ model AppSettings {
 model Household {
   id                String            @id @default(cuid())
   name              String
+  timeZone          String            @default("Pacific/Auckland")
   rewardThreshold   Int               @default(50)
   progressBarColor  String?
   createdById       String

@@ -8,7 +8,10 @@ jest.mock("@/lib/assignedTasks", () => ({
 
 const mockedComputeAssignedTaskState = computeAssignedTaskState as jest.MockedFunction<typeof computeAssignedTaskState>;
 
-type AssignedTaskRecord = Parameters<typeof buildAssignedTaskEntries>[0][number];
+type AssignedTaskRecord = Parameters<typeof buildAssignedTaskEntries>[0]["tasks"][number];
+
+const TIME_ZONE = "UTC";
+const NOW = new Date("2024-01-01T00:00:00.000Z");
 
 const makeTask = (overrides: Partial<AssignedTaskRecord> = {}): AssignedTaskRecord => ({
 	id: "task-1",
@@ -29,7 +32,7 @@ beforeEach(() => {
 test("filters non-ACTIVE tasks and tasks without a preset", () => {
 	const tasks: AssignedTaskRecord[] = [makeTask({ status: "PAUSED" }), makeTask({ id: "task-2", preset: null })];
 
-	const entries = buildAssignedTaskEntries(tasks);
+	const entries = buildAssignedTaskEntries({ tasks, now: NOW, timeZone: TIME_ZONE });
 
 	expect(entries).toHaveLength(0);
 	expect(mockedComputeAssignedTaskState).not.toHaveBeenCalled();
@@ -43,12 +46,16 @@ test("falls back to QUICK for invalid buckets and returns ISO timestamps", () =>
 	});
 
 	const assignedAt = new Date("2024-02-02T12:34:56.000Z");
-	const entries = buildAssignedTaskEntries([
-		makeTask({
-			assignedAt,
-			preset: { id: "preset-2", label: "Custom", bucket: "NOT-A-BUCKET" },
-		}),
-	]);
+	const entries = buildAssignedTaskEntries({
+		tasks: [
+			makeTask({
+				assignedAt,
+				preset: { id: "preset-2", label: "Custom", bucket: "NOT-A-BUCKET" },
+			}),
+		],
+		now: NOW,
+		timeZone: TIME_ZONE,
+	});
 
 	expect(entries).toHaveLength(1);
 	expect(entries[0]?.bucket).toBe("QUICK");
@@ -63,7 +70,7 @@ test("returns no entries when the task is inactive", () => {
 		nextResetAt: new Date("2024-01-01T02:00:00.000Z"),
 	});
 
-	const entries = buildAssignedTaskEntries([makeTask()]);
+	const entries = buildAssignedTaskEntries({ tasks: [makeTask()], now: NOW, timeZone: TIME_ZONE });
 
 	expect(entries).toHaveLength(0);
 });
@@ -75,7 +82,7 @@ test("clamps progress to the cadence target", () => {
 		nextResetAt: null,
 	});
 
-	const entries = buildAssignedTaskEntries([makeTask({ cadenceTarget: 2 })]);
+	const entries = buildAssignedTaskEntries({ tasks: [makeTask({ cadenceTarget: 2 })], now: NOW, timeZone: TIME_ZONE });
 
 	expect(entries).toHaveLength(1);
 	expect(entries[0]?.progress).toBe(2);

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { computeAssignedTaskState } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
 const createAssignedTaskSchema = z.object({
@@ -160,6 +161,7 @@ export const assignedTasksRouter = router({
 				cadenceIntervalMinutes: true,
 				isRecurring: true,
 				status: true,
+				household: { select: { timeZone: true } },
 				preset: {
 					select: { id: true, label: true, bucket: true, approvalOverride: true },
 				},
@@ -189,14 +191,16 @@ export const assignedTasksRouter = router({
 			orderBy: { createdAt: "asc" },
 		});
 
-		const state = computeAssignedTaskState(
-			{
+		const state = computeAssignedTaskState({
+			task: {
 				cadenceTarget: task.cadenceTarget,
 				cadenceIntervalMinutes: task.cadenceIntervalMinutes,
 				isRecurring: task.isRecurring,
 			},
 			logs,
-		);
+			now: new Date(),
+			timeZone: task.household?.timeZone ?? DEFAULT_TIME_ZONE,
+		});
 
 		if (!state.isActive) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Task already completed for this cadence" });
