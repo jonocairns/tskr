@@ -22,6 +22,17 @@ More screenshots: [Assignments](screenshots/assignments.png), [Household](screen
 - Prisma + SQLite (default)
 - Tailwind CSS + Radix UI
 
+## Internationalization
+
+Translations live in `src/locales/<lang>/translation.json` and `src/locales/<lang>/errors.json`. Locale folders must be lowercase (e.g., `en`, `pt-br`).
+
+Add a new language:
+1. Create `src/locales/<lang>/translation.json` and `src/locales/<lang>/errors.json`.
+2. Run `pnpm i18n:prepare` to regenerate `src/locales/supported.json`.
+3. Run `pnpm i18n:scan` to update translation keys from the codebase.
+
+CI runs `pnpm i18n:check` to ensure `i18next-scanner` would not change locale files.
+
 ## Auth options
 
 - Email + password credentials.
