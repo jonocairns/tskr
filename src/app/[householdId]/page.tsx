@@ -43,6 +43,8 @@ export default async function DashboardPage({ params }: Props) {
 		rewardThreshold,
 		progressBarColor,
 		timeZone,
+		dateFormat,
+		timeFormat,
 		hasApprovalMembers,
 		lastTaskAt,
 		currentStreak,
@@ -82,6 +84,7 @@ export default async function DashboardPage({ params }: Props) {
 				lastTaskAt={lastTaskAt?.toISOString() ?? null}
 				currentStreak={currentStreak}
 				timeZone={timeZone}
+				dateFormat={dateFormat}
 				householdId={householdId}
 			/>
 
@@ -95,16 +98,26 @@ export default async function DashboardPage({ params }: Props) {
 			/>
 
 			{showApprovals ? (
-				<ApprovalQueue entries={approvalEntries} currentUserId={userId} initialHasMore={hasMoreApprovals} />
+				<ApprovalQueue
+					entries={approvalEntries}
+					currentUserId={userId}
+					initialHasMore={hasMoreApprovals}
+					timeZone={timeZone}
+					dateFormat={dateFormat}
+					timeFormat={timeFormat}
+				/>
 			) : null}
 
-			<Leaderboard entries={leaderboardEntries} />
+			<Leaderboard entries={leaderboardEntries} timeZone={timeZone} dateFormat={dateFormat} />
 
 			<AuditLog
 				entries={auditEntries}
 				currentUserId={userId}
 				initialHasMore={hasMoreHistory}
 				householdId={householdId}
+				timeZone={timeZone}
+				dateFormat={dateFormat}
+				timeFormat={timeFormat}
 			/>
 
 			<LiveRefresh householdId={householdId} />

@@ -18,6 +18,20 @@ const geistMono = Geist_Mono({
 	subsets: ["latin"],
 });
 
+const devIcons: Metadata["icons"] = {
+	icon: [{ url: "/favicon-dev.svg", type: "image/svg+xml" }],
+	apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+};
+
+const prodIcons: Metadata["icons"] = {
+	icon: [
+		{ url: "/favicon.png", sizes: "32x32", type: "image/png" },
+		{ url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+		{ url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+	],
+	apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+};
+
 export const metadata: Metadata = {
 	title: "tskr",
 	description: "Track and reward tasks with time-based points.",
@@ -27,14 +41,7 @@ export const metadata: Metadata = {
 		title: "tskr",
 		statusBarStyle: "default",
 	},
-	icons: {
-		icon: [
-			{ url: "/favicon.png", sizes: "32x32", type: "image/png" },
-			{ url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-			{ url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-		],
-		apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-	},
+	icons: process.env.NODE_ENV === "development" ? devIcons : prodIcons,
 };
 
 export const viewport = {

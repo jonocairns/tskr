@@ -10,8 +10,10 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/Popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
+import { type DateFormat, DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT, type TimeFormat } from "@/lib/formatDate";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,17 @@ const PROGRESS_BAR_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
 
 const isValidProgressBarColor = (value: string) => PROGRESS_BAR_COLOR_RE.test(value);
 
+const DATE_FORMAT_OPTIONS: Array<{ value: DateFormat; label: string }> = [
+	{ value: "DMY", label: "DD/MM/YYYY" },
+	{ value: "MDY", label: "MM/DD/YYYY" },
+	{ value: "YMD", label: "YYYY-MM-DD" },
+];
+
+const TIME_FORMAT_OPTIONS: Array<{ value: TimeFormat; label: string }> = [
+	{ value: "H24", label: "24-hour (13:45)" },
+	{ value: "H12", label: "12-hour (1:45 PM)" },
+];
+
 export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props) => {
 	const [name, setName] = useState("");
 	const [initialName, setInitialName] = useState("");
@@ -34,6 +47,10 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	const [initialThreshold, setInitialThreshold] = useState(50);
 	const [timeZone, setTimeZone] = useState(DEFAULT_TIME_ZONE);
 	const [initialTimeZone, setInitialTimeZone] = useState(DEFAULT_TIME_ZONE);
+	const [dateFormat, setDateFormat] = useState<DateFormat>(DEFAULT_DATE_FORMAT);
+	const [initialDateFormat, setInitialDateFormat] = useState<DateFormat>(DEFAULT_DATE_FORMAT);
+	const [timeFormat, setTimeFormat] = useState<TimeFormat>(DEFAULT_TIME_FORMAT);
+	const [initialTimeFormat, setInitialTimeFormat] = useState<TimeFormat>(DEFAULT_TIME_FORMAT);
 	const [progressBarColor, setProgressBarColor] = useState(DEFAULT_PROGRESS_BAR_COLOR);
 	const [initialProgressBarColor, setInitialProgressBarColor] = useState<string | null>(null);
 	const [useCustomProgressBarColor, setUseCustomProgressBarColor] = useState(false);
@@ -63,6 +80,8 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			const updatedName = result.household.name;
 			const updatedThreshold = result.household.rewardThreshold;
 			const updatedTimeZone = result.household.timeZone ?? DEFAULT_TIME_ZONE;
+			const updatedDateFormat = result.household.dateFormat ?? DEFAULT_DATE_FORMAT;
+			const updatedTimeFormat = result.household.timeFormat ?? DEFAULT_TIME_FORMAT;
 			const updatedProgressBarColor = result.household.progressBarColor;
 
 			setName(updatedName);
@@ -71,6 +90,10 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			setInitialThreshold(updatedThreshold);
 			setTimeZone(updatedTimeZone);
 			setInitialTimeZone(updatedTimeZone);
+			setDateFormat(updatedDateFormat);
+			setInitialDateFormat(updatedDateFormat);
+			setTimeFormat(updatedTimeFormat);
+			setInitialTimeFormat(updatedTimeFormat);
 			setInitialProgressBarColor(updatedProgressBarColor);
 			setUseCustomProgressBarColor(Boolean(updatedProgressBarColor));
 			if (updatedProgressBarColor) {
@@ -95,6 +118,8 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			const fetchedName = data.household.name;
 			const fetchedThreshold = data.household.rewardThreshold;
 			const fetchedTimeZone = data.household.timeZone ?? DEFAULT_TIME_ZONE;
+			const fetchedDateFormat = data.household.dateFormat ?? DEFAULT_DATE_FORMAT;
+			const fetchedTimeFormat = data.household.timeFormat ?? DEFAULT_TIME_FORMAT;
 			const fetchedProgressBarColor =
 				data.household.progressBarColor && isValidProgressBarColor(data.household.progressBarColor)
 					? data.household.progressBarColor
@@ -106,6 +131,10 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			setInitialThreshold(fetchedThreshold);
 			setTimeZone(fetchedTimeZone);
 			setInitialTimeZone(fetchedTimeZone);
+			setDateFormat(fetchedDateFormat);
+			setInitialDateFormat(fetchedDateFormat);
+			setTimeFormat(fetchedTimeFormat);
+			setInitialTimeFormat(fetchedTimeFormat);
 			setProgressBarColor(fetchedProgressBarColor ?? DEFAULT_PROGRESS_BAR_COLOR);
 			setInitialProgressBarColor(fetchedProgressBarColor);
 			setUseCustomProgressBarColor(Boolean(fetchedProgressBarColor));
@@ -133,9 +162,16 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	const currentProgressBarColor = useCustomProgressBarColor ? progressBarColor : null;
 	const isProgressBarColorDirty = currentProgressBarColor !== initialProgressBarColor;
 	const isTimeZoneDirty = timeZone !== initialTimeZone;
+	const isDateFormatDirty = dateFormat !== initialDateFormat;
+	const isTimeFormatDirty = timeFormat !== initialTimeFormat;
 	const canSave = name.trim().length >= 2 && thresholdValid && progressBarColorValid;
 	const isFormDirty =
-		isDirty || Math.floor(parsedThreshold) !== initialThreshold || isProgressBarColorDirty || isTimeZoneDirty;
+		isDirty ||
+		Math.floor(parsedThreshold) !== initialThreshold ||
+		isProgressBarColorDirty ||
+		isTimeZoneDirty ||
+		isDateFormatDirty ||
+		isTimeFormatDirty;
 
 	const handleSave = () => {
 		if (!canSave || !isFormDirty) {
@@ -147,6 +183,8 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			name: name.trim(),
 			rewardThreshold: Math.floor(parsedThreshold),
 			timeZone: isTimeZoneDirty ? timeZone.trim() : undefined,
+			dateFormat: isDateFormatDirty ? dateFormat : undefined,
+			timeFormat: isTimeFormatDirty ? timeFormat : undefined,
 			progressBarColor: currentProgressBarColor,
 		});
 	};
@@ -257,6 +295,49 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 						</PopoverContent>
 					</Popover>
 					<p className="text-xs text-muted-foreground">Defines day and week boundaries for your household.</p>
+				</div>
+
+				<div className="grid gap-4 sm:grid-cols-2">
+					<div className="space-y-2">
+						<Label htmlFor="household-date-format">Date format</Label>
+						<Select
+							value={dateFormat}
+							onValueChange={(value: DateFormat) => setDateFormat(value)}
+							disabled={isLoading || isPending}
+						>
+							<SelectTrigger id="household-date-format">
+								<SelectValue placeholder="Select date format" />
+							</SelectTrigger>
+							<SelectContent>
+								{DATE_FORMAT_OPTIONS.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground">Applies to dates across the household.</p>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor="household-time-format">Time format</Label>
+						<Select
+							value={timeFormat}
+							onValueChange={(value: TimeFormat) => setTimeFormat(value)}
+							disabled={isLoading || isPending}
+						>
+							<SelectTrigger id="household-time-format">
+								<SelectValue placeholder="Select time format" />
+							</SelectTrigger>
+							<SelectContent>
+								{TIME_FORMAT_OPTIONS.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground">Applies to times across the household.</p>
+					</div>
 				</div>
 			</div>
 

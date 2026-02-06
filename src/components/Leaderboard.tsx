@@ -3,6 +3,7 @@ import { CrownIcon, UsersIcon } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
+import { type DateFormat, formatDate } from "@/lib/formatDate";
 
 export type LeaderboardEntry = {
 	userId: string;
@@ -18,9 +19,11 @@ export type LeaderboardEntry = {
 
 type Props = {
 	entries: LeaderboardEntry[];
+	timeZone: string;
+	dateFormat: DateFormat;
 };
 
-export const Leaderboard = ({ entries }: Props) => {
+export const Leaderboard = ({ entries, timeZone, dateFormat }: Props) => {
 	return (
 		<Card>
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -76,7 +79,7 @@ export const Leaderboard = ({ entries }: Props) => {
 									{entry.claims}
 								</TableCell>
 								<TableCell className="hidden sm:table-cell text-right text-sm text-muted-foreground">
-									{entry.lastActivity ? new Date(entry.lastActivity).toLocaleDateString() : "—"}
+									{entry.lastActivity ? formatDate(entry.lastActivity, { timeZone, dateFormat }) : "—"}
 								</TableCell>
 							</TableRow>
 						))}

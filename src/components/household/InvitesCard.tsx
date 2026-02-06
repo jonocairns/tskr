@@ -9,6 +9,15 @@ import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import {
+	type DateFormat,
+	DEFAULT_DATE_FORMAT,
+	DEFAULT_TIME_FORMAT,
+	formatDate,
+	formatDateTime,
+	type TimeFormat,
+} from "@/lib/formatDate";
+import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
 
 type Invite = {
@@ -64,6 +73,7 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 				utils.households.getInvites.setData({ householdId }, (old) => {
 					if (!old) return old;
 					return {
+						...old,
 						invites: old.invites.filter((invite) => invite.id !== variables.id),
 					};
 				});
@@ -71,6 +81,7 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 				utils.households.getInvites.setData({ householdId }, (old) => {
 					if (!old) return old;
 					return {
+						...old,
 						invites: old.invites.map((invite) =>
 							invite.id === variables.id ? { ...invite, status: "PENDING" as const } : invite,
 						),
@@ -99,6 +110,9 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 	});
 
 	const invites = data?.invites ?? [];
+	const dateFormat: DateFormat = data?.household?.dateFormat ?? DEFAULT_DATE_FORMAT;
+	const timeFormat: TimeFormat = data?.household?.timeFormat ?? DEFAULT_TIME_FORMAT;
+	const timeZone = data?.household?.timeZone ?? DEFAULT_TIME_ZONE;
 
 	if (!canInvite) {
 		return null;
@@ -196,9 +210,9 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 									{invite.status === "EXPIRED" ? "Expired" : "Pending"}
 								</TableCell>
 								<TableCell className="text-sm text-muted-foreground">
-									<div>{new Date(invite.invitedAt).toLocaleString()}</div>
+									<div>{formatDateTime(invite.invitedAt, { timeZone, dateFormat, timeFormat })}</div>
 									<div className="text-xs text-muted-foreground">
-										Expires {new Date(invite.expiresAt).toLocaleDateString()}
+										Expires {formatDate(invite.expiresAt, { timeZone, dateFormat })}
 									</div>
 								</TableCell>
 								<TableCell className="text-right">

@@ -46,24 +46,30 @@ export const householdInvitesRouter = router({
 			data: { status: "EXPIRED", respondedAt: now },
 		});
 
-		const invites = await prisma.householdInvite.findMany({
-			where: {
-				householdId,
-				status: { in: ["PENDING", "EXPIRED"] },
-			},
-			select: {
-				id: true,
-				code: true,
-				role: true,
-				status: true,
-				invitedAt: true,
-				expiresAt: true,
-				invitedBy: { select: { name: true, email: true } },
-			},
-			orderBy: { invitedAt: "desc" },
-		});
+		const [invites, household] = await Promise.all([
+			prisma.householdInvite.findMany({
+				where: {
+					householdId,
+					status: { in: ["PENDING", "EXPIRED"] },
+				},
+				select: {
+					id: true,
+					code: true,
+					role: true,
+					status: true,
+					invitedAt: true,
+					expiresAt: true,
+					invitedBy: { select: { name: true, email: true } },
+				},
+				orderBy: { invitedAt: "desc" },
+			}),
+			prisma.household.findUnique({
+				where: { id: householdId },
+				select: { timeZone: true, dateFormat: true, timeFormat: true },
+			}),
+		]);
 
-		return { invites };
+		return { invites, household };
 	}),
 
 	// Create invite
