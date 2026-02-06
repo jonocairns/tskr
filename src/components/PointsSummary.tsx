@@ -9,6 +9,7 @@ import { CardContent, CardDescription, CardHeader, CardTitle } from "@/component
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/useToast";
+import { formatDate } from "@/lib/formatDate";
 import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
 import { getTimeZoneDayNumber, resolveTimeZone } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
@@ -185,7 +186,7 @@ const formatLastTaskAt = (lastTaskAt: string | null, timeZone: string) => {
 		return `${diffDays} days ago`;
 	}
 
-	return last.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone });
+	return formatDate(last, timeZone);
 };
 
 function formatStreak(currentStreak: number) {

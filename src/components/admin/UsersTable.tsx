@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/Label";
 import { Switch } from "@/components/ui/Switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { formatDate, formatDateTime } from "@/lib/formatDate";
 import { trpc } from "@/lib/trpc/react";
 
 export type UserRow = {
@@ -326,7 +327,7 @@ export const UsersTable = ({ rows, setRowsAction, currentUserId, googleEnabled }
 						</TableRow>
 					) : (
 						rows.map((row) => {
-							const createdLabel = new Date(row.createdAt).toLocaleDateString();
+							const createdLabel = formatDate(row.createdAt);
 							const isSelf = currentUserId === row.id;
 
 							return (
@@ -480,7 +481,7 @@ export const UsersTable = ({ rows, setRowsAction, currentUserId, googleEnabled }
 								{activeRow.resetUrl ? <Input value={activeRow.resetUrl} readOnly className="text-xs" /> : null}
 								{activeRow.resetExpiresAt ? (
 									<div className="text-xs text-muted-foreground">
-										Reset link expires {new Date(activeRow.resetExpiresAt).toLocaleString()}
+										Reset link expires {formatDateTime(activeRow.resetExpiresAt)}
 									</div>
 								) : null}
 							</div>

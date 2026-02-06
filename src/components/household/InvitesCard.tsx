@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { formatDate, formatDateTime } from "@/lib/formatDate";
 import { trpc } from "@/lib/trpc/react";
 
 type Invite = {
@@ -196,9 +197,9 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 									{invite.status === "EXPIRED" ? "Expired" : "Pending"}
 								</TableCell>
 								<TableCell className="text-sm text-muted-foreground">
-									<div>{new Date(invite.invitedAt).toLocaleString()}</div>
+									<div>{formatDateTime(invite.invitedAt)}</div>
 									<div className="text-xs text-muted-foreground">
-										Expires {new Date(invite.expiresAt).toLocaleDateString()}
+										Expires {formatDate(invite.expiresAt)}
 									</div>
 								</TableCell>
 								<TableCell className="text-right">

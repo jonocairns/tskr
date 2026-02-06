@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { formatDateTime } from "@/lib/formatDate";
 import { trpc } from "@/lib/trpc/react";
 
 export type ApprovalEntry = {
@@ -81,7 +82,7 @@ export const ApprovalQueue = ({ entries, currentUserId, initialHasMore }: Props)
 										<div className="text-xs text-muted-foreground">{entry.userName}</div>
 									</TableCell>
 									<TableCell className="text-sm text-muted-foreground">
-										{new Date(entry.createdAt).toLocaleString()}
+										{formatDateTime(entry.createdAt)}
 									</TableCell>
 									<TableCell className="text-right font-semibold">
 										{entry.points > 0 ? "+" : ""}

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { formatDate, formatDateTime } from "@/lib/formatDate";
 import type { LogKind } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
@@ -149,14 +150,14 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 										</div>
 										<div className="text-xs text-muted-foreground sm:hidden mt-1">
 											{log.bucketLabel ? `${log.bucketLabel} · ` : ""}
-											{new Date(log.createdAt).toLocaleDateString()}
+											{formatDate(log.createdAt)}
 										</div>
 									</TableCell>
 									<TableCell className="hidden sm:table-cell">
 										<Badge variant="secondary">{log.bucketLabel ?? "—"}</Badge>
 									</TableCell>
 									<TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-										{new Date(log.createdAt).toLocaleString()}
+										{formatDateTime(log.createdAt)}
 									</TableCell>
 									<TableCell className="text-right font-semibold">
 										{log.points > 0 ? "+" : ""}
@@ -166,7 +167,7 @@ export const AuditLog = ({ householdId, entries, currentUserId, initialHasMore }
 										{log.revertedAt ? (
 											<span className="text-xs text-muted-foreground">
 												<span className="hidden sm:inline">
-													Reverted {new Date(log.revertedAt).toLocaleDateString()}
+													Reverted {formatDate(log.revertedAt)}
 												</span>
 												<span className="sm:hidden">Reverted</span>
 											</span>
