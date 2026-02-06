@@ -1,5 +1,5 @@
 import { PencilIcon, Trash2Icon } from "lucide-react";
-import type { FormEvent } from "react";
+import type { SyntheticEvent } from "react";
 
 import type { PresetSummary } from "@/components/task-actions/types";
 import {
@@ -33,7 +33,7 @@ type Props = {
 	editIsShared: boolean;
 	onEditIsSharedChange: (value: boolean) => void;
 	canUpdatePreset: boolean;
-	onUpdatePreset: (event: FormEvent<HTMLFormElement>, presetId: string) => void;
+	onUpdatePreset: (event: SyntheticEvent<HTMLFormElement>, presetId: string) => void;
 	onCancelEdit: () => void;
 	onStartEdit: (preset: PresetSummary) => void;
 	onDeletePreset: (presetId: string, label: string) => void;
