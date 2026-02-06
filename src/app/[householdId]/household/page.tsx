@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { PushNotifications } from "@/components/PushNotifications";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
+import { getServerT } from "@/lib/i18nServer";
 import { getHouseholdContext } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
@@ -18,15 +20,16 @@ type Props = {
 export default async function HouseholdPage({ params }: Props) {
 	const { householdId } = await params;
 	const { session, userId, membership } = await getHouseholdContext(householdId);
+	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
 
 	return (
 		<PageShell size="lg">
 			<PageHeader
-				eyebrow="tskr"
-				title="Household"
-				description="Manage settings, members, and invite codes."
+				eyebrow={t("tskr")}
+				title={t("Household")}
+				description={t("Manage settings, members, and invite codes.")}
 				backHref={`/${householdId}`}
-				backLabel="Back to dashboard"
+				backLabel={t("Back to dashboard")}
 				user={session.user}
 				household={{ id: householdId, role: membership.role }}
 			/>
@@ -34,8 +37,8 @@ export default async function HouseholdPage({ params }: Props) {
 			{membership.role === "DICTATOR" && (
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-xl">General</CardTitle>
-						<CardDescription>Update household settings and manage deletion.</CardDescription>
+						<CardTitle className="text-xl">{t("General")}</CardTitle>
+						<CardDescription>{t("Update household settings and manage deletion.")}</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-8">
 						<SettingsCard householdId={householdId} canManage={true} variant="section" />
@@ -57,8 +60,8 @@ export default async function HouseholdPage({ params }: Props) {
 				<CardHeader>
 					<div className="flex items-start justify-between gap-4">
 						<div className="space-y-1.5">
-							<CardTitle className="text-xl">Notifications</CardTitle>
-							<CardDescription>Manage push notifications and task reminders for your household.</CardDescription>
+							<CardTitle className="text-xl">{t("Notifications")}</CardTitle>
+							<CardDescription>{t("Manage push notifications and task reminders for your household.")}</CardDescription>
 						</div>
 						<PushNotifications householdId={householdId} variant="section" />
 					</div>

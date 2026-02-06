@@ -17,6 +17,7 @@ import {
 	DEFAULT_CADENCE_INTERVAL_MINUTES,
 	DEFAULT_CADENCE_TARGET,
 } from "@/lib/assignedTasksCadence";
+import { useTranslation } from "@/lib/i18nClient";
 import { trpc } from "@/lib/trpc/react";
 
 type MemberOption = {
@@ -35,6 +36,7 @@ type AssignTaskCardProps = {
 export const AssignTaskCard = ({ householdId, members, presets, currentUserId }: AssignTaskCardProps) => {
 	const router = useRouter();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 
 	const sortedMembers = useMemo(
 		() => [...members].sort((a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")),
@@ -63,15 +65,15 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 	const createMutation = trpc.assignedTasks.create.useMutation({
 		onSuccess: () => {
 			toast({
-				title: "Assigned task created",
-				description: "The task is now in the queue.",
+				title: t("Assigned task created"),
+				description: t("The task is now in the queue."),
 			});
 			router.refresh();
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to assign task",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to assign task"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -81,8 +83,8 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 		event.preventDefault();
 		if (!presetId || !assigneeId) {
 			toast({
-				title: "Missing details",
-				description: "Pick a member and preset to assign.",
+				title: t("Missing details"),
+				description: t("Pick a member and preset to assign."),
 				variant: "destructive",
 			});
 			return;
@@ -108,35 +110,35 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle className="text-xl">Assign task</CardTitle>
-				<CardDescription>Send a preset task to someone's queue.</CardDescription>
+				<CardTitle className="text-xl">{t("Assign task")}</CardTitle>
+				<CardDescription>{t("Send a preset task to someone's queue.")}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{sortedPresets.length === 0 ? (
-					<p className="text-sm text-muted-foreground">Create a preset chore before assigning tasks.</p>
+					<p className="text-sm text-muted-foreground">{t("Create a preset chore before assigning tasks.")}</p>
 				) : (
 					<form className="grid gap-4" onSubmit={handleSubmit}>
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="grid gap-2">
-								<Label htmlFor="assignee">Assignee</Label>
+								<Label htmlFor="assignee">{t("Assignee")}</Label>
 								<Select value={assigneeId} onValueChange={setAssigneeId} disabled={disabled}>
 									<SelectTrigger id="assignee">
-										<SelectValue placeholder="Select member" />
+										<SelectValue placeholder={t("Select member")} />
 									</SelectTrigger>
 									<SelectContent>
 										{sortedMembers.map((member) => (
 											<SelectItem key={member.id} value={member.id}>
-												{member.name ?? member.email ?? "Unknown"}
+												{member.name ?? member.email ?? t("Unknown")}
 											</SelectItem>
 										))}
 									</SelectContent>
 								</Select>
 							</div>
 							<div className="grid gap-2">
-								<Label htmlFor="preset">Preset</Label>
+								<Label htmlFor="preset">{t("Preset")}</Label>
 								<Select value={presetId} onValueChange={setPresetId} disabled={disabled}>
 									<SelectTrigger id="preset">
-										<SelectValue placeholder="Select preset" />
+										<SelectValue placeholder={t("Select preset")} />
 									</SelectTrigger>
 									<SelectContent>
 										{sortedPresets.map((preset) => (
@@ -151,8 +153,8 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="flex items-center justify-between gap-2 rounded-md border border-input px-3 py-2 md:col-span-2">
 								<div className="space-y-1">
-									<Label htmlFor="recurring">Recurring</Label>
-									<p className="text-xs text-muted-foreground">Reset after each cadence cycle.</p>
+									<Label htmlFor="recurring">{t("Recurring")}</Label>
+									<p className="text-xs text-muted-foreground">{t("Reset after each cadence cycle.")}</p>
 								</div>
 								<Switch
 									id="recurring"
@@ -170,7 +172,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 							{isRecurring ? (
 								<>
 									<div className="grid gap-2">
-										<Label htmlFor="cadence-interval">Cadence</Label>
+										<Label htmlFor="cadence-interval">{t("Cadence")}</Label>
 										<Select
 											value={cadenceInterval}
 											onValueChange={(value) => {
@@ -185,7 +187,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 											disabled={disabled}
 										>
 											<SelectTrigger id="cadence-interval">
-												<SelectValue placeholder="Select cadence" />
+												<SelectValue placeholder={t("Select cadence")} />
 											</SelectTrigger>
 											<SelectContent>
 												{CADENCE_OPTIONS.map((option) => (
@@ -197,7 +199,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 										</Select>
 									</div>
 									<div className="grid gap-2">
-										<Label htmlFor="cadence-target">Completions per cycle</Label>
+										<Label htmlFor="cadence-target">{t("Completions per cycle")}</Label>
 										<Input
 											id="cadence-target"
 											type="number"
@@ -211,7 +213,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 							) : null}
 						</div>
 						<Button type="submit" disabled={disabled}>
-							Assign task
+							{t("Assign task")}
 						</Button>
 					</form>
 				)}

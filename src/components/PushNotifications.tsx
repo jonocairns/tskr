@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
+import { useTranslation } from "@/lib/i18nClient";
 import { trpc } from "@/lib/trpc/react";
 
 type Status = "loading" | "unsupported" | "blocked" | "ready" | "subscribed";
@@ -47,14 +48,14 @@ const subscribeWithTimeout = async (registration: ServiceWorkerRegistration, pub
 	}
 };
 
-const describeError = (error: unknown) => {
+const describeError = (error: unknown, fallbackMessage: string) => {
 	if (error instanceof Error) {
 		return { name: error.name, message: error.message };
 	}
 	if (typeof error === "string") {
 		return { name: "Error", message: error };
 	}
-	return { name: "Error", message: "Unknown error" };
+	return { name: "Error", message: fallbackMessage };
 };
 
 const extractSubscriptionKeys = (subscription: PushSubscription) => {
@@ -84,13 +85,14 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	const [vapidPublicKey, setVapidPublicKey] = useState("");
 	const [isKeyLoaded, setIsKeyLoaded] = useState(false);
 	const { toast } = useToast();
+	const { t } = useTranslation();
 
 	const subscribeMutation = trpc.push.subscribe.useMutation({
 		onError: (error) => {
 			console.error("[push] subscribe failed", error);
 			toast({
-				title: "Unable to enable notifications",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to enable notifications"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -100,8 +102,8 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 		onError: (error) => {
 			console.error("[push] unsubscribe failed", error);
 			toast({
-				title: "Unable to disable notifications",
-				description: "Please try again.",
+				title: t("Unable to disable notifications"),
+				description: t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -110,15 +112,15 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	const testMutation = trpc.push.test.useMutation({
 		onSuccess: () => {
 			toast({
-				title: "Test notification sent",
-				description: "Check your device for the push alert.",
+				title: t("Test notification sent"),
+				description: t("Check your device for the push alert."),
 			});
 		},
 		onError: (error) => {
 			console.error("[push] test failed", error);
 			toast({
-				title: "Unable to send test",
-				description: "Please try again.",
+				title: t("Unable to send test"),
+				description: t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -180,16 +182,16 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 
 	const helperText = useMemo(() => {
 		if (status === "unsupported") {
-			return "Your browser does not support Web Push.";
+			return t("Your browser does not support Web Push.");
 		}
 		if (status === "blocked") {
-			return "Notifications are blocked in browser settings.";
+			return t("Notifications are blocked in browser settings.");
 		}
 		if (isKeyLoaded && !hasVapidKey) {
-			return "Missing VAPID_PUBLIC_KEY.";
+			return t("Missing VAPID_PUBLIC_KEY.");
 		}
 		return null;
-	}, [status, isKeyLoaded, hasVapidKey]);
+	}, [status, isKeyLoaded, hasVapidKey, t]);
 
 	const isSubscribed = status === "subscribed";
 	const toggleDisabled = isSubscribed ? isBusy : isBusy || status !== "ready" || !isKeyLoaded || !hasVapidKey;
@@ -197,8 +199,8 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	const handleEnable = async () => {
 		if (!isKeyLoaded) {
 			toast({
-				title: "Loading push settings",
-				description: "Try again in a moment.",
+				title: t("Loading push settings"),
+				description: t("Try again in a moment."),
 				variant: "destructive",
 			});
 			return;
@@ -206,8 +208,8 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 
 		if (!hasVapidKey) {
 			toast({
-				title: "Missing VAPID key",
-				description: "Set VAPID_PUBLIC_KEY to enable push.",
+				title: t("Missing VAPID key"),
+				description: t("Set VAPID_PUBLIC_KEY to enable push."),
 				variant: "destructive",
 			});
 			return;
@@ -216,16 +218,16 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 		setIsBusy(true);
 		try {
 			toast({
-				title: "Enabling notifications",
-				description: "Waiting for the browser subscription.",
+				title: t("Enabling notifications"),
+				description: t("Waiting for the browser subscription."),
 			});
 
 			const activeRegistration = registration ?? (await navigator.serviceWorker.ready);
 
 			if (!activeRegistration?.pushManager) {
 				toast({
-					title: "Notifications unavailable",
-					description: "Push manager not available on this device.",
+					title: t("Notifications unavailable"),
+					description: t("Push manager not available on this device."),
 					variant: "destructive",
 				});
 				return;
@@ -237,8 +239,8 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 				await subscribeMutation.mutateAsync(existingKeys);
 				setStatus("subscribed");
 				toast({
-					title: "Notifications enabled",
-					description: "You will now receive task updates.",
+					title: t("Notifications enabled"),
+					description: t("You will now receive task updates."),
 				});
 				return;
 			}
@@ -258,11 +260,11 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 			await subscribeMutation.mutateAsync(subscriptionKeys);
 			setStatus("subscribed");
 			toast({
-				title: "Notifications enabled",
-				description: "You will now receive task updates.",
+				title: t("Notifications enabled"),
+				description: t("You will now receive task updates."),
 			});
 		} catch (error) {
-			const { name, message } = describeError(error);
+			const { name, message } = describeError(error, t("Unknown error"));
 			if (name === "NotAllowedError") {
 				setStatus("blocked");
 			} else if (name === "NotSupportedError") {
@@ -271,7 +273,7 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 
 			console.error("[push] subscribe failed", error);
 			toast({
-				title: "Unable to enable notifications",
+				title: t("Unable to enable notifications"),
 				description: `${name}: ${message}`,
 				variant: "destructive",
 			});
@@ -296,14 +298,14 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 
 			setStatus("ready");
 			toast({
-				title: "Notifications disabled",
-				description: "You can re-enable them any time.",
+				title: t("Notifications disabled"),
+				description: t("You can re-enable them any time."),
 			});
 		} catch (error) {
 			console.error("[push] unsubscribe failed", error);
 			toast({
-				title: "Unable to disable notifications",
-				description: "Please try again.",
+				title: t("Unable to disable notifications"),
+				description: t("Please try again."),
 				variant: "destructive",
 			});
 		} finally {
@@ -331,7 +333,7 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	const controls = (
 		<div className="flex items-center gap-3">
 			<Button type="button" variant="outline" size="sm" onClick={handleTest} disabled={isTesting || !isSubscribed}>
-				{isTesting ? "Sending..." : "Send test"}
+				{isTesting ? t("Sending...") : t("Send test")}
 			</Button>
 			<div className="flex items-center gap-2">
 				<Switch
@@ -340,7 +342,7 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 					disabled={toggleDisabled}
 					onCheckedChange={handleToggle}
 				/>
-				<span className="text-sm text-muted-foreground">{isSubscribed ? "On" : "Off"}</span>
+				<span className="text-sm text-muted-foreground">{isSubscribed ? t("On") : t("Off")}</span>
 			</div>
 		</div>
 	);

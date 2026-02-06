@@ -17,6 +17,7 @@ import {
 	formatDateTime,
 	type TimeFormat,
 } from "@/lib/formatDate";
+import { useTranslation } from "@/lib/i18nClient";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
 
@@ -40,8 +41,14 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 	const [role, setRole] = useState<Invite["role"]>("DOER");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const isSection = variant === "section";
 	const utils = trpc.useUtils();
+	const roleLabels = {
+		DICTATOR: t("Dictator"),
+		APPROVER: t("Approver"),
+		DOER: t("Doer"),
+	};
 
 	const { data, isLoading } = trpc.households.getInvites.useQuery(
 		{ householdId },
@@ -52,13 +59,13 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 
 	const createInviteMutation = trpc.households.createInvite.useMutation({
 		onSuccess: () => {
-			toast({ title: "Invite code generated" });
+			toast({ title: t("Invite code generated") });
 			utils.households.getInvites.invalidate();
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to send invite",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to send invite"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -96,13 +103,13 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 				utils.households.getInvites.setData({ householdId }, context.previousInvites);
 			}
 			toast({
-				title: variables.action === "revoke" ? "Unable to revoke invite" : "Unable to resend invite",
-				description: error.message ?? "Please try again.",
+				title: variables.action === "revoke" ? t("Unable to revoke invite") : t("Unable to resend invite"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: (_, variables) => {
-			toast({ title: variables.action === "revoke" ? "Invite revoked" : "Invite regenerated" });
+			toast({ title: variables.action === "revoke" ? t("Invite revoked") : t("Invite regenerated") });
 		},
 		onSettled: () => {
 			utils.households.getInvites.invalidate();
@@ -139,11 +146,11 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 	const handleCopy = async (code: string) => {
 		try {
 			await navigator.clipboard.writeText(code);
-			toast({ title: "Invite code copied" });
+			toast({ title: t("Invite code copied") });
 		} catch (_error) {
 			toast({
-				title: "Unable to copy code",
-				description: "Please copy it manually.",
+				title: t("Unable to copy code"),
+				description: t("Please copy it manually."),
 				variant: "destructive",
 			});
 		}
@@ -151,8 +158,8 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
-			<CardTitle className={isSection ? "text-base" : "text-xl"}>Invites</CardTitle>
-			<CardDescription>Generate shareable invite codes.</CardDescription>
+			<CardTitle className={isSection ? "text-base" : "text-xl"}>{t("Invites")}</CardTitle>
+			<CardDescription>{t("Generate shareable invite codes.")}</CardDescription>
 		</div>
 	);
 
@@ -160,36 +167,36 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 		<div className="space-y-4">
 			<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
 				<div className="space-y-2">
-					<Label>Role</Label>
+					<Label>{t("Role")}</Label>
 					<Select value={role} onValueChange={(value: Invite["role"]) => setRole(value)} disabled={isPending}>
 						<SelectTrigger>
-							<SelectValue placeholder="Select role" />
+							<SelectValue placeholder={t("Select role")} />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="DICTATOR">Dictator</SelectItem>
-							<SelectItem value="APPROVER">Approver</SelectItem>
-							<SelectItem value="DOER">Doer</SelectItem>
+							<SelectItem value="DICTATOR">{t("Dictator")}</SelectItem>
+							<SelectItem value="APPROVER">{t("Approver")}</SelectItem>
+							<SelectItem value="DOER">{t("Doer")}</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
 				<Button type="button" onClick={handleInvite} disabled={isPending}>
-					Generate code
+					{t("Generate code")}
 				</Button>
 			</div>
 
 			{isLoading ? (
-				<p className="text-sm text-muted-foreground">Loading invites…</p>
+				<p className="text-sm text-muted-foreground">{t("Loading invites…")}</p>
 			) : invites.length === 0 ? (
-				<p className="text-sm text-muted-foreground">No invite codes yet.</p>
+				<p className="text-sm text-muted-foreground">{t("No invite codes yet.")}</p>
 			) : (
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Code</TableHead>
-							<TableHead>Role</TableHead>
-							<TableHead>Status</TableHead>
-							<TableHead>Invited</TableHead>
-							<TableHead className="text-right">Actions</TableHead>
+							<TableHead>{t("Code")}</TableHead>
+							<TableHead>{t("Role")}</TableHead>
+							<TableHead>{t("Status")}</TableHead>
+							<TableHead>{t("Invited")}</TableHead>
+							<TableHead className="text-right">{t("Actions")}</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -199,20 +206,22 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 									<div className="flex flex-col">
 										<span className="font-medium">{invite.code}</span>
 										<span className="text-xs text-muted-foreground">
-											Invited by {invite.invitedBy?.name ?? invite.invitedBy?.email ?? "Unknown"}
+											{t("Invited by {{name}}", {
+												name: invite.invitedBy?.name ?? invite.invitedBy?.email ?? t("Unknown"),
+											})}
 										</span>
 									</div>
 								</TableCell>
 								<TableCell>
-									<Badge variant="secondary">{invite.role.toLowerCase()}</Badge>
+									<Badge variant="secondary">{roleLabels[invite.role]}</Badge>
 								</TableCell>
 								<TableCell className="text-sm text-muted-foreground">
-									{invite.status === "EXPIRED" ? "Expired" : "Pending"}
+									{invite.status === "EXPIRED" ? t("Expired") : t("Pending")}
 								</TableCell>
 								<TableCell className="text-sm text-muted-foreground">
 									<div>{formatDateTime(invite.invitedAt, { timeZone, dateFormat, timeFormat })}</div>
 									<div className="text-xs text-muted-foreground">
-										Expires {formatDate(invite.expiresAt, { timeZone, dateFormat })}
+										{t("Expires {{date}}", { date: formatDate(invite.expiresAt, { timeZone, dateFormat }) })}
 									</div>
 								</TableCell>
 								<TableCell className="text-right">
@@ -224,7 +233,7 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 											disabled={isPending}
 											onClick={() => handleCopy(invite.code)}
 										>
-											Copy
+											{t("Copy")}
 										</Button>
 										{invite.status === "EXPIRED" ? (
 											<Button
@@ -234,7 +243,7 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 												disabled={isPending}
 												onClick={() => handleResend(invite.id)}
 											>
-												Regenerate
+												{t("Regenerate")}
 											</Button>
 										) : null}
 										<Button
@@ -244,7 +253,7 @@ export const InvitesCard = ({ householdId, canInvite, variant = "card" }: Props)
 											disabled={isPending}
 											onClick={() => handleRevoke(invite.id)}
 										>
-											Revoke
+											{t("Revoke")}
 										</Button>
 									</div>
 								</TableCell>

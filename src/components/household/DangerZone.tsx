@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useToast } from "@/hooks/useToast";
+import { useTranslation } from "@/lib/i18nClient";
 import { trpc } from "@/lib/trpc/react";
 
 type Props = {
@@ -29,18 +30,19 @@ type Props = {
 export const DangerZone = ({ householdId, canDelete, variant = "card", showTitle = false }: Props) => {
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const router = useRouter();
 	const isSection = variant === "section";
 
 	const deleteMutation = trpc.households.deleteCurrent.useMutation({
 		onSuccess: () => {
-			toast({ title: "Household deleted" });
+			toast({ title: t("Household deleted") });
 			router.push("/landing");
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to delete household",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to delete household"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -58,8 +60,8 @@ export const DangerZone = ({ householdId, canDelete, variant = "card", showTitle
 
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
-			<CardTitle className={isSection ? "text-base" : "text-xl"}>Danger zone</CardTitle>
-			<CardDescription>Manage irreversible actions for this household.</CardDescription>
+			<CardTitle className={isSection ? "text-base" : "text-xl"}>{t("Danger zone")}</CardTitle>
+			<CardDescription>{t("Manage irreversible actions for this household.")}</CardDescription>
 		</div>
 	);
 
@@ -67,31 +69,31 @@ export const DangerZone = ({ householdId, canDelete, variant = "card", showTitle
 		<AlertDialog>
 			<div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-4">
 				<div>
-					<p className="text-sm font-semibold text-destructive">Delete household</p>
-					<p className="text-xs text-muted-foreground">This removes all members, tasks, and history.</p>
+					<p className="text-sm font-semibold text-destructive">{t("Delete household")}</p>
+					<p className="text-xs text-muted-foreground">{t("This removes all members, tasks, and history.")}</p>
 				</div>
 				<AlertDialogTrigger asChild>
 					<Button type="button" variant="destructive" size="default" disabled={isPending}>
-						Delete
+						{t("Delete")}
 					</Button>
 				</AlertDialogTrigger>
 			</div>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Delete household?</AlertDialogTitle>
+					<AlertDialogTitle>{t("Delete household?")}</AlertDialogTitle>
 					<AlertDialogDescription>
-						This action cannot be undone. All members and history will be removed.
+						{t("This action cannot be undone. All members and history will be removed.")}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						type="button"
 						onClick={handleDelete}
 						disabled={isPending}
 						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 					>
-						{isPending ? "Deleting..." : "Delete"}
+						{isPending ? t("Deleting...") : t("Delete")}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

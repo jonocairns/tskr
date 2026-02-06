@@ -5,6 +5,8 @@ import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
+import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
+import { getServerT } from "@/lib/i18nServer";
 import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
 
@@ -17,6 +19,7 @@ type Props = {
 export default async function AssignmentsPage({ params }: Props) {
 	const { householdId } = await params;
 	const { session, userId, membership } = await getHouseholdContext(householdId);
+	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
 
 	if (membership.role === "DOER") {
 		redirect(`/${householdId}`);
@@ -75,11 +78,11 @@ export default async function AssignmentsPage({ params }: Props) {
 	return (
 		<PageShell size="lg">
 			<PageHeader
-				eyebrow="tskr"
-				title="Assignments"
-				description="Assign tasks and adjust cadence or recurrence."
+				eyebrow={t("tskr")}
+				title={t("Assignments")}
+				description={t("Assign tasks and adjust cadence or recurrence.")}
 				backHref={`/${householdId}`}
-				backLabel="Back to dashboard"
+				backLabel={t("Back to dashboard")}
 				user={session.user}
 				household={{ id: householdId, role: membership.role }}
 			/>
