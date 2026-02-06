@@ -86,6 +86,9 @@ importers:
       i18next:
         specifier: ^25.8.4
         version: 25.8.4(typescript@5.9.3)
+      i18next-pseudo:
+        specifier: ^2.2.1
+        version: 2.2.1
       i18next-resources-to-backend:
         specifier: ^1.2.1
         version: 1.2.1
@@ -2206,6 +2209,9 @@ packages:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
 
+  i18next-pseudo@2.2.1:
+    resolution: {integrity: sha512-wGybHZl+D7GXZLxLAWN5AhyrmVBxPd5kPpHgcgPw1yOoJcEEvxRk5+ZpbaAc8R59JHeyXLl99rWIXdg/zCvKFQ==}
+
   i18next-resources-to-backend@1.2.1:
     resolution: {integrity: sha512-okHbVA+HZ7n1/76MsfhPqDou0fptl2dAlhRDu2ideXloRRduzHsqDOznJBef+R3DFZnbvWoBW+KxJ7fnFjd6Yw==}
 
@@ -2213,6 +2219,9 @@ packages:
     resolution: {integrity: sha512-I/xKcwKfii3L3is3bUvfaIU0QA/wYhpZnjppfrzyb61QQddxkcpspASEtmfnxSYvE6yIaAxDlIxg0EHV7mxssg==}
     engines: {node: '>=12'}
     hasBin: true
+
+  i18next@19.9.2:
+    resolution: {integrity: sha512-0i6cuo6ER6usEOtKajUUDj92zlG+KArFia0857xxiEHAQcUwh/RtOQocui1LPJwunSYT574Pk64aNva1kwtxZg==}
 
   i18next@25.8.4:
     resolution: {integrity: sha512-a9A0MnUjKvzjEN/26ZY1okpra9kA8MEwzYEz1BNm+IyxUKPRH6ihf0p7vj8YvULwZHKHl3zkJ6KOt4hewxBecQ==}
@@ -5739,6 +5748,10 @@ snapshots:
 
   human-signals@2.1.0: {}
 
+  i18next-pseudo@2.2.1:
+    dependencies:
+      i18next: 19.9.2
+
   i18next-resources-to-backend@1.2.1:
     dependencies:
       '@babel/runtime': 7.28.4
@@ -5768,6 +5781,10 @@ snapshots:
       - bare-abort-controller
       - react-native-b4a
       - typescript
+
+  i18next@19.9.2:
+    dependencies:
+      '@babel/runtime': 7.28.4
 
   i18next@25.8.4(typescript@5.9.3):
     dependencies:

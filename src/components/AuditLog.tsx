@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
 import { type DateFormat, formatDate, formatDateTime, type TimeFormat } from "@/lib/formatDate";
+import { useTranslation } from "@/lib/i18nClient";
 import type { LogKind } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
@@ -49,7 +50,13 @@ export const AuditLog = ({
 	const [hasMore, setHasMore] = useState(initialHasMore);
 	const router = useRouter();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const utils = trpc.useUtils();
+	const historyLimit = 10;
+	const statusLabels = {
+		PENDING: t("Pending"),
+		REJECTED: t("Rejected"),
+	};
 
 	useEffect(() => {
 		setItems(entries);
@@ -61,13 +68,13 @@ export const AuditLog = ({
 			const action = variables.action;
 			if (action === "revert") {
 				toast({
-					title: "Entry reverted",
-					description: "The points from this entry were removed.",
+					title: t("Entry reverted"),
+					description: t("The points from this entry were removed."),
 				});
 			} else if (action === "resubmit") {
 				toast({
-					title: "Resubmitted for approval",
-					description: "Your task is waiting for approval.",
+					title: t("Resubmitted for approval"),
+					description: t("Your task is waiting for approval."),
 				});
 			}
 			utils.logs.invalidate();
@@ -77,14 +84,14 @@ export const AuditLog = ({
 			const action = variables.action;
 			if (action === "revert") {
 				toast({
-					title: "Unable to undo",
-					description: error.message ?? "Try again shortly.",
+					title: t("Unable to undo"),
+					description: error.message ?? t("Try again shortly."),
 					variant: "destructive",
 				});
 			} else if (action === "resubmit") {
 				toast({
-					title: "Unable to resubmit",
-					description: error.message ?? "Try again shortly.",
+					title: t("Unable to resubmit"),
+					description: error.message ?? t("Try again shortly."),
 					variant: "destructive",
 				});
 			}
@@ -95,7 +102,7 @@ export const AuditLog = ({
 		{
 			householdId,
 			offset: items.length,
-			limit: 10,
+			limit: historyLimit,
 		},
 		{
 			enabled: false,
@@ -123,8 +130,8 @@ export const AuditLog = ({
 			}
 		} catch (_error) {
 			toast({
-				title: "Unable to load more history",
-				description: "Please try again shortly.",
+				title: t("Unable to load more history"),
+				description: t("Please try again shortly."),
 				variant: "destructive",
 			});
 		}
@@ -133,21 +140,21 @@ export const AuditLog = ({
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle className="text-xl">History</CardTitle>
-				<CardDescription>Everything recorded, including reward claims and reverts.</CardDescription>
+				<CardTitle className="text-xl">{t("History")}</CardTitle>
+				<CardDescription>{t("Everything recorded, including reward claims and reverts.")}</CardDescription>
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
 				{items.length === 0 ? (
-					<p className="text-sm text-muted-foreground">No activity yet. Start logging tasks.</p>
+					<p className="text-sm text-muted-foreground">{t("No activity yet. Start logging tasks.")}</p>
 				) : (
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead>Entry</TableHead>
-								<TableHead className="hidden sm:table-cell">Bucket</TableHead>
-								<TableHead className="hidden sm:table-cell">Date</TableHead>
-								<TableHead className="text-right">Points</TableHead>
-								<TableHead className="text-right">Actions</TableHead>
+								<TableHead>{t("Entry")}</TableHead>
+								<TableHead className="hidden sm:table-cell">{t("Bucket")}</TableHead>
+								<TableHead className="hidden sm:table-cell">{t("Date")}</TableHead>
+								<TableHead className="text-right">{t("Points")}</TableHead>
+								<TableHead className="text-right">{t("Actions")}</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -157,7 +164,9 @@ export const AuditLog = ({
 										<div className="font-semibold">{log.description}</div>
 										<div className="text-xs text-muted-foreground">
 											{log.userName}
-											{log.status && log.status !== "APPROVED" ? ` · ${log.status.toLowerCase()}` : ""}
+											{log.status && log.status !== "APPROVED"
+												? ` · ${statusLabels[log.status] ?? log.status.toLowerCase()}`
+												: ""}
 										</div>
 										<div className="text-xs text-muted-foreground sm:hidden mt-1">
 											{log.bucketLabel ? `${log.bucketLabel} · ` : ""}
@@ -178,9 +187,11 @@ export const AuditLog = ({
 										{log.revertedAt ? (
 											<span className="text-xs text-muted-foreground">
 												<span className="hidden sm:inline">
-													Reverted {formatDate(log.revertedAt, { timeZone, dateFormat })}
+													{t("Reverted {{date}}", {
+														date: formatDate(log.revertedAt, { timeZone, dateFormat }),
+													})}
 												</span>
-												<span className="sm:hidden">Reverted</span>
+												<span className="sm:hidden">{t("Reverted")}</span>
 											</span>
 										) : log.status === "REJECTED" && log.userId === currentUserId ? (
 											<Button
@@ -190,12 +201,12 @@ export const AuditLog = ({
 												onClick={() => resubmit(log.id)}
 												className="text-muted-foreground hover:text-foreground"
 											>
-												Resubmit
+												{t("Resubmit")}
 											</Button>
 										) : log.status === "PENDING" ? (
 											<span className="text-xs text-muted-foreground">
-												<span className="hidden sm:inline">Awaiting approval</span>
-												<span className="sm:hidden">Pending</span>
+												<span className="hidden sm:inline">{t("Awaiting approval")}</span>
+												<span className="sm:hidden">{t("Pending")}</span>
 											</span>
 										) : (
 											<Button
@@ -206,7 +217,7 @@ export const AuditLog = ({
 												className="text-muted-foreground hover:text-foreground"
 											>
 												<Undo2Icon className="h-4 w-4 sm:mr-2" />
-												<span className="hidden sm:inline">Undo</span>
+												<span className="hidden sm:inline">{t("Undo")}</span>
 											</Button>
 										)}
 									</TableCell>
@@ -218,7 +229,11 @@ export const AuditLog = ({
 				{items.length > 0 ? (
 					<div className="flex justify-center pt-4">
 						<Button type="button" variant="outline" onClick={loadMore} disabled={!hasMore || isLoadingMore}>
-							{isLoadingMore ? "Loading..." : hasMore ? "Load 10 more" : "No more history"}
+							{isLoadingMore
+								? t("Loading...")
+								: hasMore
+									? t("Load {{count}} more", { count: historyLimit })
+									: t("No more history")}
 						</Button>
 					</div>
 				) : null}

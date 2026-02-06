@@ -1,27 +1,24 @@
 import i18n from "i18next";
+import Pseudo from "i18next-pseudo";
 import resourcesToBackend from "i18next-resources-to-backend";
 import { initReactI18next } from "react-i18next";
 
-import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, SUPPORTED_NAMESPACES } from "@/lib/i18nConfig";
+import { getI18nBaseOptions, PSEUDO_LANGUAGE } from "@/lib/i18nConfig";
 
 const backend = resourcesToBackend((language: string, namespace: string) =>
 	import(`@/locales/${language}/${namespace}.json`).then((module) => module.default).catch(() => ({})),
 );
 
+const isDev = process.env.NODE_ENV === "development";
+
 const defaultOptions = {
-	lng: DEFAULT_LANGUAGE,
-	fallbackLng: DEFAULT_LANGUAGE,
-	supportedLngs: SUPPORTED_LANGUAGES,
-	defaultNS: SUPPORTED_NAMESPACES[0],
-	ns: SUPPORTED_NAMESPACES,
-	interpolation: { escapeValue: false },
+	...getI18nBaseOptions(isDev),
 	react: { useSuspense: false },
-	returnNull: false,
-	returnEmptyString: false,
 };
 
 if (!i18n.isInitialized) {
-	i18n.use(initReactI18next).use(backend).init(defaultOptions);
+	const pseudo = new Pseudo({ enabled: isDev, languageToPseudo: PSEUDO_LANGUAGE });
+	i18n.use(pseudo).use(initReactI18next).use(backend).init(defaultOptions);
 }
 
 export default i18n;

@@ -1,8 +1,9 @@
 import "server-only";
 
 import i18next, { type i18n as I18n } from "i18next";
+import Pseudo from "i18next-pseudo";
 import resourcesToBackend from "i18next-resources-to-backend";
-import { DEFAULT_LANGUAGE, normalizeLanguage, SUPPORTED_LANGUAGES, SUPPORTED_NAMESPACES } from "@/lib/i18nConfig";
+import { DEFAULT_LANGUAGE, getI18nBaseOptions, normalizeLanguage, PSEUDO_LANGUAGE } from "@/lib/i18nConfig";
 
 const serverInstances = new Map<string, Promise<I18n>>();
 
@@ -19,19 +20,16 @@ const backend = resourcesToBackend((language: string, namespace: string) =>
 	loadResource(language, namespace).then((resource) => resource ?? {}),
 );
 
+const isDev = process.env.NODE_ENV === "development";
+
 const initServerI18n = async (lng: string) => {
 	const instance = i18next.createInstance();
+	const pseudo = new Pseudo({ enabled: isDev, languageToPseudo: PSEUDO_LANGUAGE });
 
-	await instance.use(backend).init({
-		lng,
-		fallbackLng: DEFAULT_LANGUAGE,
-		supportedLngs: SUPPORTED_LANGUAGES,
-		defaultNS: SUPPORTED_NAMESPACES[0],
-		ns: SUPPORTED_NAMESPACES,
-		interpolation: { escapeValue: false },
-		returnNull: false,
-		returnEmptyString: false,
-	});
+	await instance
+		.use(pseudo)
+		.use(backend)
+		.init({ ...getI18nBaseOptions(isDev), lng });
 
 	return instance;
 };

@@ -24,9 +24,11 @@ const buildSupportedLanguages = () => {
 };
 
 const supported = buildSupportedLanguages();
+const compact = JSON.stringify(supported);
+const output = compact.length <= 120 ? compact : JSON.stringify(supported, null, "\t");
 
 fs.mkdirSync(localesRoot, { recursive: true });
-fs.writeFileSync(outputPath, `${JSON.stringify(supported, null, "\t")}\n`, "utf8");
+fs.writeFileSync(outputPath, `${output}\n`, "utf8");
 
 if (supported.some((name) => name !== name.toLowerCase())) {
 	const nonLowercase = supported.filter((name) => name !== name.toLowerCase());

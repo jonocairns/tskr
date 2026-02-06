@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useLogMutation } from "@/hooks/useLogMutation";
 import { usePresetMutations } from "@/hooks/usePresetMutations";
 import { useToast } from "@/hooks/useToast";
+import { useTranslation } from "@/lib/i18nClient";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
 
 export const PresetActionsCard = () => {
@@ -38,6 +39,7 @@ export const PresetActionsCard = () => {
 	const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const canManagePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = currentUserRole !== "DOER";
 	const [searchQuery, setSearchQuery] = useState("");
@@ -91,8 +93,8 @@ export const PresetActionsCard = () => {
 					});
 					success = true;
 					toast({
-						title: "Preset added",
-						description: "Template added to your presets.",
+						title: t("Preset added"),
+						description: t("Template added to your presets."),
 					});
 				} catch {
 					// Error handled by mutation onError
@@ -241,12 +243,12 @@ export const PresetActionsCard = () => {
 				<CardHeader className="space-y-1">
 					<div className="flex items-start justify-between gap-2">
 						<div className="space-y-1">
-							<CardTitle className="text-xl">Tasks</CardTitle>
-							<CardDescription>Tap a task once you've completed it.</CardDescription>
+							<CardTitle className="text-xl">{t("Tasks")}</CardTitle>
+							<CardDescription>{t("Tap a task once you've completed it.")}</CardDescription>
 						</div>
 						{canManagePresets ? (
 							<Button type="button" variant="ghost" size="sm" onClick={() => setEditDrawerOpen(true)}>
-								Change
+								{t("Change")}
 							</Button>
 						) : null}
 					</div>
