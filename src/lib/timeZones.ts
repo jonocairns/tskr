@@ -153,6 +153,36 @@ export const getMinutesSinceStartOfDayInTimeZone = (date: Date, timeZone: string
 	);
 };
 
+export const getTimeZoneDateFromDayMinutes = (date: Date, minutes: number, timeZone: string) => {
+	const zonedDateTime = toZonedDateTime(date, timeZone);
+	const day = zonedDateTime.toPlainDate();
+	const dayOffset = Math.floor(minutes / 1440);
+	const minutesInDay = ((minutes % 1440) + 1440) % 1440;
+	const hour = Math.floor(minutesInDay / 60);
+	const minute = minutesInDay % 60;
+	const targetDay = day.add({ days: dayOffset });
+	const plainDateTime = Temporal.PlainDateTime.from({
+		year: targetDay.year,
+		month: targetDay.month,
+		day: targetDay.day,
+		hour,
+		minute,
+		second: 0,
+		millisecond: 0,
+	});
+	const resolved = Temporal.ZonedDateTime.from({
+		timeZone: resolveTimeZone(timeZone),
+		year: plainDateTime.year,
+		month: plainDateTime.month,
+		day: plainDateTime.day,
+		hour: plainDateTime.hour,
+		minute: plainDateTime.minute,
+		second: plainDateTime.second,
+		millisecond: plainDateTime.millisecond,
+	});
+	return toDate(resolved);
+};
+
 export const getStartOfWeekInTimeZone = (date: Date, timeZone: string) => {
 	const zonedDateTime = toZonedDateTime(date, timeZone);
 	const diff = (zonedDateTime.dayOfWeek + 6) % 7;

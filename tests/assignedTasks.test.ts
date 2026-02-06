@@ -1,3 +1,5 @@
+import { Temporal } from "@js-temporal/polyfill";
+
 import { computeAssignedTaskState } from "../src/lib/assignedTasks";
 
 const TIME_ZONE = "UTC";
@@ -9,6 +11,29 @@ type ComputeArgs = Parameters<typeof computeAssignedTaskState>[0];
 
 const computeState = (task: ComputeArgs["task"], logs: ComputeArgs["logs"], now: Date) =>
 	computeAssignedTaskState({ task, logs, now, timeZone: TIME_ZONE });
+
+const atZoned = (
+	timeZone: string,
+	year: number,
+	month: number,
+	day: number,
+	hour = 0,
+	minute = 0,
+	second = 0,
+	millisecond = 0,
+) =>
+	new Date(
+		Temporal.ZonedDateTime.from({
+			timeZone,
+			year,
+			month,
+			day,
+			hour,
+			minute,
+			second,
+			millisecond,
+		}).toInstant().epochMilliseconds,
+	);
 
 test("returns active state when no logs exist", () => {
 	const now = atLocal(2024, 1, 1, 0, 10);
@@ -439,8 +464,8 @@ test("handles fractional cadence intervals (90 minutes)", () => {
 
 test("sub-day cadence follows wall-clock time on DST fallback", () => {
 	const timeZone = "America/New_York";
-	const now = atLocal(2024, 11, 4, 3, 30);
-	const expectedReset = atLocal(2024, 11, 4, 5, 0);
+	const now = atZoned(timeZone, 2024, 11, 3, 3, 30);
+	const expectedReset = atZoned(timeZone, 2024, 11, 3, 4, 30);
 
 	const state = computeAssignedTaskState({
 		task: { cadenceTarget: 1, cadenceIntervalMinutes: 90, isRecurring: true },

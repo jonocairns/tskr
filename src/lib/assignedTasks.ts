@@ -2,7 +2,6 @@ import { Temporal } from "@js-temporal/polyfill";
 
 import {
 	addDaysInTimeZone,
-	addMinutesInTimeZone,
 	addMonthsInTimeZone,
 	addYearsInTimeZone,
 	getMinutesSinceStartOfDayInTimeZone,
@@ -11,6 +10,7 @@ import {
 	getStartOfQuarterInTimeZone,
 	getStartOfWeekInTimeZone,
 	getStartOfYearInTimeZone,
+	getTimeZoneDateFromDayMinutes,
 	getTimeZoneDayNumber,
 } from "@/lib/timeZones";
 
@@ -102,11 +102,11 @@ const getPeriodBounds = (now: Date, intervalMinutes: number, timeZone: string) =
 		return { periodStart, periodEnd: addDays(periodStart, daysInterval, timeZone) };
 	}
 
-	const start = startOfDay(now, timeZone);
 	const minutesSinceMidnight = getMinutesSinceStartOfDayInTimeZone(now, timeZone);
 	const periodStartMinutes = Math.floor(minutesSinceMidnight / intervalMinutes) * intervalMinutes;
-	const periodStart = addMinutesInTimeZone(start, periodStartMinutes, timeZone);
-	return { periodStart, periodEnd: addMinutesInTimeZone(periodStart, intervalMinutes, timeZone) };
+	const periodStart = getTimeZoneDateFromDayMinutes(now, periodStartMinutes, timeZone);
+	const periodEnd = getTimeZoneDateFromDayMinutes(now, periodStartMinutes + intervalMinutes, timeZone);
+	return { periodStart, periodEnd };
 };
 
 type ComputeAssignedTaskStateInput = {
