@@ -1,7 +1,7 @@
 "use client";
 
 import { UserPlusIcon } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type SyntheticEvent, useState } from "react";
 
 import type { UserRow } from "@/components/admin/UsersTable";
 import {
@@ -68,7 +68,7 @@ export const CreateUserDialog = ({ onCreatedAction }: Props) => {
 		confirmPassword.length >= MIN_PASSWORD_LENGTH &&
 		password === confirmPassword;
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+	const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
 		event.preventDefault();
 
 		if (!email.trim()) {

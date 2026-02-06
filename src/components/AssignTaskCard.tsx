@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
 
 import type { PresetSummary } from "@/components/task-actions/types";
 import { Button } from "@/components/ui/Button";
@@ -77,7 +77,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 		},
 	});
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+	const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		if (!presetId || !assigneeId) {
 			toast({

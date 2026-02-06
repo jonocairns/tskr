@@ -3,7 +3,7 @@
 import { RocketIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { type FormEvent, useState, useTransition } from "react";
+import { type SyntheticEvent, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -24,7 +24,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 	const { toast } = useToast();
 	const router = useRouter();
 
-	const handleEmailSignIn = (event: FormEvent<HTMLFormElement>) => {
+	const handleEmailSignIn = (event: SyntheticEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		const trimmedEmail = email.trim();
 		if (!trimmedEmail || !password) {

@@ -1,5 +1,5 @@
 import { Loader2Icon } from "lucide-react";
-import type { FormEvent } from "react";
+import type { SyntheticEvent } from "react";
 import { useEffect, useState } from "react";
 
 import { PresetListItem } from "@/components/task-actions/PresetListItem";
@@ -173,7 +173,7 @@ export function PresetActionsDrawer({
 		setEditIsShared(true);
 	};
 
-	const handleUpdatePreset = async (event: FormEvent<HTMLFormElement>, presetId: string): Promise<void> => {
+	const handleUpdatePreset = async (event: SyntheticEvent<HTMLFormElement>, presetId: string): Promise<void> => {
 		event.preventDefault();
 		if (!canUpdate) return;
 		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, editApprovalOverride);

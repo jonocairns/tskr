@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { type FormEvent, useState, useTransition } from "react";
+import { type SyntheticEvent, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -17,41 +17,41 @@ type Props = {
 export const ResetPasswordForm = ({ token }: Props) => {
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
-	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
 	const router = useRouter();
 
 	const canSubmit = password.length >= 8 && confirmPassword.length >= 8 && password === confirmPassword;
 
 	const resetMutation = trpc.passwordReset.reset.useMutation({
-		onSuccess: async (data) => {
-			if (!data.email) {
-				toast({ title: "Password updated" });
-				router.push("/");
-				router.refresh();
-				return;
-			}
-
+		onSuccess: async (data, variables) => {
 			toast({ title: "Password updated", description: "Signing you in..." });
 
 			const result = await signIn("credentials", {
 				email: data.email,
-				password,
+				password: variables.password,
 				redirect: false,
+				callbackUrl: "/",
 			});
 
-			if (result?.error) {
+			if (!result || result.error || result.ok === false) {
 				toast({
 					title: "Unable to sign in",
 					description: "Try signing in manually.",
 					variant: "destructive",
 				});
-				router.push("/");
+				if (typeof window !== "undefined") {
+					window.location.assign("/");
+					return;
+				}
+				router.replace("/");
 				return;
 			}
 
-			router.push("/");
-			router.refresh();
+			if (typeof window !== "undefined") {
+				window.location.assign(result.url ?? "/");
+				return;
+			}
+			router.replace(result.url ?? "/");
 		},
 		onError: (error) => {
 			toast({
@@ -62,7 +62,9 @@ export const ResetPasswordForm = ({ token }: Props) => {
 		},
 	});
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+	const isBusy = resetMutation.isPending;
+
+	const handleSubmit = async (event: SyntheticEvent<HTMLFormElement>) => {
 		event.preventDefault();
 
 		if (password.length < 8) {
@@ -82,9 +84,7 @@ export const ResetPasswordForm = ({ token }: Props) => {
 			return;
 		}
 
-		startTransition(async () => {
-			await resetMutation.mutateAsync({ token, password });
-		});
+		resetMutation.mutate({ token, password });
 	};
 
 	return (
@@ -97,7 +97,7 @@ export const ResetPasswordForm = ({ token }: Props) => {
 					autoComplete="new-password"
 					value={password}
 					onChange={(event) => setPassword(event.target.value)}
-					disabled={isPending}
+					disabled={isBusy}
 				/>
 			</div>
 			<div className="space-y-2">
@@ -108,10 +108,10 @@ export const ResetPasswordForm = ({ token }: Props) => {
 					autoComplete="new-password"
 					value={confirmPassword}
 					onChange={(event) => setConfirmPassword(event.target.value)}
-					disabled={isPending}
+					disabled={isBusy}
 				/>
 			</div>
-			<Button type="submit" disabled={isPending || !canSubmit}>
+			<Button type="submit" disabled={isBusy || !canSubmit}>
 				Set password
 			</Button>
 		</form>

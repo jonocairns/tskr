@@ -2,7 +2,7 @@
 
 import { Loader2Icon, SparklesIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
+import type { SyntheticEvent } from "react";
 import { useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
@@ -54,7 +54,7 @@ export const TimedActionsCard = () => {
 		? presetOptions.filter((preset) => normalizeText(preset.label).includes(descriptionQuery))
 		: [];
 
-	const handleTimed = (event: FormEvent<HTMLFormElement>) => {
+	const handleTimed = (event: SyntheticEvent<HTMLFormElement>) => {
 		event.preventDefault();
 
 		if (!householdId) {
