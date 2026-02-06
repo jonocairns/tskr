@@ -12,6 +12,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
+import { useTranslation } from "@/lib/i18nClient";
 
 type Props = {
 	user: {
@@ -29,13 +30,15 @@ type Props = {
 
 export const UserMenu = ({ user, household }: Props) => {
 	const { data: session } = useSession();
+	const { t } = useTranslation();
 	const sessionUser = session?.user;
 	const resolvedUser = sessionUser ?? user;
 
 	const householdId = household?.id;
 	const currentHouseholdRole = household?.role;
-	const initials =
-		resolvedUser?.name?.slice(0, 1)?.toUpperCase() ?? resolvedUser?.email?.slice(0, 1)?.toUpperCase() ?? "U";
+	const name = resolvedUser?.name?.slice(0, 1)?.toUpperCase();
+	const email = resolvedUser?.email?.slice(0, 1)?.toUpperCase();
+	const initials = name ?? email ?? "U";
 
 	return (
 		<DropdownMenu>
@@ -51,21 +54,21 @@ export const UserMenu = ({ user, household }: Props) => {
 						<DropdownMenuItem asChild>
 							<Link href={`/${householdId}/household`}>
 								<HomeIcon className="mr-2 h-4 w-4" />
-								Household
+								{t("Household")}
 							</Link>
 						</DropdownMenuItem>
 						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (
 							<DropdownMenuItem asChild>
 								<Link href={`/${householdId}/assignments`}>
 									<ClipboardListIcon className="mr-2 h-4 w-4" />
-									Assignments
+									{t("Assignments")}
 								</Link>
 							</DropdownMenuItem>
 						) : null}
 						<DropdownMenuItem asChild>
 							<Link href={`/${householdId}/settings`}>
 								<SettingsIcon className="mr-2 h-4 w-4" />
-								Settings
+								{t("Settings")}
 							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
@@ -77,7 +80,7 @@ export const UserMenu = ({ user, household }: Props) => {
 					onSelect={() => signOut()}
 				>
 					<LogOutIcon className="mr-2 h-4 w-4" />
-					Sign out
+					{t("Sign out")}
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

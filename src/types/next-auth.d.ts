@@ -7,6 +7,7 @@ declare module "next-auth" {
 			id: string;
 			isSuperAdmin?: boolean;
 			hasGoogleAccount?: boolean;
+			language?: string;
 		} & DefaultSession["user"];
 		/**
 		 * Issued at timestamp (Unix timestamp in seconds).
@@ -24,6 +25,7 @@ declare module "next-auth" {
 		id: string;
 		lastHouseholdId?: string | null;
 		isSuperAdmin?: boolean;
+		language?: string | null;
 	}
 }
 

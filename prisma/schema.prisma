@@ -57,6 +57,7 @@ model User {
   passwordResetRequired Boolean @default(false)
   passwordLoginDisabled Boolean @default(false)
   isSuperAdmin      Boolean   @default(false)
+  language          String    @default("en")
   lastHouseholdId   String?
   lastHousehold     Household? @relation("UserLastHousehold", fields: [lastHouseholdId], references: [id])
   householdsCreated Household[] @relation("HouseholdCreator")

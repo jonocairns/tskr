@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { useTranslation } from "@/lib/i18nClient";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
 
 type TaskButtonProps = {
@@ -11,6 +12,7 @@ type TaskButtonProps = {
 };
 
 export const TaskButton = ({ id, label, bucket, disabled, onClick }: TaskButtonProps) => {
+	const { t } = useTranslation();
 	const bucketInfo = DURATION_BUCKETS.find((b) => b.key === bucket);
 
 	return (
@@ -27,7 +29,7 @@ export const TaskButton = ({ id, label, bucket, disabled, onClick }: TaskButtonP
 				</div>
 			</div>
 			<span className="text-xs text-muted-foreground">
-				{bucketInfo?.points ?? 0} pts · {bucketInfo?.window}
+				{t("{{points}} pts · {{window}}", { points: bucketInfo?.points ?? 0, window: bucketInfo?.window ?? "" })}
 			</span>
 		</Button>
 	);

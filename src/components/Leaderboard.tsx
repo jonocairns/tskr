@@ -1,9 +1,12 @@
+"use client";
+
 import { CrownIcon, UsersIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { type DateFormat, formatDate } from "@/lib/formatDate";
+import { useTranslation } from "@/lib/i18nClient";
 
 export type LeaderboardEntry = {
 	userId: string;
@@ -24,12 +27,14 @@ type Props = {
 };
 
 export const Leaderboard = ({ entries, timeZone, dateFormat }: Props) => {
+	const { t } = useTranslation();
+
 	return (
 		<Card>
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
-					<CardTitle className="text-xl">Leaderboard</CardTitle>
-					<CardDescription>Average points per day since first task.</CardDescription>
+					<CardTitle className="text-xl">{t("Leaderboard")}</CardTitle>
+					<CardDescription>{t("Average points per day since first task.")}</CardDescription>
 				</div>
 				<div className="rounded-full bg-primary/10 p-2 text-primary">
 					<UsersIcon className="h-5 w-5" />
@@ -39,13 +44,13 @@ export const Leaderboard = ({ entries, timeZone, dateFormat }: Props) => {
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>User</TableHead>
-							<TableHead className="text-right">Avg/day</TableHead>
-							<TableHead className="text-right text-muted-foreground">Total</TableHead>
-							<TableHead className="hidden sm:table-cell text-right text-muted-foreground">Current</TableHead>
-							<TableHead className="hidden sm:table-cell text-right">Tasks</TableHead>
-							<TableHead className="hidden sm:table-cell text-right">Rewards</TableHead>
-							<TableHead className="hidden sm:table-cell text-right">Last active</TableHead>
+							<TableHead>{t("User")}</TableHead>
+							<TableHead className="text-right">{t("Avg/day")}</TableHead>
+							<TableHead className="text-right text-muted-foreground">{t("Total")}</TableHead>
+							<TableHead className="hidden sm:table-cell text-right text-muted-foreground">{t("Current")}</TableHead>
+							<TableHead className="hidden sm:table-cell text-right">{t("Tasks")}</TableHead>
+							<TableHead className="hidden sm:table-cell text-right">{t("Rewards")}</TableHead>
+							<TableHead className="hidden sm:table-cell text-right">{t("Last active")}</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -59,7 +64,7 @@ export const Leaderboard = ({ entries, timeZone, dateFormat }: Props) => {
 									{idx === 0 ? (
 										<Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
 											<CrownIcon className="mr-1 h-3 w-3" />
-											Top
+											{t("Top")}
 										</Badge>
 									) : null}
 								</TableCell>

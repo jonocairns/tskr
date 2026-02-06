@@ -40,6 +40,8 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
       - name: Generate Prisma client
         run: pnpm prisma generate
+      - name: I18n scan check
+        run: pnpm i18n:check
       - name: Lint
         run: pnpm lint
       - name: Test

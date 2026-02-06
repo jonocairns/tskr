@@ -3,6 +3,7 @@ import "server-only";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { z } from "zod";
+import { type AppErrorCode, getFallbackAppErrorCode, isAppErrorCode } from "@/lib/appErrorCodes";
 import { getAuthSession } from "@/lib/auth";
 import { checkForSensitiveInfo, sanitizeErrorMessage } from "@/lib/errorSanitization";
 import { getHouseholdMembership, type HouseholdMembership } from "@/lib/households";
@@ -23,6 +24,18 @@ export async function createTRPCContext(opts?: { req?: Request }) {
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
+const resolveAppErrorCode = (error: TRPCError, trpcCode?: string): AppErrorCode => {
+	const cause = error.cause;
+	if (cause && typeof cause === "object" && "appErrorCode" in cause) {
+		const candidate = (cause as { appErrorCode?: unknown }).appErrorCode;
+		if (isAppErrorCode(candidate)) {
+			return candidate;
+		}
+	}
+
+	return getFallbackAppErrorCode(trpcCode);
+};
+
 const t = initTRPC.context<Context>().create({
 	transformer: superjson,
 	errorFormatter({ shape, error }) {
@@ -35,10 +48,15 @@ const t = initTRPC.context<Context>().create({
 		}
 
 		const sanitizedMessage = sanitizeErrorMessage(shape.message, shape.data?.code || "INTERNAL_SERVER_ERROR");
+		const appErrorCode = resolveAppErrorCode(error, shape.data?.code);
 
 		return {
 			...shape,
 			message: sanitizedMessage,
+			data: {
+				...(shape.data ?? {}),
+				appErrorCode,
+			},
 		};
 	},
 });

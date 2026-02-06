@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/Label";
 import { Separator } from "@/components/ui/Separator";
 import { useToast } from "@/hooks/useToast";
 import type { AuthErrorInfo } from "@/lib/authError";
+import { useTranslation } from "@/lib/i18nClient";
 
 type AuthCtaProps = {
 	authError?: AuthErrorInfo | null;
@@ -22,6 +23,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 	const [password, setPassword] = useState("");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const router = useRouter();
 
 	const handleEmailSignIn = (event: SyntheticEvent<HTMLFormElement>) => {
@@ -29,8 +31,8 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 		const trimmedEmail = email.trim();
 		if (!trimmedEmail || !password) {
 			toast({
-				title: "Missing credentials",
-				description: "Enter your email and password.",
+				title: t("Missing credentials"),
+				description: t("Enter your email and password."),
 				variant: "destructive",
 			});
 			return;
@@ -46,8 +48,8 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 
 				if (!result || result.error || result.ok === false) {
 					toast({
-						title: "Sign in failed",
-						description: "Check your email or password.",
+						title: t("Sign in failed"),
+						description: t("Check your email or password."),
 						variant: "destructive",
 					});
 					return;
@@ -76,8 +78,8 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 				router.refresh();
 			} catch (_error) {
 				toast({
-					title: "Unable to sign in",
-					description: "Please try again.",
+					title: t("Unable to sign in"),
+					description: t("Please try again."),
 					variant: "destructive",
 				});
 			}
@@ -90,29 +92,33 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 				<RocketIcon className="h-6 w-6" />
 			</div>
 			<div className="space-y-2">
-				<h1 className="text-3xl font-semibold tracking-tight">Track tasks, claim rewards.</h1>
+				<h1 className="text-3xl font-semibold tracking-tight">{t("Track tasks, claim rewards.")}</h1>
 				<p className="text-muted-foreground">
 					{googleEnabled
-						? "Sign in with Google or email to log tasks, watch your points climb, and keep an audit trail you can always undo."
-						: "Sign in with email to log tasks, watch your points climb, and keep an audit trail you can always undo."}
+						? t(
+								"Sign in with Google or email to log tasks, watch your points climb, and keep an audit trail you can always undo.",
+							)
+						: t(
+								"Sign in with email to log tasks, watch your points climb, and keep an audit trail you can always undo.",
+							)}
 				</p>
 			</div>
 			<div className="flex w-full flex-col gap-4">
 				{googleEnabled ? (
 					<>
 						<Button size="lg" onClick={() => signIn("google")} disabled={isPending}>
-							Sign in with Google
+							{t("Sign in with Google")}
 						</Button>
 						<div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
 							<Separator className="flex-1" />
-							<span>or use email</span>
+							<span>{t("or use email")}</span>
 							<Separator className="flex-1" />
 						</div>
 					</>
 				) : null}
 				<form className="space-y-3" onSubmit={handleEmailSignIn}>
 					<div className="space-y-2 text-left">
-						<Label htmlFor="email-login">Email</Label>
+						<Label htmlFor="email-login">{t("Email")}</Label>
 						<Input
 							id="email-login"
 							type="email"
@@ -123,7 +129,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 						/>
 					</div>
 					<div className="space-y-2 text-left">
-						<Label htmlFor="password-login">Password</Label>
+						<Label htmlFor="password-login">{t("Password")}</Label>
 						<Input
 							id="password-login"
 							type="password"
@@ -134,7 +140,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 						/>
 					</div>
 					<Button type="submit" size="lg" disabled={isPending}>
-						Sign in with email
+						{t("Sign in with email")}
 					</Button>
 				</form>
 				{authError ? (
@@ -145,7 +151,7 @@ export const AuthCta = ({ authError, googleEnabled }: AuthCtaProps) => {
 							<p className="text-xs text-muted-foreground">{authError.description}</p>
 							{authError.key !== "Default" ? (
 								<p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-									Error code: {authError.key}
+									{t("Error code: {{code}}", { code: authError.key })}
 								</p>
 							) : null}
 						</div>

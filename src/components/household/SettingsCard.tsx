@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
 import { type DateFormat, DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT, type TimeFormat } from "@/lib/formatDate";
+import { useTranslation } from "@/lib/i18nClient";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -28,17 +29,6 @@ const DEFAULT_PROGRESS_BAR_COLOR = "#FFFFFF";
 const PROGRESS_BAR_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
 
 const isValidProgressBarColor = (value: string) => PROGRESS_BAR_COLOR_RE.test(value);
-
-const DATE_FORMAT_OPTIONS: Array<{ value: DateFormat; label: string }> = [
-	{ value: "DMY", label: "DD/MM/YYYY" },
-	{ value: "MDY", label: "MM/DD/YYYY" },
-	{ value: "YMD", label: "YYYY-MM-DD" },
-];
-
-const TIME_FORMAT_OPTIONS: Array<{ value: TimeFormat; label: string }> = [
-	{ value: "H24", label: "24-hour (13:45)" },
-	{ value: "H12", label: "12-hour (1:45 PM)" },
-];
 
 export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props) => {
 	const [name, setName] = useState("");
@@ -56,8 +46,18 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	const [useCustomProgressBarColor, setUseCustomProgressBarColor] = useState(false);
 	const [isTimeZoneOpen, setIsTimeZoneOpen] = useState(false);
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const router = useRouter();
 	const isSection = variant === "section";
+	const dateFormatOptions: Array<{ value: DateFormat; label: string }> = [
+		{ value: "DMY", label: t("DD/MM/YYYY") },
+		{ value: "MDY", label: t("MM/DD/YYYY") },
+		{ value: "YMD", label: t("YYYY-MM-DD") },
+	];
+	const timeFormatOptions: Array<{ value: TimeFormat; label: string }> = [
+		{ value: "H24", label: t("24-hour (13:45)") },
+		{ value: "H12", label: t("12-hour (1:45 PM)") },
+	];
 
 	const { data, isLoading, error } = trpc.households.getCurrent.useQuery(
 		{ householdId },
@@ -100,14 +100,14 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 				setProgressBarColor(updatedProgressBarColor);
 			}
 
-			toast({ title: "Household updated" });
+			toast({ title: t("Household updated") });
 			utils.households.getCurrent.invalidate();
 			router.refresh();
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to update household",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to update household"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -144,12 +144,12 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	useEffect(() => {
 		if (error) {
 			toast({
-				title: "Unable to load household settings",
-				description: "Please refresh and try again.",
+				title: t("Unable to load household settings"),
+				description: t("Please refresh and try again."),
 				variant: "destructive",
 			});
 		}
-	}, [error, toast]);
+	}, [error, toast, t]);
 
 	if (!canManage) {
 		return null;
@@ -191,8 +191,8 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
-			<CardTitle className={isSection ? "text-base" : "text-xl"}>General</CardTitle>
-			<CardDescription>Update your household basics and dashboard progress theme.</CardDescription>
+			<CardTitle className={isSection ? "text-base" : "text-xl"}>{t("General")}</CardTitle>
+			<CardDescription>{t("Update your household basics and dashboard progress theme.")}</CardDescription>
 		</div>
 	);
 
@@ -201,18 +201,18 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			<div className="space-y-4">
 				<div className="grid gap-4 sm:grid-cols-2">
 					<div className="space-y-2">
-						<Label htmlFor="household-name">Household name</Label>
+						<Label htmlFor="household-name">{t("Household name")}</Label>
 						<Input
 							id="household-name"
 							value={name}
 							onChange={(event) => setName(event.target.value)}
 							disabled={isLoading || isPending}
-							placeholder="Enter household name"
+							placeholder={t("Enter household name")}
 						/>
-						<p className="text-xs text-muted-foreground">Minimum 2 characters</p>
+						<p className="text-xs text-muted-foreground">{t("Minimum 2 characters")}</p>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="household-threshold">Reward threshold</Label>
+						<Label htmlFor="household-threshold">{t("Reward threshold")}</Label>
 						<Input
 							id="household-threshold"
 							type="number"
@@ -222,13 +222,13 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 							onChange={(event) => setThreshold(event.target.value)}
 							disabled={isLoading || isPending}
 						/>
-						<p className="text-xs text-muted-foreground">Points needed to claim a reward</p>
+						<p className="text-xs text-muted-foreground">{t("Points needed to claim a reward")}</p>
 					</div>
 				</div>
 
 				<div className="space-y-2">
 					<div className="flex items-center gap-3">
-						<Label htmlFor="household-progress-color-enabled">Custom progress color</Label>
+						<Label htmlFor="household-progress-color-enabled">{t("Custom progress color")}</Label>
 						<Switch
 							id="household-progress-color-enabled"
 							checked={useCustomProgressBarColor}
@@ -246,11 +246,11 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 							/>
 						)}
 					</div>
-					<p className="text-xs text-muted-foreground">Customize the dashboard progress bar color</p>
+					<p className="text-xs text-muted-foreground">{t("Customize the dashboard progress bar color")}</p>
 				</div>
 
 				<div className="space-y-2">
-					<Label htmlFor="household-time-zone">Household time zone</Label>
+					<Label htmlFor="household-time-zone">{t("Household time zone")}</Label>
 					<Popover open={isTimeZoneOpen} onOpenChange={setIsTimeZoneOpen}>
 						<PopoverTrigger asChild>
 							<button
@@ -263,7 +263,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 									"flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
 								)}
 							>
-								<span className="truncate">{timeZone || "Select time zone"}</span>
+								<span className="truncate">{timeZone || t("Select time zone")}</span>
 								<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 							</button>
 						</PopoverTrigger>
@@ -272,9 +272,9 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 							className="min-w-[var(--radix-popper-anchor-width)] w-[var(--radix-popper-anchor-width)] p-0"
 						>
 							<Command>
-								<CommandInput placeholder="Search time zones..." />
+								<CommandInput placeholder={t("Search time zones...")} />
 								<CommandList>
-									<CommandEmpty>No time zone found.</CommandEmpty>
+									<CommandEmpty>{t("No time zone found.")}</CommandEmpty>
 									<CommandGroup>
 										{timeZoneOptions.map((zone) => (
 											<CommandItem
@@ -294,49 +294,49 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 							</Command>
 						</PopoverContent>
 					</Popover>
-					<p className="text-xs text-muted-foreground">Defines day and week boundaries for your household.</p>
+					<p className="text-xs text-muted-foreground">{t("Defines day and week boundaries for your household.")}</p>
 				</div>
 
 				<div className="grid gap-4 sm:grid-cols-2">
 					<div className="space-y-2">
-						<Label htmlFor="household-date-format">Date format</Label>
+						<Label htmlFor="household-date-format">{t("Date format")}</Label>
 						<Select
 							value={dateFormat}
 							onValueChange={(value: DateFormat) => setDateFormat(value)}
 							disabled={isLoading || isPending}
 						>
 							<SelectTrigger id="household-date-format">
-								<SelectValue placeholder="Select date format" />
+								<SelectValue placeholder={t("Select date format")} />
 							</SelectTrigger>
 							<SelectContent>
-								{DATE_FORMAT_OPTIONS.map((option) => (
+								{dateFormatOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
 									</SelectItem>
 								))}
 							</SelectContent>
 						</Select>
-						<p className="text-xs text-muted-foreground">Applies to dates across the household.</p>
+						<p className="text-xs text-muted-foreground">{t("Applies to dates across the household.")}</p>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="household-time-format">Time format</Label>
+						<Label htmlFor="household-time-format">{t("Time format")}</Label>
 						<Select
 							value={timeFormat}
 							onValueChange={(value: TimeFormat) => setTimeFormat(value)}
 							disabled={isLoading || isPending}
 						>
 							<SelectTrigger id="household-time-format">
-								<SelectValue placeholder="Select time format" />
+								<SelectValue placeholder={t("Select time format")} />
 							</SelectTrigger>
 							<SelectContent>
-								{TIME_FORMAT_OPTIONS.map((option) => (
+								{timeFormatOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
 									</SelectItem>
 								))}
 							</SelectContent>
 						</Select>
-						<p className="text-xs text-muted-foreground">Applies to times across the household.</p>
+						<p className="text-xs text-muted-foreground">{t("Applies to times across the household.")}</p>
 					</div>
 				</div>
 			</div>
@@ -348,10 +348,10 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 					disabled={isLoading || isPending || !canSave || !isFormDirty}
 					className="w-full"
 				>
-					{isPending ? "Saving..." : "Save changes"}
+					{isPending ? t("Saving...") : t("Save changes")}
 				</Button>
 				{isFormDirty && canSave && (
-					<p className="text-xs text-center text-muted-foreground">You have unsaved changes</p>
+					<p className="text-xs text-center text-muted-foreground">{t("You have unsaved changes")}</p>
 				)}
 			</div>
 		</div>

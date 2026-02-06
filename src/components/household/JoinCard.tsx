@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/hooks/useToast";
+import { useTranslation } from "@/lib/i18nClient";
 import { trpc } from "@/lib/trpc/react";
 
 type Props = {
@@ -19,6 +20,7 @@ export const JoinCard = ({ variant = "card" }: Props) => {
 	const [code, setCode] = useState("");
 	const [isPending, startTransition] = useTransition();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const router = useRouter();
 	const { update } = useSession();
 	const isSection = variant === "section";
@@ -29,14 +31,14 @@ export const JoinCard = ({ variant = "card" }: Props) => {
 	const joinMutation = trpc.households.join.useMutation({
 		onSuccess: async (data) => {
 			setCode("");
-			toast({ title: "Joined household" });
+			toast({ title: t("Joined household") });
 			await update();
 			router.push(`/${data.householdId}`);
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to join household",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to join household"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -54,25 +56,25 @@ export const JoinCard = ({ variant = "card" }: Props) => {
 
 	const header = (
 		<div className={isSection ? "space-y-1" : undefined}>
-			<CardTitle className={isSection ? "text-base" : "text-xl"}>Join another household</CardTitle>
-			<CardDescription>Enter a shareable invite code.</CardDescription>
+			<CardTitle className={isSection ? "text-base" : "text-xl"}>{t("Join another household")}</CardTitle>
+			<CardDescription>{t("Enter a shareable invite code.")}</CardDescription>
 		</div>
 	);
 
 	const content = (
 		<div className="space-y-3">
 			<div className="space-y-2">
-				<Label htmlFor="invite-code">Invite code</Label>
+				<Label htmlFor="invite-code">{t("Invite code")}</Label>
 				<Input
 					id="invite-code"
 					value={code}
 					onChange={(event) => setCode(event.target.value)}
-					placeholder="Enter code"
+					placeholder={t("Enter code")}
 					disabled={isPending}
 				/>
 			</div>
 			<Button type="button" onClick={handleJoin} disabled={!canSubmit || isPending}>
-				Join household
+				{t("Join household")}
 			</Button>
 		</div>
 	);

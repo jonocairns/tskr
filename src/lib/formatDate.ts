@@ -105,7 +105,6 @@ export const formatDate = (value: string | Date, options?: DateFormatOptions | s
 			return `${year}-${month}-${day}`;
 		case "MDY":
 			return `${month}/${day}/${year}`;
-		case "DMY":
 		default:
 			return `${day}/${month}/${year}`;
 	}

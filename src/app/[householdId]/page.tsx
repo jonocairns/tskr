@@ -12,6 +12,8 @@ import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";
+import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
+import { getServerT } from "@/lib/i18nServer";
 import { getHouseholdContext } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +25,7 @@ type Props = {
 export default async function DashboardPage({ params }: Props) {
 	const { householdId } = await params;
 	const { session, userId, membership } = await getHouseholdContext(householdId);
+	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
 
 	const {
 		pointSums,
@@ -68,9 +71,9 @@ export default async function DashboardPage({ params }: Props) {
 	return (
 		<PageShell>
 			<PageHeader
-				eyebrow="tskr"
-				title="Dashboard"
-				description="Log tasks, keep an audit trail, and claim rewards when you hit the threshold."
+				eyebrow={t("tskr")}
+				title={t("Dashboard")}
+				description={t("Log tasks, keep an audit trail, and claim rewards when you hit the threshold.")}
 				user={session.user}
 				household={{ id: householdId, role: membership.role }}
 			/>
