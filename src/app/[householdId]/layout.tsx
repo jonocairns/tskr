@@ -8,9 +8,7 @@ type HouseholdLayoutProps = {
 	params?: { householdId?: string } | Promise<{ householdId?: string }>;
 };
 
-export const generateMetadata = async (
-	{ params }: Pick<HouseholdLayoutProps, "params">,
-): Promise<Metadata> => {
+export const generateMetadata = async ({ params }: Pick<HouseholdLayoutProps, "params">): Promise<Metadata> => {
 	const resolvedParams = await params;
 	const householdId = resolvedParams?.householdId;
 

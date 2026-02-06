@@ -112,8 +112,11 @@ export const formatDate = (value: string | Date, options?: DateFormatOptions | s
 };
 
 export const formatDateTime = (value: string | Date, options?: DateTimeFormatOptions | string) => {
-	const { dateFormat = DEFAULT_DATE_FORMAT, timeFormat = DEFAULT_TIME_FORMAT, timeZone } =
-		normalizeDateTimeOptions(options);
+	const {
+		dateFormat = DEFAULT_DATE_FORMAT,
+		timeFormat = DEFAULT_TIME_FORMAT,
+		timeZone,
+	} = normalizeDateTimeOptions(options);
 	const date = formatDate(value, { dateFormat, timeZone });
 	const time = formatTime(value, timeFormat, timeZone);
 	return `${date} ${time}`;

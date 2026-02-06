@@ -66,7 +66,14 @@ export const householdCoreRouter = router({
 		const hasTimeFormatUpdate = input.timeFormat !== undefined;
 		const hasColorUpdate = input.progressBarColor !== undefined;
 
-		if (!hasNameUpdate && !hasThresholdUpdate && !hasTimeZoneUpdate && !hasDateFormatUpdate && !hasTimeFormatUpdate && !hasColorUpdate) {
+		if (
+			!hasNameUpdate &&
+			!hasThresholdUpdate &&
+			!hasTimeZoneUpdate &&
+			!hasDateFormatUpdate &&
+			!hasTimeFormatUpdate &&
+			!hasColorUpdate
+		) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "No updates provided" });
 		}
 

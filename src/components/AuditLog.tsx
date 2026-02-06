@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
-import { type DateFormat, type TimeFormat, formatDate, formatDateTime } from "@/lib/formatDate";
+import { type DateFormat, formatDate, formatDateTime, type TimeFormat } from "@/lib/formatDate";
 import type { LogKind } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 

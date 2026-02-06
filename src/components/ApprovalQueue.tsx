@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
-import { type DateFormat, type TimeFormat, formatDateTime } from "@/lib/formatDate";
+import { type DateFormat, formatDateTime, type TimeFormat } from "@/lib/formatDate";
 import { trpc } from "@/lib/trpc/react";
 
 export type ApprovalEntry = {
