@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
 import { PresetActionsDrawer } from "@/components/task-actions/PresetActionsDrawer";
@@ -15,7 +15,7 @@ import { useLogMutation } from "@/hooks/useLogMutation";
 import { usePresetMutations } from "@/hooks/usePresetMutations";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
-import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
+import { DURATION_BUCKETS, type DurationKey, getPresetTasks } from "@/lib/points";
 
 export const PresetActionsCard = () => {
 	const {
@@ -55,13 +55,23 @@ export const PresetActionsCard = () => {
 	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
 		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 	});
-	const appliedTemplateKeys = new Set(presetOptions.map((preset) => `${normalizeText(preset.label)}|${preset.bucket}`));
+	const templateKeyByLabelBucket = useMemo(() => {
+		const templates = [...getPresetTasks(), ...getPresetTasks(t)];
+		const lookup = new Map<string, string>();
+		for (const template of templates) {
+			lookup.set(`${normalizeText(template.label)}|${template.bucket}`, template.key);
+		}
+		return lookup;
+	}, [t]);
+	const appliedTemplateKeys = new Set(
+		presetOptions
+			.map((preset) => templateKeyByLabelBucket.get(`${normalizeText(preset.label)}|${preset.bucket}`))
+			.filter((key): key is string => Boolean(key)),
+	);
 	const templatesByBucket = DURATION_BUCKETS.map((bucket) => ({
 		bucket,
 		templates: presetTemplates.filter(
-			(template) =>
-				template.bucket === bucket.key &&
-				!appliedTemplateKeys.has(`${normalizeText(template.label)}|${template.bucket}`),
+			(template) => template.bucket === bucket.key && !appliedTemplateKeys.has(template.key),
 		),
 	})).filter((group) => group.templates.length > 0);
 	const normalizedQuery = normalizeText(searchQuery);
@@ -75,8 +85,7 @@ export const PresetActionsCard = () => {
 		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
 	) => {
-		const key = `${normalizeText(template.label)}|${template.bucket}`;
-		if (appliedTemplateKeys.has(key)) {
+		if (appliedTemplateKeys.has(template.key)) {
 			return false;
 		}
 
