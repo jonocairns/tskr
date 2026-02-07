@@ -1,3 +1,6 @@
+const supportedLanguages = require("./src/locales/supported.json");
+const scanLanguages = Array.from(new Set(["en", ...supportedLanguages])).filter((language) => language !== "pseudo");
+
 const config = {
 	input: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts"],
 	options: {
@@ -8,7 +11,7 @@ const config = {
 			extensions: [".ts", ".tsx"],
 		},
 		trans: false,
-		lngs: ["en"],
+		lngs: scanLanguages,
 		ns: ["translation", "errors"],
 		defaultLng: "en",
 		defaultNs: "translation",
