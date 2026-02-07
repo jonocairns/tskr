@@ -84,6 +84,7 @@ export const TaskActionsProvider = ({
 		id: task.id,
 		label: task.label,
 		bucket: task.bucket,
+		templateKey: task.templateKey,
 		isShared: task.isShared,
 	}));
 

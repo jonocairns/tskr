@@ -22,6 +22,7 @@ import { DURATION_BUCKETS } from "@/lib/points";
 
 type Props = {
 	preset: PresetSummary;
+	displayLabel: string;
 	bucket?: (typeof DURATION_BUCKETS)[number];
 	isEditing: boolean;
 	editLabel: string;
@@ -45,6 +46,7 @@ type Props = {
 
 export function PresetListItem({
 	preset,
+	displayLabel,
 	bucket,
 	isEditing,
 	editLabel,
@@ -145,7 +147,7 @@ export function PresetListItem({
 		<div className="flex items-center justify-between gap-3 rounded-lg border p-3">
 			<div className="space-y-1">
 				<div className="flex items-center gap-2">
-					<p className="text-sm font-medium">{preset.label}</p>
+					<p className="text-sm font-medium">{displayLabel}</p>
 					{!preset.isShared ? (
 						<span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Personal</span>
 					) : null}
@@ -188,7 +190,7 @@ export function PresetListItem({
 						<AlertDialogContent>
 							<AlertDialogHeader>
 								<AlertDialogTitle>Delete task preset?</AlertDialogTitle>
-								<AlertDialogDescription>This will delete "{preset.label}" and cannot be undone.</AlertDialogDescription>
+								<AlertDialogDescription>This will delete "{displayLabel}" and cannot be undone.</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
 								<AlertDialogCancel>Cancel</AlertDialogCancel>

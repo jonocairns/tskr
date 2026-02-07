@@ -59,6 +59,7 @@ type Props = {
 	isPending: boolean;
 	isPresetPending: boolean;
 	sortedEditablePresets: PresetSummary[];
+	presetDisplayLabels: Map<string, string>;
 	currentUserId: string;
 	canEditApprovalOverride: boolean;
 	canManagePresets: boolean;
@@ -91,6 +92,7 @@ export function PresetActionsDrawer({
 	isPending,
 	isPresetPending,
 	sortedEditablePresets,
+	presetDisplayLabels,
 	currentUserId,
 	canEditApprovalOverride,
 	canManagePresets,
@@ -147,11 +149,7 @@ export function PresetActionsDrawer({
 
 	const handleCreatePresetFromTemplate = async (template: PresetTemplate): Promise<void> => {
 		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
-		const localizedTemplate: PresetTemplate = {
-			...template,
-			label: localizedPresetLabels.get(template.key) ?? template.label,
-		};
-		const success = await onCreatePresetFromTemplate(localizedTemplate, customIsShared, approvalOverride);
+		const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride);
 		if (success) {
 			resetCustomForm();
 		}
@@ -366,6 +364,7 @@ export function PresetActionsDrawer({
 										<PresetListItem
 											key={preset.id}
 											preset={preset}
+											displayLabel={presetDisplayLabels.get(preset.id) ?? preset.label}
 											bucket={localizedBuckets.find((item) => item.key === preset.bucket)}
 											isEditing={editingPresetId === preset.id}
 											editLabel={editLabel}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
 import { PresetActionsDrawer } from "@/components/task-actions/PresetActionsDrawer";
@@ -55,6 +55,9 @@ export const PresetActionsCard = () => {
 	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
 		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 	});
+	const localizedPresetLabels = useMemo(() => {
+		return new Map(getPresetTasks(t).map((task) => [task.key, task.label]));
+	}, [t]);
 	const templateKeyByLabelBucket = useMemo(() => {
 		const templates = [...getPresetTasks(), ...getPresetTasks(t)];
 		const lookup = new Map<string, string>();
@@ -63,10 +66,31 @@ export const PresetActionsCard = () => {
 		}
 		return lookup;
 	}, [t]);
+	const resolveTemplateKey = useCallback(
+		(preset: { label: string; bucket: DurationKey; templateKey: string | null }) => {
+			return (
+				preset.templateKey ?? templateKeyByLabelBucket.get(`${normalizeText(preset.label)}|${preset.bucket}`) ?? null
+			);
+		},
+		[templateKeyByLabelBucket],
+	);
+	const presetDisplayLabels = useMemo(() => {
+		const lookup = new Map<string, string>();
+		for (const preset of presetOptions) {
+			const templateKey = resolveTemplateKey(preset);
+			const displayLabel = templateKey ? (localizedPresetLabels.get(templateKey) ?? preset.label) : preset.label;
+			lookup.set(preset.id, displayLabel);
+		}
+		return lookup;
+	}, [localizedPresetLabels, presetOptions, resolveTemplateKey]);
+	const localizedPresetOptions = useMemo(() => {
+		return presetOptions.map((preset) => ({
+			...preset,
+			label: presetDisplayLabels.get(preset.id) ?? preset.label,
+		}));
+	}, [presetDisplayLabels, presetOptions]);
 	const appliedTemplateKeys = new Set(
-		presetOptions
-			.map((preset) => templateKeyByLabelBucket.get(`${normalizeText(preset.label)}|${preset.bucket}`))
-			.filter((key): key is string => Boolean(key)),
+		presetOptions.map((preset) => resolveTemplateKey(preset)).filter((key): key is string => Boolean(key)),
 	);
 	const templatesByBucket = DURATION_BUCKETS.map((bucket) => ({
 		bucket,
@@ -77,8 +101,8 @@ export const PresetActionsCard = () => {
 	const normalizedQuery = normalizeText(searchQuery);
 	const filteredPresets =
 		normalizedQuery.length > 0
-			? presetOptions.filter((preset) => normalizeText(preset.label).includes(normalizedQuery))
-			: presetOptions;
+			? localizedPresetOptions.filter((preset) => normalizeText(preset.label).includes(normalizedQuery))
+			: localizedPresetOptions;
 
 	const handleCreatePresetFromTemplate = async (
 		template: PresetTemplate,
@@ -97,6 +121,7 @@ export const PresetActionsCard = () => {
 						householdId,
 						label: template.label,
 						bucket: template.bucket,
+						templateKey: template.key,
 						isShared,
 						approvalOverride,
 					});
@@ -265,7 +290,7 @@ export const PresetActionsCard = () => {
 				<CardContent className="space-y-4">
 					<TaskSearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} onClear={() => setSearchQuery("")} />
 					<TaskGrid
-						presetOptions={presetOptions}
+						presetOptions={localizedPresetOptions}
 						filteredPresets={filteredPresets}
 						disabled={disabled}
 						onTaskClick={handleTaskClick}
@@ -286,6 +311,7 @@ export const PresetActionsCard = () => {
 				isPending={isPending}
 				isPresetPending={isPresetPending}
 				sortedEditablePresets={sortedEditablePresets}
+				presetDisplayLabels={presetDisplayLabels}
 				currentUserId={currentUserId}
 				canEditApprovalOverride={canEditApprovalOverride}
 				canManagePresets={canManagePresets}

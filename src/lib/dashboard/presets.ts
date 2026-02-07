@@ -4,6 +4,7 @@ type PresetRecord = {
 	id: string;
 	label: string;
 	bucket: string;
+	templateKey: string | null;
 	isShared: boolean;
 	createdById: string;
 	approvalOverride: string | null;
@@ -14,6 +15,7 @@ export type PresetSummary = {
 	id: string;
 	label: string;
 	bucket: DurationKey;
+	templateKey: string | null;
 	isShared: boolean;
 	createdById: string;
 	approvalOverride: "REQUIRE" | "SKIP" | null;

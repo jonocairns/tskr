@@ -19,6 +19,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresets }: UsePrese
 				{
 					...data.preset,
 					bucket: data.preset.bucket as DurationKey,
+					templateKey: data.preset.templateKey ?? null,
 					createdAt: data.preset.createdAt.toISOString(),
 				},
 				...prev,
@@ -71,6 +72,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresets }: UsePrese
 						? {
 								...data.preset,
 								bucket: data.preset.bucket as DurationKey,
+								templateKey: data.preset.templateKey ?? null,
 								createdAt: data.preset.createdAt.toISOString(),
 							}
 						: preset,

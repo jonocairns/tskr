@@ -261,6 +261,7 @@ model PresetTask {
   createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
   label       String
   bucket      String
+  templateKey String?
   isShared    Boolean   @default(false)
   approvalOverride ApprovalOverride?
   logs        PointLog[]
@@ -272,6 +273,7 @@ model PresetTask {
   @@index([createdById])
   @@index([isShared])
   @@index([bucket])
+  @@index([templateKey])
 }
 
 model AssignedTask {

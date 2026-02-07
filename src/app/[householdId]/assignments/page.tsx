@@ -41,6 +41,7 @@ export default async function AssignmentsPage({ params }: Props) {
 				id: true,
 				label: true,
 				bucket: true,
+				templateKey: true,
 				isShared: true,
 				createdById: true,
 				approvalOverride: true,
