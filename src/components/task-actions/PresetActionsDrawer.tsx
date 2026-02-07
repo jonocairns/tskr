@@ -147,7 +147,11 @@ export function PresetActionsDrawer({
 
 	const handleCreatePresetFromTemplate = async (template: PresetTemplate): Promise<void> => {
 		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
-		const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride);
+		const localizedTemplate: PresetTemplate = {
+			...template,
+			label: localizedPresetLabels.get(template.key) ?? t(template.label),
+		};
+		const success = await onCreatePresetFromTemplate(localizedTemplate, customIsShared, approvalOverride);
 		if (success) {
 			resetCustomForm();
 		}
