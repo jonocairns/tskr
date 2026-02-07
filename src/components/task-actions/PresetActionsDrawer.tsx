@@ -149,7 +149,7 @@ export function PresetActionsDrawer({
 		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
 		const localizedTemplate: PresetTemplate = {
 			...template,
-			label: localizedPresetLabels.get(template.key) ?? t(template.label),
+			label: localizedPresetLabels.get(template.key) ?? template.label,
 		};
 		const success = await onCreatePresetFromTemplate(localizedTemplate, customIsShared, approvalOverride);
 		if (success) {
@@ -350,7 +350,7 @@ export function PresetActionsDrawer({
 														onClick={() => handleCreatePresetFromTemplate(template)}
 														disabled={disabled}
 													>
-														{localizedPresetLabels.get(template.key) ?? t(template.label)}
+														{localizedPresetLabels.get(template.key) ?? template.label}
 													</Button>
 												)),
 											)}

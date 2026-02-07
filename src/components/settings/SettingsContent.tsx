@@ -13,7 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/useToast";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "@/lib/i18nClient";
-import { DEFAULT_LANGUAGE, getLanguageLabel, normalizeLanguage, SUPPORTED_LANGUAGES } from "@/lib/i18nConfig";
+import {
+	DEFAULT_LANGUAGE,
+	FRENCH,
+	normalizeLanguage,
+	PSEUDO_LANGUAGE,
+	SPANISH,
+	SUPPORTED_LANGUAGES,
+} from "@/lib/i18nConfig";
 import { trpc } from "@/lib/trpc/react";
 
 type Props = {
@@ -34,6 +41,14 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 	const { t } = useTranslation();
 	const router = useRouter();
 	const [language, setLanguage] = useState(normalizeLanguage(user.language ?? DEFAULT_LANGUAGE));
+	const getDisplayLanguage = (value: string) => {
+		const normalizedValue = normalizeLanguage(value);
+		if (normalizedValue === DEFAULT_LANGUAGE) return t("English");
+		if (normalizedValue === SPANISH) return t("Spanish");
+		if (normalizedValue === FRENCH) return t("French");
+		if (normalizedValue === PSEUDO_LANGUAGE) return t("Pseudo (dev)");
+		return value;
+	};
 
 	const updateLanguage = trpc.profile.updateLanguage.useMutation({
 		onMutate: (input) => {
@@ -45,7 +60,7 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 			const normalizedLanguage = normalizeLanguage(data.language);
 			setLanguage(normalizedLanguage);
 			await i18n.changeLanguage(normalizedLanguage);
-			const languageLabel = t(getLanguageLabel(data.language));
+			const languageLabel = getDisplayLanguage(data.language);
 			toast({
 				title: t("Language updated"),
 				description: t("Language set to {{language}}.", { language: languageLabel }),
@@ -60,9 +75,8 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 				title: t("Unable to update language"),
 				description: error.message || t("Please try again."),
 			});
-		},
-	});
-	const getDisplayLanguage = (value: string) => t(getLanguageLabel(value));
+			},
+		});
 
 	const handleLanguageChange = (value: string) => {
 		const normalizedValue = normalizeLanguage(value);
