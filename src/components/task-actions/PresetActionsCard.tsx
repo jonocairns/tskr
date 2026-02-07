@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
 import { PresetActionsDrawer } from "@/components/task-actions/PresetActionsDrawer";
@@ -41,7 +41,7 @@ export const PresetActionsCard = () => {
 	const { toast } = useToast();
 	const { t } = useTranslation();
 	const canManagePresets = currentUserRole !== "DOER";
-	const canEditApprovalOverride = currentUserRole !== "DOER";
+	const canEditApprovalOverride = canManagePresets;
 	const [searchQuery, setSearchQuery] = useState("");
 
 	const { createPresetMutation, updatePresetMutation, deletePresetMutation } = usePresetMutations({
@@ -51,10 +51,13 @@ export const PresetActionsCard = () => {
 
 	const createLogMutation = useLogMutation();
 
-	const editablePresets = customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId);
-	const sortedEditablePresets = [...editablePresets].sort((a, b) => {
-		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-	});
+	const sortedEditablePresets = useMemo(() => {
+		return [...customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId)].sort(
+			(a, b) => {
+				return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+			},
+		);
+	}, [currentUserId, customPresets]);
 	const localizedPresetLabels = useMemo(() => {
 		return new Map(getPresetTasks(t).map((task) => [task.key, task.label]));
 	}, [t]);
@@ -66,43 +69,66 @@ export const PresetActionsCard = () => {
 		}
 		return lookup;
 	}, [t]);
-	const resolveTemplateKey = useCallback(
-		(preset: { label: string; bucket: DurationKey; templateKey: string | null }) => {
-			return (
-				preset.templateKey ?? templateKeyByLabelBucket.get(`${normalizeText(preset.label)}|${preset.bucket}`) ?? null
-			);
-		},
-		[templateKeyByLabelBucket],
-	);
+	const resolvedPresetOptions = useMemo(() => {
+		return presetOptions.map((preset) => {
+			const resolvedTemplateKey =
+				preset.templateKey ?? templateKeyByLabelBucket.get(`${normalizeText(preset.label)}|${preset.bucket}`) ?? null;
+			const displayLabel = resolvedTemplateKey
+				? (localizedPresetLabels.get(resolvedTemplateKey) ?? preset.label)
+				: preset.label;
+			return {
+				...preset,
+				displayLabel,
+				resolvedTemplateKey,
+			};
+		});
+	}, [localizedPresetLabels, presetOptions, templateKeyByLabelBucket]);
 	const presetDisplayLabels = useMemo(() => {
 		const lookup = new Map<string, string>();
-		for (const preset of presetOptions) {
-			const templateKey = resolveTemplateKey(preset);
-			const displayLabel = templateKey ? (localizedPresetLabels.get(templateKey) ?? preset.label) : preset.label;
-			lookup.set(preset.id, displayLabel);
+		for (const preset of resolvedPresetOptions) {
+			lookup.set(preset.id, preset.displayLabel);
 		}
 		return lookup;
-	}, [localizedPresetLabels, presetOptions, resolveTemplateKey]);
+	}, [resolvedPresetOptions]);
 	const localizedPresetOptions = useMemo(() => {
-		return presetOptions.map((preset) => ({
-			...preset,
-			label: presetDisplayLabels.get(preset.id) ?? preset.label,
+		return resolvedPresetOptions.map((preset) => ({
+			id: preset.id,
+			label: preset.displayLabel,
+			bucket: preset.bucket,
+			templateKey: preset.templateKey,
+			isShared: preset.isShared,
 		}));
-	}, [presetDisplayLabels, presetOptions]);
-	const appliedTemplateKeys = new Set(
-		presetOptions.map((preset) => resolveTemplateKey(preset)).filter((key): key is string => Boolean(key)),
-	);
-	const templatesByBucket = DURATION_BUCKETS.map((bucket) => ({
-		bucket,
-		templates: presetTemplates.filter(
-			(template) => template.bucket === bucket.key && !appliedTemplateKeys.has(template.key),
-		),
-	})).filter((group) => group.templates.length > 0);
+	}, [resolvedPresetOptions]);
+	const appliedTemplateKeys = useMemo(() => {
+		return new Set(
+			resolvedPresetOptions
+				.map((preset) => preset.resolvedTemplateKey)
+				.filter((templateKey): templateKey is string => Boolean(templateKey)),
+		);
+	}, [resolvedPresetOptions]);
+	const templatesByBucket = useMemo(() => {
+		return DURATION_BUCKETS.map((bucket) => ({
+			bucket,
+			templates: presetTemplates.filter(
+				(template) => template.bucket === bucket.key && !appliedTemplateKeys.has(template.key),
+			),
+		})).filter((group) => group.templates.length > 0);
+	}, [appliedTemplateKeys, presetTemplates]);
 	const normalizedQuery = normalizeText(searchQuery);
 	const filteredPresets =
 		normalizedQuery.length > 0
 			? localizedPresetOptions.filter((preset) => normalizeText(preset.label).includes(normalizedQuery))
 			: localizedPresetOptions;
+
+	const runPresetMutation = async (mutation: () => Promise<unknown>) => {
+		return new Promise<boolean>((resolve) =>
+			startPresetTransition(() => {
+				void mutation()
+					.then(() => resolve(true))
+					.catch(() => resolve(false));
+			}),
+		);
+	};
 
 	const handleCreatePresetFromTemplate = async (
 		template: PresetTemplate,
@@ -113,29 +139,22 @@ export const PresetActionsCard = () => {
 			return false;
 		}
 
-		let success = false;
-		await new Promise<void>((resolve) =>
-			startPresetTransition(async () => {
-				try {
-					await createPresetMutation.mutateAsync({
-						householdId,
-						label: template.label,
-						bucket: template.bucket,
-						templateKey: template.key,
-						isShared,
-						approvalOverride,
-					});
-					success = true;
-					toast({
-						title: t("Preset added"),
-						description: t("Template added to your presets."),
-					});
-				} catch {
-					// Error handled by mutation onError
-				}
-				resolve();
+		const success = await runPresetMutation(() =>
+			createPresetMutation.mutateAsync({
+				householdId,
+				label: template.label,
+				bucket: template.bucket,
+				templateKey: template.key,
+				isShared,
+				approvalOverride,
 			}),
 		);
+		if (success) {
+			toast({
+				title: t("Preset added"),
+				description: t("Template added to your presets."),
+			});
+		}
 		return success;
 	};
 
@@ -149,26 +168,15 @@ export const PresetActionsCard = () => {
 			return false;
 		}
 
-		let success = false;
-		await new Promise<void>((resolve) =>
-			startPresetTransition(async () => {
-				try {
-					await createPresetMutation.mutateAsync({
-						householdId,
-						label: label.trim(),
-						bucket,
-						isShared,
-						approvalOverride,
-					});
-					success = true;
-				} catch {
-					// Error handled by mutation onError
-				}
-				resolve();
+		return runPresetMutation(() =>
+			createPresetMutation.mutateAsync({
+				householdId,
+				label: label.trim(),
+				bucket,
+				isShared,
+				approvalOverride,
 			}),
 		);
-
-		return success;
 	};
 
 	const handleLogTimed = async (label: string, bucket: DurationKey): Promise<boolean> => {
@@ -207,42 +215,20 @@ export const PresetActionsCard = () => {
 			return false;
 		}
 
-		let success = false;
-		await new Promise<void>((resolve) =>
-			startPresetTransition(async () => {
-				try {
-					await updatePresetMutation.mutateAsync({
-						householdId,
-						id: presetId,
-						label: label.trim(),
-						bucket,
-						isShared,
-						approvalOverride,
-					});
-					success = true;
-				} catch {
-					// Error handled by mutation onError
-				}
-				resolve();
+		return runPresetMutation(() =>
+			updatePresetMutation.mutateAsync({
+				householdId,
+				id: presetId,
+				label: label.trim(),
+				bucket,
+				isShared,
+				approvalOverride,
 			}),
 		);
-		return success;
 	};
 
 	const handleDeletePreset = async (presetId: string): Promise<boolean> => {
-		let success = false;
-		await new Promise<void>((resolve) =>
-			startPresetTransition(async () => {
-				try {
-					await deletePresetMutation.mutateAsync({ householdId, id: presetId });
-					success = true;
-				} catch {
-					// Error handled by mutation onError
-				}
-				resolve();
-			}),
-		);
-		return success;
+		return runPresetMutation(() => deletePresetMutation.mutateAsync({ householdId, id: presetId }));
 	};
 
 	const handleTaskClick = (taskId: string) => {
