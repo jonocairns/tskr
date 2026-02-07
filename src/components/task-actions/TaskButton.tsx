@@ -1,7 +1,9 @@
+import { useMemo } from "react";
+
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useTranslation } from "@/lib/i18nClient";
-import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
+import { type DurationKey, getDurationBuckets } from "@/lib/points";
 
 type TaskButtonProps = {
 	id: string;
@@ -13,7 +15,8 @@ type TaskButtonProps = {
 
 export const TaskButton = ({ id, label, bucket, disabled, onClick }: TaskButtonProps) => {
 	const { t } = useTranslation();
-	const bucketInfo = DURATION_BUCKETS.find((b) => b.key === bucket);
+	const durationBuckets = useMemo(() => getDurationBuckets(t), [t]);
+	const bucketInfo = durationBuckets.find((b) => b.key === bucket);
 
 	return (
 		<Button

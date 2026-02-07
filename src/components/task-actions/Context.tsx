@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useTransition } from "react";
 
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/useToast";
-import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
+import { useTranslation } from "@/lib/i18nClient";
+import { DURATION_BUCKETS, type DurationKey, getPresetTasks } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
 type TaskActionsContextValue = {
@@ -52,6 +53,7 @@ export const TaskActionsProvider = ({
 
 	const router = useRouter();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const utils = trpc.useUtils();
 
 	const createLogMutation = trpc.logs.create.useMutation({
@@ -78,11 +80,7 @@ export const TaskActionsProvider = ({
 		setCustomPresets(presets);
 	}, [presets]);
 
-	const presetTemplates: PresetTemplate[] = PRESET_TASKS.map((task) => ({
-		key: task.key,
-		label: task.label,
-		bucket: task.bucket,
-	}));
+	const presetTemplates: PresetTemplate[] = useMemo(() => getPresetTasks(t), [t]);
 
 	const presetOptions: PresetOption[] = customPresets.map((task) => ({
 		id: task.id,

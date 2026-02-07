@@ -1,6 +1,6 @@
 import { Loader2Icon } from "lucide-react";
 import type { SyntheticEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PresetListItem } from "@/components/task-actions/PresetListItem";
 import type { PresetSummary, PresetTemplate } from "@/components/task-actions/types";
@@ -9,8 +9,9 @@ import { CardDescription, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
+import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
-import { DURATION_BUCKETS } from "@/lib/points";
+import { getDurationBuckets, getPresetTasks } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 type ApprovalOverrideOption = "DEFAULT" | "REQUIRE" | "SKIP";
@@ -25,7 +26,7 @@ const BUCKET_WINDOW_SHORT: Record<DurationKey, string> = {
 };
 
 type TemplatesByBucket = Array<{
-	bucket: (typeof DURATION_BUCKETS)[number];
+	bucket: ReturnType<typeof getDurationBuckets>[number];
 	templates: PresetTemplate[];
 }>;
 
@@ -94,6 +95,11 @@ export function PresetActionsDrawer({
 	canEditApprovalOverride,
 	canManagePresets,
 }: Props) {
+	const { t } = useTranslation();
+	const localizedBuckets = useMemo(() => getDurationBuckets(t), [t]);
+	const localizedPresetLabels = useMemo(() => {
+		return new Map(getPresetTasks(t).map((task) => [task.key, task.label]));
+	}, [t]);
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
 	const [customApprovalOverride, setCustomApprovalOverride] = useState<ApprovalOverrideOption>("DEFAULT");
@@ -196,42 +202,42 @@ export function PresetActionsDrawer({
 				type="button"
 				className="absolute inset-0 bg-background/80 backdrop-blur-sm"
 				onClick={onClose}
-				aria-label="Close tasks editor"
+				aria-label={t("Close tasks editor")}
 			/>
 			<div
 				role="dialog"
 				aria-modal="true"
-				aria-label="Tasks editor"
+				aria-label={t("Tasks editor")}
 				className="absolute right-0 top-0 h-full w-full border-l bg-background shadow-xl sm:max-w-md"
 			>
 				<div className="flex h-full flex-col">
 					<div className="flex items-start justify-between gap-2 border-b px-6 py-5">
 						<div className="space-y-1">
-							<CardDescription>Manage tasks</CardDescription>
-							<CardTitle className="text-lg">Add or edit tasks</CardTitle>
+							<CardDescription>{t("Manage tasks")}</CardDescription>
+							<CardTitle className="text-lg">{t("Add or edit tasks")}</CardTitle>
 						</div>
 						<Button type="button" variant="ghost" size="sm" onClick={onClose}>
-							Close
+							{t("Close")}
 						</Button>
 					</div>
 					<div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
 						<div className="space-y-3">
 							<div className="space-y-3 rounded-lg border p-3">
-								<p className="text-sm font-medium">Add or log a one off chore</p>
+								<p className="text-sm font-medium">{t("Add or log a one off chore")}</p>
 								<div className="space-y-2">
-									<Label htmlFor="custom-name">Task name</Label>
+									<Label htmlFor="custom-name">{t("Task name")}</Label>
 									<Input
 										id="custom-name"
-										placeholder="Name your task"
+										placeholder={t("Name your task")}
 										value={customLabel}
 										onChange={(e) => setCustomLabel(e.target.value)}
 										disabled={disabled}
 									/>
 								</div>
 								<div className="space-y-2">
-									<p className="text-xs font-medium text-muted-foreground">Bucket</p>
-									<div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Bucket">
-										{DURATION_BUCKETS.map((bucket) => {
+									<p className="text-xs font-medium text-muted-foreground">{t("Bucket")}</p>
+									<div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t("Bucket")}>
+										{localizedBuckets.map((bucket) => {
 											const isSelected = customBucket === bucket.key;
 											return (
 												<label
@@ -253,7 +259,10 @@ export function PresetActionsDrawer({
 													/>
 													<span className="text-sm font-semibold">{bucket.label}</span>
 													<span className="text-xs text-muted-foreground">
-														{bucket.points} pts · {BUCKET_WINDOW_SHORT[bucket.key]}
+														{t("{{points}} pts · {{window}}", {
+															points: bucket.points,
+															window: BUCKET_WINDOW_SHORT[bucket.key],
+														})}
 													</span>
 												</label>
 											);
@@ -263,19 +272,19 @@ export function PresetActionsDrawer({
 
 								{canEditApprovalOverride ? (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Approval override</p>
+										<p className="text-xs font-medium text-muted-foreground">{t("Approval override")}</p>
 										<Select
 											value={customApprovalOverride}
 											onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setCustomApprovalOverride(value)}
 											disabled={disabled}
 										>
 											<SelectTrigger>
-												<SelectValue placeholder="Use member default" />
+												<SelectValue placeholder={t("Use member default")} />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="DEFAULT">Use member default</SelectItem>
-												<SelectItem value="REQUIRE">Require approval</SelectItem>
-												<SelectItem value="SKIP">Skip approval</SelectItem>
+												<SelectItem value="DEFAULT">{t("Use member default")}</SelectItem>
+												<SelectItem value="REQUIRE">{t("Require approval")}</SelectItem>
+												<SelectItem value="SKIP">{t("Skip approval")}</SelectItem>
 											</SelectContent>
 										</Select>
 									</div>
@@ -290,10 +299,12 @@ export function PresetActionsDrawer({
 												disabled={disabled}
 												className="h-4 w-4"
 											/>
-											<span className="text-sm">Share with household</span>
+											<span className="text-sm">{t("Share with household")}</span>
 										</label>
 										<p className="text-xs text-muted-foreground">
-											{customIsShared ? "Everyone can see and use this task" : "Only you can see and use this task"}
+											{customIsShared
+												? t("Everyone can see and use this task")
+												: t("Only you can see and use this task")}
 										</p>
 									</div>
 								) : null}
@@ -301,28 +312,28 @@ export function PresetActionsDrawer({
 									<Button
 										type="button"
 										variant="secondary"
-										className="w-full"
+										className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
 										onClick={handleLogTimed}
 										disabled={disabled || !canCreate}
 									>
 										{isPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-										Log one off task
+										{t("Log one off task")}
 									</Button>
 									{canManagePresets ? (
 										<Button
 											type="button"
-											className="w-full"
+											className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
 											onClick={handleCreatePreset}
 											disabled={disabled || !canCreate}
 										>
 											{isPresetPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-											Create new chore
+											{t("Create new chore")}
 										</Button>
 									) : null}
 								</div>
 								{canManagePresets && templatesByBucket.length > 0 ? (
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground">Templates</p>
+										<p className="text-xs font-medium text-muted-foreground">{t("Templates")}</p>
 										<div className="flex flex-wrap gap-2">
 											{templatesByBucket.flatMap(({ templates }) =>
 												templates.map((template) => (
@@ -335,7 +346,7 @@ export function PresetActionsDrawer({
 														onClick={() => handleCreatePresetFromTemplate(template)}
 														disabled={disabled}
 													>
-														{template.label}
+														{localizedPresetLabels.get(template.key) ?? t(template.label)}
 													</Button>
 												)),
 											)}
@@ -345,13 +356,13 @@ export function PresetActionsDrawer({
 							</div>
 							<div className="space-y-2">
 								{sortedEditablePresets.length === 0 ? (
-									<p className="text-xs text-muted-foreground">No tasks yet.</p>
+									<p className="text-xs text-muted-foreground">{t("No tasks yet")}</p>
 								) : (
 									sortedEditablePresets.map((preset) => (
 										<PresetListItem
 											key={preset.id}
 											preset={preset}
-											bucket={DURATION_BUCKETS.find((item) => item.key === preset.bucket)}
+											bucket={localizedBuckets.find((item) => item.key === preset.bucket)}
 											isEditing={editingPresetId === preset.id}
 											editLabel={editLabel}
 											onEditLabelChange={setEditLabel}

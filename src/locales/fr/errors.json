@@ -1,0 +1,9 @@
+{
+	"CONFLICT": "Cette action entre en conflit avec des données existantes.",
+	"FORBIDDEN": "Vous n'avez pas l'autorisation d'effectuer cette action.",
+	"INTERNAL_SERVER_ERROR": "Une erreur s'est produite. Veuillez réessayer.",
+	"INVALID_INPUT": "Veuillez vérifier le formulaire et réessayer.",
+	"NOT_FOUND": "Nous n'avons pas trouvé ce que vous recherchiez.",
+	"RATE_LIMITED": "Trop de requêtes. Veuillez réessayer bientôt.",
+	"UNAUTHORIZED": "Vous devez vous connecter pour continuer."
+}

@@ -3,7 +3,7 @@
 import { Loader2Icon, SparklesIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { SyntheticEvent } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
 import { normalizeText } from "@/components/task-actions/utils";
@@ -13,7 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/hooks/useToast";
-import { DURATION_BUCKETS } from "@/lib/points";
+import { useTranslation } from "@/lib/i18nClient";
+import { getDurationBuckets } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,8 @@ export const TimedActionsCard = () => {
 
 	const router = useRouter();
 	const { toast } = useToast();
+	const { t } = useTranslation();
+	const durationBuckets = useMemo(() => getDurationBuckets(t), [t]);
 	const utils = trpc.useUtils();
 
 	const createLogMutation = trpc.logs.create.useMutation({
@@ -86,7 +89,7 @@ export const TimedActionsCard = () => {
 			<CardContent>
 				<form className="space-y-4" onSubmit={handleTimed}>
 					<div className="grid gap-2 sm:grid-cols-2">
-						{DURATION_BUCKETS.map((bucket) => (
+						{durationBuckets.map((bucket) => (
 							<button
 								key={bucket.key}
 								type="button"
@@ -135,7 +138,7 @@ export const TimedActionsCard = () => {
 									<p className="text-muted-foreground">This looks like an existing preset. Log it instead:</p>
 									<div className="mt-2 flex flex-wrap gap-2">
 										{descriptionMatches.slice(0, 6).map((preset) => {
-											const bucket = DURATION_BUCKETS.find((item) => item.key === preset.bucket);
+											const bucket = durationBuckets.find((item) => item.key === preset.bucket);
 											return (
 												<Button
 													key={`preset-desc-${preset.id}`}
@@ -170,7 +173,7 @@ export const TimedActionsCard = () => {
 						) : (
 							<SparklesIcon className="mr-2 h-4 w-4" />
 						)}
-						Log {DURATION_BUCKETS.find((b) => b.key === selectedBucket)?.points} pts
+						Log {durationBuckets.find((b) => b.key === selectedBucket)?.points} pts
 					</Button>
 				</form>
 			</CardContent>

@@ -1,6 +1,7 @@
 export const DURATION_KEYS = ["TINY", "QUICK", "ROUTINE", "CHALLENGING", "HEAVY", "MAJOR"] as const;
 
 export type DurationKey = (typeof DURATION_KEYS)[number];
+type Translator = (value: string) => string;
 
 export const BUCKET_POINTS: Record<DurationKey, number> = {
 	TINY: 1,
@@ -11,63 +12,73 @@ export const BUCKET_POINTS: Record<DurationKey, number> = {
 	MAJOR: 21,
 };
 
-export const DURATION_BUCKETS: Array<{
+type DurationBucket = {
 	key: DurationKey;
 	label: string;
 	window: string;
 	points: number;
-}> = [
-	{ key: "TINY", label: "Tiny", window: "< 1 min", points: BUCKET_POINTS.TINY },
+};
+
+type PresetTask = {
+	key: string;
+	label: string;
+	bucket: DurationKey;
+};
+
+const identityTranslate = (value: string) => value;
+
+export const getDurationBuckets = (t: Translator = identityTranslate): DurationBucket[] => [
+	{ key: "TINY", label: t("Tiny"), window: t("< 1 min"), points: BUCKET_POINTS.TINY },
 	{
 		key: "QUICK",
-		label: "Quick",
-		window: "1–5 min",
+		label: t("Quick"),
+		window: t("1–5 min"),
 		points: BUCKET_POINTS.QUICK,
 	},
 	{
 		key: "ROUTINE",
-		label: "Routine",
-		window: "5–15 min",
+		label: t("Routine"),
+		window: t("5–15 min"),
 		points: BUCKET_POINTS.ROUTINE,
 	},
 	{
 		key: "CHALLENGING",
-		label: "Challenging",
-		window: "15–30 min",
+		label: t("Challenging"),
+		window: t("15–30 min"),
 		points: BUCKET_POINTS.CHALLENGING,
 	},
 	{
 		key: "HEAVY",
-		label: "Heavy",
-		window: "30–60 min",
+		label: t("Heavy"),
+		window: t("30–60 min"),
 		points: BUCKET_POINTS.HEAVY,
 	},
 	{
 		key: "MAJOR",
-		label: "Major",
-		window: "1–2 hours",
+		label: t("Major"),
+		window: t("1–2 hours"),
 		points: BUCKET_POINTS.MAJOR,
 	},
 ];
 
-export const PRESET_TASKS: Array<{
-	key: string;
-	label: string;
-	bucket: DurationKey;
-}> = [
-	{ key: "bins", label: "Bins", bucket: "QUICK" },
-	{ key: "toilet", label: "Toilet", bucket: "ROUTINE" },
-	{ key: "kitchen", label: "Kitchen", bucket: "QUICK" },
-	{ key: "cook", label: "Cook", bucket: "HEAVY" },
-	{ key: "dinner-dishes", label: "Dinner Dishes", bucket: "ROUTINE" },
-	{ key: "folding", label: "Folding", bucket: "ROUTINE" },
-	{ key: "bed-made", label: "Bed sheets", bucket: "QUICK" },
-	{ key: "lawns", label: "Lawns", bucket: "HEAVY" },
-	{ key: "vanities", label: "Vanities", bucket: "QUICK" },
-	{ key: "vacuum", label: "Vacuum", bucket: "CHALLENGING" },
-	{ key: "laundry", label: "Laundry", bucket: "QUICK" },
-	{ key: "dishwasher", label: "Dishwasher", bucket: "QUICK" },
+export const DURATION_BUCKETS: DurationBucket[] = getDurationBuckets();
+
+export const getPresetTasks = (t: Translator = identityTranslate): PresetTask[] => [
+	{ key: "bins", label: t("Bins"), bucket: "QUICK" },
+	{ key: "toilet", label: t("Toilet"), bucket: "ROUTINE" },
+	{ key: "kitchen", label: t("Kitchen"), bucket: "QUICK" },
+	{ key: "cook", label: t("Cook"), bucket: "HEAVY" },
+	{ key: "dinner-dishes", label: t("Dinner Dishes"), bucket: "ROUTINE" },
+	{ key: "folding", label: t("Folding"), bucket: "ROUTINE" },
+	{ key: "bed-made", label: t("Bed sheets"), bucket: "QUICK" },
+	{ key: "lawns", label: t("Lawns"), bucket: "HEAVY" },
+	{ key: "vanities", label: t("Vanities"), bucket: "QUICK" },
+	{ key: "vacuum", label: t("Vacuum"), bucket: "CHALLENGING" },
+	{ key: "laundry", label: t("Laundry"), bucket: "QUICK" },
+	{ key: "dishwasher", label: t("Dishwasher"), bucket: "QUICK" },
 ];
+
+export const PRESET_TASKS: PresetTask[] = getPresetTasks();
 
 export function findPreset(key: string) {
 	return PRESET_TASKS.find((task) => task.key === key);

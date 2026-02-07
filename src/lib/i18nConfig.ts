@@ -2,6 +2,8 @@ import supportedLanguages from "@/locales/supported.json";
 
 export const DEFAULT_LANGUAGE = "en";
 export const PSEUDO_LANGUAGE = "pseudo";
+export const FRENCH = "fr";
+export const SPANISH = "es";
 export const SUPPORTED_NAMESPACES = ["translation", "errors"] as const;
 export const PSEUDO_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PSEUDO === "true" || process.env.NODE_ENV !== "production";
 
@@ -10,6 +12,8 @@ export const normalizeLanguage = (value: string) => value.trim().toLowerCase();
 export const LANGUAGE_LABELS: Record<string, string> = {
 	[DEFAULT_LANGUAGE]: "English",
 	[PSEUDO_LANGUAGE]: "Pseudo (dev)",
+	[FRENCH]: "French",
+	[SPANISH]: "Spanish",
 };
 
 export const getLanguageLabel = (value: string) => LANGUAGE_LABELS[normalizeLanguage(value)] ?? value;
