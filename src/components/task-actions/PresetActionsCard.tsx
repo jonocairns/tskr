@@ -46,7 +46,7 @@ export const PresetActionsCard = () => {
 
 	const { createPresetMutation, updatePresetMutation, deletePresetMutation } = usePresetMutations({
 		customPresets,
-		setCustomPresets,
+		setCustomPresetsAction: setCustomPresets,
 	});
 
 	const createLogMutation = useLogMutation();
