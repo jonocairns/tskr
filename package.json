@@ -23,7 +23,8 @@
 		"predev": "pnpm i18n:supported",
 		"compile": "tsc --pretty",
 		"test": "jest",
-		"prep": "pnpm i18n:sync && pnpm lint:fix && pnpm compile && pnpm test"
+		"check": "node ./scripts/check.cjs",
+		"prep": "node ./scripts/check.cjs --fix"
 	},
 	"dependencies": {
 		"@js-temporal/polyfill": "^0.5.1",
