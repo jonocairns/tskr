@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useMemo, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useState, useTransition } from "react";
 
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/useToast";
-import { DURATION_BUCKETS, type DurationKey, getPresetTasks } from "@/lib/points";
+import { DURATION_BUCKETS, PRESET_TASKS, type DurationKey } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
 type TaskActionsContextValue = {
@@ -78,7 +78,7 @@ export const TaskActionsProvider = ({
 		setCustomPresets(presets);
 	}, [presets]);
 
-	const presetTemplates: PresetTemplate[] = useMemo(() => getPresetTasks(), []);
+	const presetTemplates: PresetTemplate[] = PRESET_TASKS;
 
 	const presetOptions: PresetOption[] = customPresets.map((task) => ({
 		id: task.id,

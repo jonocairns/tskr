@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
-import { getDurationBuckets } from "@/lib/points";
+import { getLocalizedDurationBuckets } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ export const TimedActionsCard = () => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
-	const durationBuckets = useMemo(() => getDurationBuckets(t), [t]);
+	const durationBuckets = useMemo(() => getLocalizedDurationBuckets(t), [t]);
 	const utils = trpc.useUtils();
 
 	const createLogMutation = trpc.logs.create.useMutation({

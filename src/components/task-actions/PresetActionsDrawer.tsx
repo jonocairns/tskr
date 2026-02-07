@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
-import { getDurationBuckets, getPresetTasks } from "@/lib/points";
+import { getLocalizedDurationBuckets, getLocalizedPresetTasks } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 type ApprovalOverrideOption = "DEFAULT" | "REQUIRE" | "SKIP";
@@ -26,7 +26,7 @@ const BUCKET_WINDOW_SHORT: Record<DurationKey, string> = {
 };
 
 type TemplatesByBucket = Array<{
-	bucket: ReturnType<typeof getDurationBuckets>[number];
+	bucket: ReturnType<typeof getLocalizedDurationBuckets>[number];
 	templates: PresetTemplate[];
 }>;
 
@@ -98,9 +98,9 @@ export function PresetActionsDrawer({
 	canManagePresets,
 }: Props) {
 	const { t } = useTranslation();
-	const localizedBuckets = useMemo(() => getDurationBuckets(t), [t]);
+	const localizedBuckets = useMemo(() => getLocalizedDurationBuckets(t), [t]);
 	const localizedPresetLabels = useMemo(() => {
-		return new Map(getPresetTasks(t).map((task) => [task.key, task.label]));
+		return new Map(getLocalizedPresetTasks(t).map((task) => [task.key, task.label]));
 	}, [t]);
 	const [customLabel, setCustomLabel] = useState("");
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);

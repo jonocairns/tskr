@@ -15,7 +15,7 @@ import { useLogMutation } from "@/hooks/useLogMutation";
 import { usePresetMutations } from "@/hooks/usePresetMutations";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
-import { DURATION_BUCKETS, type DurationKey, getPresetTasks } from "@/lib/points";
+import { DURATION_BUCKETS, PRESET_TASKS, type DurationKey, getLocalizedPresetTasks } from "@/lib/points";
 
 export const PresetActionsCard = () => {
 	const {
@@ -59,10 +59,10 @@ export const PresetActionsCard = () => {
 		);
 	}, [currentUserId, customPresets]);
 	const localizedPresetLabels = useMemo(() => {
-		return new Map(getPresetTasks(t).map((task) => [task.key, task.label]));
+		return new Map(getLocalizedPresetTasks(t).map((task) => [task.key, task.label]));
 	}, [t]);
 	const templateKeyByLabelBucket = useMemo(() => {
-		const templates = [...getPresetTasks(), ...getPresetTasks(t)];
+		const templates = [...PRESET_TASKS, ...getLocalizedPresetTasks(t)];
 		const lookup = new Map<string, string>();
 		for (const template of templates) {
 			lookup.set(`${normalizeText(template.label)}|${template.bucket}`, template.key);
