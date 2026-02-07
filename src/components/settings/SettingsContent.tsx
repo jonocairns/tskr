@@ -75,8 +75,8 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 				title: t("Unable to update language"),
 				description: error.message || t("Please try again."),
 			});
-			},
-		});
+		},
+	});
 
 	const handleLanguageChange = (value: string) => {
 		const normalizedValue = normalizeLanguage(value);
