@@ -24,14 +24,20 @@ More screenshots: [Assignments](screenshots/assignments.png), [Household](screen
 
 ## Internationalization
 
-Translations live in `src/locales/<lang>/translation.json` and `src/locales/<lang>/errors.json`. Locale folders must be lowercase (e.g., `en`, `pt-br`).
+Translations live in `src/locales/<lang>/translation.json`. Locale folders must be lowercase (e.g., `en`, `pt-br`).
 
 Add a new language:
-1. Create `src/locales/<lang>/translation.json` and `src/locales/<lang>/errors.json`.
-2. Run `pnpm i18n:prepare` to regenerate `src/locales/supported.json`.
-3. Run `pnpm i18n:scan` to update translation keys from the codebase.
+1. Create `src/locales/<lang>/translation.json`.
+2. Run `pnpm i18n:sync` to regenerate `src/locales/supported.json`, enforce static translation keys, and update locale keys from the codebase.
 
-CI runs `pnpm i18n:check` to ensure `i18next-scanner` would not change locale files.
+`i18next-scanner` is configured to prune unused keys (`removeUnusedKeys: true`).
+CI runs `pnpm i18n:check` to ensure locale files are up to date and dynamic translation keys are not used.
+
+Translation workflow:
+- Run `pnpm prep` before opening a PR. This is the primary local quality gate.
+- `prep` includes i18n sync, lint fixes, TypeScript compile, and tests.
+- Run `pnpm i18n:sync` when you only want to refresh locale files while working.
+- CI runs `pnpm i18n:check`, which fails if locale files would change.
 
 ## Auth options
 

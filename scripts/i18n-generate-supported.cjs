@@ -6,8 +6,7 @@ const outputPath = path.join(localesRoot, "supported.json");
 
 const hasLocaleFiles = (dir) => {
 	const translationPath = path.join(localesRoot, dir, "translation.json");
-	const errorsPath = path.join(localesRoot, dir, "errors.json");
-	return fs.existsSync(translationPath) && fs.existsSync(errorsPath);
+	return fs.existsSync(translationPath);
 };
 
 const buildSupportedLanguages = () => {

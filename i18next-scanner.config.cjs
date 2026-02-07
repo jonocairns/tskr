@@ -6,18 +6,20 @@ const config = {
 	options: {
 		debug: false,
 		sort: true,
+		removeUnusedKeys: true,
 		func: {
 			list: ["t", "i18n.t"],
 			extensions: [".ts", ".tsx"],
 		},
 		trans: false,
 		lngs: scanLanguages,
-		ns: ["translation", "errors"],
+		ns: ["translation"],
 		defaultLng: "en",
 		defaultNs: "translation",
 		keySeparator: false,
 		nsSeparator: false,
 		defaultValue: (_lng, _ns, key) => key,
+		allowDynamicKeys: false,
 		resource: {
 			loadPath: "src/locales/{{lng}}/{{ns}}.json",
 			savePath: "src/locales/{{lng}}/{{ns}}.json",

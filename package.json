@@ -16,14 +16,14 @@
 		"db:setup": "prisma migrate deploy && node ./scripts/db-bootstrap.cjs",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
-		"i18n:prepare": "node ./scripts/i18n-generate-supported.cjs",
-		"i18n:scan": "i18next-scanner --config i18next-scanner.config.cjs",
-		"i18n:check": "pnpm i18n:scan && git diff --exit-code -- src/locales",
-		"prebuild": "pnpm i18n:prepare",
-		"predev": "pnpm i18n:prepare",
+		"i18n:supported": "node ./scripts/i18n-generate-supported.cjs",
+		"i18n:sync": "pnpm i18n:supported && node ./scripts/i18n-check-static-keys.cjs && i18next-scanner --config i18next-scanner.config.cjs",
+		"i18n:check": "pnpm i18n:sync && git diff --exit-code -- src/locales",
+		"prebuild": "pnpm i18n:supported",
+		"predev": "pnpm i18n:supported",
 		"compile": "tsc --pretty",
 		"test": "jest",
-		"check": "pnpm lint && pnpm compile && pnpm test"
+		"prep": "pnpm i18n:sync && pnpm lint:fix && pnpm compile && pnpm test"
 	},
 	"dependencies": {
 		"@js-temporal/polyfill": "^0.5.1",
