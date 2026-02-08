@@ -186,6 +186,17 @@ const compareVersions = (a, b) => {
 
 const versionToString = (version) => `${version.major}.${version.minor}.${version.patch}`;
 
+const parseAndValidateVersion = (candidateVersion, latestVersion, label) => {
+	const parsedVersion = parseVersionTag(candidateVersion);
+	if (!parsedVersion) {
+		throw new Error(`Invalid ${label}: ${candidateVersion}. Expected x.y.z`);
+	}
+	if (compareVersions(parsedVersion, latestVersion) <= 0) {
+		throw new Error(`Version ${parsedVersion.raw} must be greater than latest tag ${latestVersion.raw}`);
+	}
+	return parsedVersion;
+};
+
 const getLatestReleaseVersion = () => {
 	const rawTags = runCaptured("git tag --list");
 	if (rawTags.length === 0) {
@@ -215,6 +226,22 @@ const getPendingCount = (fromTag, toRef) => {
 	const range = fromTag === "0.0.0" ? toRef : `${fromTag}..${toRef}`;
 	const pendingCountRaw = runCaptured(`git rev-list --count ${range}`);
 	return Number(pendingCountRaw);
+};
+
+const resolveTargetVersion = ({ mode, requestedVersion, packageVersion, latestVersion, bumpType }) => {
+	if (mode === "publish") {
+		const publishVersion = requestedVersion ?? packageVersion;
+		const parsedPublishVersion = parseAndValidateVersion(publishVersion, latestVersion, "publish version");
+		return versionToString(parsedPublishVersion);
+	}
+
+	if (requestedVersion) {
+		const parsedRequestedVersion = parseAndValidateVersion(requestedVersion, latestVersion, "version");
+		return versionToString(parsedRequestedVersion);
+	}
+
+	const bumpedVersion = bumpVersion(latestVersion, bumpType);
+	return versionToString(bumpedVersion);
 };
 
 const confirm = (question) =>
@@ -280,39 +307,13 @@ const release = async () => {
 	const latestVersion = getLatestReleaseVersion() ?? { major: 0, minor: 0, patch: 0, raw: "0.0.0" };
 	const packageJsonPath = path.resolve(process.cwd(), "package.json");
 	const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-
-	let nextVersionString;
-	if (mode === "publish") {
-		const publishVersion = requestedVersion ?? packageJson.version;
-		const parsedPublishVersion = parseVersionTag(publishVersion);
-		if (!parsedPublishVersion) {
-			throw new Error(`Invalid publish version: ${publishVersion}. Expected x.y.z`);
-		}
-		if (compareVersions(parsedPublishVersion, latestVersion) <= 0) {
-			throw new Error(`Version ${parsedPublishVersion.raw} must be greater than latest tag ${latestVersion.raw}`);
-		}
-		if (requestedVersion && packageJson.version !== requestedVersion && !isDryRun) {
-			throw new Error(
-				`package.json version (${packageJson.version}) does not match requested publish version (${requestedVersion}).`,
-			);
-		}
-		nextVersionString = versionToString(parsedPublishVersion);
-	} else {
-		let nextVersion;
-		if (requestedVersion) {
-			const parsed = parseVersionTag(requestedVersion);
-			if (!parsed) {
-				throw new Error(`Invalid version format: ${requestedVersion}. Expected x.y.z`);
-			}
-			if (compareVersions(parsed, latestVersion) <= 0) {
-				throw new Error(`Version ${parsed.raw} must be greater than latest tag ${latestVersion.raw}`);
-			}
-			nextVersion = parsed;
-		} else {
-			nextVersion = bumpVersion(latestVersion, bumpType);
-		}
-		nextVersionString = versionToString(nextVersion);
-	}
+	const nextVersionString = resolveTargetVersion({
+		mode,
+		requestedVersion,
+		packageVersion: packageJson.version,
+		latestVersion,
+		bumpType,
+	});
 
 	console.log(`${withColor("Latest tag:", colors.dim)} ${latestVersion.raw}`);
 	console.log(`${withColor("Next release:", colors.dim)} ${withColor(nextVersionString, colors.green)}`);
@@ -410,7 +411,7 @@ const release = async () => {
 			run("git push -u origin HEAD");
 		}
 		console.log(withColor(`Release ${nextVersionString} prepared.`, colors.green));
-		console.log(withColor("Open a PR, merge to main, then run: pnpm release --publish --push", colors.dim));
+		console.log(withColor("Open a PR, merge to main, then run: pnpm release:publish --push", colors.dim));
 		return;
 	}
 
