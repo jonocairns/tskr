@@ -2,6 +2,7 @@
 
 import { useToast } from "@/hooks/useToast";
 import type { PresetSummary } from "@/lib/dashboard/presets";
+import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
 import { trpc } from "@/lib/trpc/react";
@@ -28,19 +29,20 @@ const normalizePreset = <
 
 export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: UsePresetMutationsOptions) => {
 	const { toast } = useToast();
+	const { t } = useTranslation();
 
 	const createPresetMutation = trpc.presets.create.useMutation({
 		onSuccess: (data) => {
 			setCustomPresetsAction((prev) => [normalizePreset(data.preset), ...prev]);
 			toast({
-				title: "Preset added",
-				description: "Chore added to your presets.",
+				title: t("Preset added"),
+				description: t("Chore added to your presets."),
 			});
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to add preset",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to add preset"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -77,15 +79,15 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 				setCustomPresetsAction(context.previousPresets);
 			}
 			toast({
-				title: "Unable to update preset",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to update preset"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: (data) => {
 			const updatedPreset = normalizePreset(data.preset);
 			setCustomPresetsAction((prev) => prev.map((preset) => (preset.id === updatedPreset.id ? updatedPreset : preset)));
-			toast({ title: "Preset updated" });
+			toast({ title: t("Preset updated") });
 		},
 	});
 
@@ -100,13 +102,13 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 				setCustomPresetsAction(context.previousPresets);
 			}
 			toast({
-				title: "Unable to delete preset",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to delete preset"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: () => {
-			toast({ title: "Preset deleted" });
+			toast({ title: t("Preset deleted") });
 		},
 	});
 

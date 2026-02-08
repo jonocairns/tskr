@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState, useTransition } from "r
 
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/useToast";
+import { useTranslation } from "@/lib/i18nClient";
 import { DURATION_BUCKETS, PRESET_TASKS, type DurationKey } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
@@ -52,6 +53,7 @@ export const TaskActionsProvider = ({
 
 	const router = useRouter();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const utils = trpc.useUtils();
 
 	const createLogMutation = trpc.logs.create.useMutation({
@@ -59,16 +61,16 @@ export const TaskActionsProvider = ({
 			const isPending = data.entry.status === "PENDING";
 			setNote("");
 			toast({
-				title: isPending ? "Submitted for approval" : "Task logged",
-				description: isPending ? "Task logged and waiting for approval." : "Task recorded and points added.",
+				title: isPending ? t("Submitted for approval") : t("Task logged"),
+				description: isPending ? t("Task logged and waiting for approval.") : t("Task recorded and points added."),
 			});
 			utils.logs.invalidate();
 			router.refresh();
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to log task",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to log task"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},

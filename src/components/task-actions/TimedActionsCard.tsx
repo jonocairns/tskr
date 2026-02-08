@@ -36,16 +36,18 @@ export const TimedActionsCard = () => {
 			setDescription("");
 			setDurationMinutes("");
 			toast({
-				title: isPending ? "Submitted for approval" : "Task logged",
-				description: isPending ? "Task logged and waiting for approval." : "Time-based task recorded and points added.",
+				title: isPending ? t("Submitted for approval") : t("Task logged"),
+				description: isPending
+					? t("Task logged and waiting for approval.")
+					: t("Time-based task recorded and points added."),
 			});
 			utils.logs.invalidate();
 			router.refresh();
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to log task",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to log task"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
@@ -62,8 +64,8 @@ export const TimedActionsCard = () => {
 
 		if (!householdId) {
 			toast({
-				title: "Unable to log task",
-				description: "Household context not available",
+				title: t("Unable to log task"),
+				description: t("Household context not available"),
 				variant: "destructive",
 			});
 			return;
