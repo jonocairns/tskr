@@ -87,6 +87,41 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Releases
+
+Use the release scripts to keep version bumps, tags, and deployment triggers consistent.
+
+Check what is not released yet:
+
+```bash
+pnpm release:pending
+```
+
+Check unreleased commits on your current branch instead of `origin/main`:
+
+```bash
+pnpm release:pending:branch
+```
+
+Prepare a release commit (for PR flow on protected `main`):
+
+```bash
+pnpm release:prepare patch --push
+# or minor / major / --version x.y.z
+```
+
+After the PR is merged to `main`, publish the release tag from `main`:
+
+```bash
+pnpm release:publish --push
+# optional: --version x.y.z
+```
+
+Notes:
+- Tag format is `x.y.z` (no `v` prefix).
+- `release:publish` must run from `main` and verifies `HEAD` matches `origin/main`.
+- Deployment is triggered by pushing a semver tag (`*.*.*`).
+
 ## Docker
 
 Pull the image:
