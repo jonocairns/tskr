@@ -1,6 +1,6 @@
 {
 	"name": "tskr",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"type": "module",
 	"private": true,
 	"packageManager": "pnpm@10.26.1",
@@ -26,10 +26,7 @@
 		"check": "node ./scripts/check.cjs",
 		"prep": "node ./scripts/check.cjs --fix",
 		"release:pending": "node ./scripts/release-pending.cjs",
-		"release:pending:branch": "node ./scripts/release-pending.cjs --scope branch",
-		"release": "node ./scripts/release.cjs",
-		"release:prepare": "node ./scripts/release.cjs --prepare",
-		"release:publish": "node ./scripts/release.cjs --publish"
+		"release": "node ./scripts/release.cjs"
 	},
 	"dependencies": {
 		"@js-temporal/polyfill": "^0.5.1",

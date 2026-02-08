@@ -89,7 +89,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Releases
 
-Use the release scripts to keep version bumps, tags, and deployment triggers consistent.
+Releases are tag-driven. The release script creates and optionally pushes a semver tag.
 
 Check what is not released yet:
 
@@ -97,30 +97,24 @@ Check what is not released yet:
 pnpm release:pending
 ```
 
-Check unreleased commits on your current branch instead of `origin/main`:
+Create a release tag from `main`:
 
 ```bash
-pnpm release:pending:branch
-```
-
-Prepare a release commit (for PR flow on protected `main`):
-
-```bash
-pnpm release:prepare patch --push
+pnpm release patch --push
 # or minor / major / --version x.y.z
 ```
 
-After the PR is merged to `main`, publish the release tag from `main`:
+Preview the release flow without changing git state:
 
 ```bash
-pnpm release:publish --push
-# optional: --version x.y.z
+pnpm release patch --dry-run
 ```
 
 Notes:
 - Tag format is `x.y.z` (no `v` prefix).
-- `release:publish` must run from `main` and verifies `HEAD` matches `origin/main`.
+- `release` must run from `main` and verifies `HEAD` matches `origin/main` before tagging.
 - Deployment is triggered by pushing a semver tag (`*.*.*`).
+- `package.json` version is intentionally fixed at `1.0.0`; release versions come from git tags.
 
 ## Docker
 
