@@ -23,6 +23,7 @@ const shouldPush = args.includes("--push");
 const skipPrompt = args.includes("--yes") || isDryRun;
 const isPrepareMode = args.includes("--prepare");
 const isPublishMode = args.includes("--publish");
+const skipFetch = args.includes("--no-fetch");
 
 const getOptionValue = (option) => {
 	const index = args.indexOf(option);
@@ -37,11 +38,11 @@ const bumpType = args.find((value) => ["patch", "minor", "major"].includes(value
 
 const usage = () => {
 	console.log("Usage:");
-	console.log("  pnpm release patch|minor|major [--dry-run] [--no-check] [--push] [--yes]");
-	console.log("  pnpm release --version <x.y.z> [--dry-run] [--no-check] [--push] [--yes]");
-	console.log("  pnpm release patch|minor|major --prepare [--dry-run] [--no-check] [--push] [--yes]");
-	console.log("  pnpm release --version <x.y.z> --prepare [--dry-run] [--no-check] [--push] [--yes]");
-	console.log("  pnpm release --publish [--version <x.y.z>] [--dry-run] [--push] [--yes]");
+	console.log("  pnpm release patch|minor|major [--dry-run] [--no-check] [--no-fetch] [--push] [--yes]");
+	console.log("  pnpm release --version <x.y.z> [--dry-run] [--no-check] [--no-fetch] [--push] [--yes]");
+	console.log("  pnpm release patch|minor|major --prepare [--dry-run] [--no-check] [--no-fetch] [--push] [--yes]");
+	console.log("  pnpm release --version <x.y.z> --prepare [--dry-run] [--no-check] [--no-fetch] [--push] [--yes]");
+	console.log("  pnpm release --publish [--version <x.y.z>] [--dry-run] [--no-fetch] [--push] [--yes]");
 	process.exit(1);
 };
 
@@ -99,6 +100,42 @@ const runCaptured = (command) => {
 	}
 
 	return result.stdout.trim();
+};
+
+const hasOriginRemote = () => {
+	const result = spawnSync("git remote get-url origin", {
+		shell: true,
+		encoding: "utf8",
+		stdio: ["inherit", "pipe", "pipe"],
+	});
+	return result.status === 0;
+};
+
+const syncRemoteRefs = () => {
+	if (skipFetch) {
+		return;
+	}
+	if (!hasOriginRemote()) {
+		if (!isDryRun) {
+			throw new Error("No origin remote configured. Use --no-fetch only if you intentionally want local-only release state.");
+		}
+		console.log(withColor("Warning: no origin remote configured; skipping fetch.", colors.yellow));
+		return;
+	}
+	run("git fetch origin main --tags");
+};
+
+const getHeadSha = () => runCaptured("git rev-parse HEAD");
+
+const getOriginMainSha = () => {
+	if (!hasOriginRemote()) {
+		return null;
+	}
+	try {
+		return runCaptured("git rev-parse origin/main");
+	} catch {
+		return null;
+	}
 };
 
 const getStatusLines = () => {
@@ -174,6 +211,12 @@ const bumpVersion = (version, type) => {
 	return { major: version.major, minor: version.minor, patch: version.patch + 1 };
 };
 
+const getPendingCount = (fromTag, toRef) => {
+	const range = fromTag === "0.0.0" ? toRef : `${fromTag}..${toRef}`;
+	const pendingCountRaw = runCaptured(`git rev-list --count ${range}`);
+	return Number(pendingCountRaw);
+};
+
 const confirm = (question) =>
 	new Promise((resolve) => {
 		const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -191,6 +234,9 @@ const release = async () => {
 	const mode = isPublishMode ? "publish" : isPrepareMode ? "prepare" : "full";
 	if (mode !== "full") {
 		console.log(`${withColor("Release mode:", colors.dim)} ${mode}`);
+	}
+	if ((mode === "full" || mode === "publish") && shouldPush && skipFetch && !isDryRun) {
+		throw new Error("Cannot combine --no-fetch with --push in full or publish mode.");
 	}
 
 	const currentBranch = runCaptured("git rev-parse --abbrev-ref HEAD");
@@ -211,6 +257,24 @@ const release = async () => {
 	}
 	if (statusLines.length > 0 && isDryRun) {
 		console.log(withColor("Warning: working tree is not clean (allowed in dry-run).", colors.yellow));
+	}
+
+	syncRemoteRefs();
+
+	const originMainSha = getOriginMainSha();
+	if ((mode === "full" || mode === "publish") && !isDryRun) {
+		if (!originMainSha) {
+			throw new Error("Could not resolve origin/main. Ensure origin exists and run without --no-fetch.");
+		}
+		const headSha = getHeadSha();
+		if (mode === "full" && headSha !== originMainSha) {
+			throw new Error("Local main is not synced with origin/main. Pull/rebase main before running a full release.");
+		}
+		if (mode === "publish" && headSha !== originMainSha) {
+			throw new Error(
+				"Publish mode requires HEAD to match origin/main. Pull the latest main and do not publish from local-only commits.",
+			);
+		}
 	}
 
 	const latestVersion = getLatestReleaseVersion() ?? { major: 0, minor: 0, patch: 0, raw: "0.0.0" };
@@ -253,14 +317,17 @@ const release = async () => {
 	console.log(`${withColor("Latest tag:", colors.dim)} ${latestVersion.raw}`);
 	console.log(`${withColor("Next release:", colors.dim)} ${withColor(nextVersionString, colors.green)}`);
 
-	const pendingCountRaw = runCaptured(
-		`git rev-list --count ${latestVersion.raw === "0.0.0" ? "HEAD" : `${latestVersion.raw}..HEAD`}`,
-	);
-	const pendingCount = Number(pendingCountRaw);
-	if (pendingCount === 0) {
+	const pendingCountCurrent = getPendingCount(latestVersion.raw, "HEAD");
+	if (mode === "prepare" && currentBranch !== "main" && originMainSha) {
+		const pendingCountMain = getPendingCount(latestVersion.raw, "origin/main");
+		console.log(`${withColor("Unreleased commits (origin/main):", colors.dim)} ${pendingCountMain}`);
+		console.log(`${withColor(`Unreleased commits (${currentBranch}):`, colors.dim)} ${pendingCountCurrent}`);
+	} else {
+		console.log(`${withColor("Unreleased commits:", colors.dim)} ${pendingCountCurrent}`);
+	}
+	if (pendingCountCurrent === 0) {
 		throw new Error(`No commits since latest tag ${latestVersion.raw}`);
 	}
-	console.log(`${withColor("Unreleased commits:", colors.dim)} ${pendingCount}`);
 
 	if (!skipPrompt) {
 		const accepted = await confirm(`Continue with release ${nextVersionString}? [y/N] `);
@@ -347,8 +414,6 @@ const release = async () => {
 		return;
 	}
 
-	run(`git tag -a ${nextVersionString} -m "Release ${nextVersionString}"`);
-
 	if (shouldPush) {
 		try {
 			run("git push origin main");
@@ -364,6 +429,11 @@ const release = async () => {
 			}
 			throw error;
 		}
+	}
+
+	run(`git tag -a ${nextVersionString} -m "Release ${nextVersionString}"`);
+
+	if (shouldPush) {
 		run(`git push origin ${nextVersionString}`);
 	}
 
