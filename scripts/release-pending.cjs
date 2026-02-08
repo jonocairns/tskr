@@ -97,7 +97,9 @@ try {
 	}
 
 	for (const commit of pendingCommits) {
-		console.log(`- ${withColor(commit.hash, colors.dim)} ${commit.subject} ${withColor(`(${commit.author})`, colors.dim)}`);
+		console.log(
+			`- ${withColor(commit.hash, colors.dim)} ${commit.subject} ${withColor(`(${commit.author})`, colors.dim)}`,
+		);
 	}
 } catch (error) {
 	console.error(withColor("release:pending failed", colors.red));
