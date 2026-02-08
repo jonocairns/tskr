@@ -60,7 +60,9 @@ if (requestedVersion && bumpType) {
 }
 
 if (isPublishMode && bumpType) {
-	console.error(withColor("--publish does not support patch/minor/major. Use --version or package.json version.", colors.red));
+	console.error(
+		withColor("--publish does not support patch/minor/major. Use --version or package.json version.", colors.red),
+	);
 	process.exit(1);
 }
 
@@ -114,11 +116,7 @@ const getLinePath = (line) => {
 	const rawPath =
 		normalized.length > 3 && normalized[2] === " "
 			? normalized.slice(3).trim()
-			: normalized
-					.split(/\s+/)
-					.slice(1)
-					.join(" ")
-					.trim();
+			: normalized.split(/\s+/).slice(1).join(" ").trim();
 	if (rawPath.includes(" -> ")) {
 		return rawPath.split(" -> ").at(-1)?.trim() ?? rawPath;
 	}
@@ -274,7 +272,9 @@ const release = async () => {
 
 	if (mode === "publish") {
 		if (!isDryRun && packageJson.version !== nextVersionString) {
-			throw new Error(`package.json version (${packageJson.version}) does not match publish version ${nextVersionString}.`);
+			throw new Error(
+				`package.json version (${packageJson.version}) does not match publish version ${nextVersionString}.`,
+			);
 		}
 
 		run(`git tag -a ${nextVersionString} -m "Release ${nextVersionString}"`);
