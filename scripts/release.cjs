@@ -21,6 +21,8 @@ const isDryRun = args.includes("--dry-run");
 const skipCheck = args.includes("--no-check");
 const shouldPush = args.includes("--push");
 const skipPrompt = args.includes("--yes") || isDryRun;
+const isPrepareMode = args.includes("--prepare");
+const isPublishMode = args.includes("--publish");
 
 const getOptionValue = (option) => {
 	const index = args.indexOf(option);
@@ -37,15 +39,28 @@ const usage = () => {
 	console.log("Usage:");
 	console.log("  pnpm release patch|minor|major [--dry-run] [--no-check] [--push] [--yes]");
 	console.log("  pnpm release --version <x.y.z> [--dry-run] [--no-check] [--push] [--yes]");
+	console.log("  pnpm release patch|minor|major --prepare [--dry-run] [--no-check] [--push] [--yes]");
+	console.log("  pnpm release --version <x.y.z> --prepare [--dry-run] [--no-check] [--push] [--yes]");
+	console.log("  pnpm release --publish [--version <x.y.z>] [--dry-run] [--push] [--yes]");
 	process.exit(1);
 };
 
-if (!requestedVersion && !bumpType) {
+if (isPrepareMode && isPublishMode) {
+	console.error(withColor("Use either --prepare or --publish, not both.", colors.red));
+	process.exit(1);
+}
+
+if (!isPublishMode && !requestedVersion && !bumpType) {
 	usage();
 }
 
 if (requestedVersion && bumpType) {
 	console.error(withColor("Provide either bump type or --version, not both.", colors.red));
+	process.exit(1);
+}
+
+if (isPublishMode && bumpType) {
+	console.error(withColor("--publish does not support patch/minor/major. Use --version or package.json version.", colors.red));
 	process.exit(1);
 }
 
@@ -175,13 +190,20 @@ const release = async () => {
 	if (isDryRun) {
 		console.log(withColor("Mode: dry-run", colors.dim));
 	}
+	const mode = isPublishMode ? "publish" : isPrepareMode ? "prepare" : "full";
+	if (mode !== "full") {
+		console.log(`${withColor("Release mode:", colors.dim)} ${mode}`);
+	}
 
 	const currentBranch = runCaptured("git rev-parse --abbrev-ref HEAD");
-	if (currentBranch !== "main" && !isDryRun) {
-		throw new Error(`Release must run from main branch. Current branch: ${currentBranch}`);
+	if ((mode === "full" || mode === "publish") && currentBranch !== "main" && !isDryRun) {
+		throw new Error(`Release mode "${mode}" must run from main branch. Current branch: ${currentBranch}`);
 	}
-	if (currentBranch !== "main" && isDryRun) {
-		console.log(withColor(`Warning: running dry-run on branch ${currentBranch}`, colors.yellow));
+	if ((mode === "full" || mode === "publish") && currentBranch !== "main" && isDryRun) {
+		console.log(withColor(`Warning: running ${mode} dry-run on branch ${currentBranch}`, colors.yellow));
+	}
+	if (mode === "prepare" && currentBranch === "main") {
+		console.log(withColor("Warning: prepare mode on main may not be pushable on protected branches.", colors.yellow));
 	}
 
 	const statusLines = getStatusLines();
@@ -194,22 +216,42 @@ const release = async () => {
 	}
 
 	const latestVersion = getLatestReleaseVersion() ?? { major: 0, minor: 0, patch: 0, raw: "0.0.0" };
+	const packageJsonPath = path.resolve(process.cwd(), "package.json");
+	const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 
-	let nextVersion;
-	if (requestedVersion) {
-		const parsed = parseVersionTag(requestedVersion);
-		if (!parsed) {
-			throw new Error(`Invalid version format: ${requestedVersion}. Expected x.y.z`);
+	let nextVersionString;
+	if (mode === "publish") {
+		const publishVersion = requestedVersion ?? packageJson.version;
+		const parsedPublishVersion = parseVersionTag(publishVersion);
+		if (!parsedPublishVersion) {
+			throw new Error(`Invalid publish version: ${publishVersion}. Expected x.y.z`);
 		}
-		if (compareVersions(parsed, latestVersion) <= 0) {
-			throw new Error(`Version ${parsed.raw} must be greater than latest tag ${latestVersion.raw}`);
+		if (compareVersions(parsedPublishVersion, latestVersion) <= 0) {
+			throw new Error(`Version ${parsedPublishVersion.raw} must be greater than latest tag ${latestVersion.raw}`);
 		}
-		nextVersion = parsed;
+		if (requestedVersion && packageJson.version !== requestedVersion && !isDryRun) {
+			throw new Error(
+				`package.json version (${packageJson.version}) does not match requested publish version (${requestedVersion}).`,
+			);
+		}
+		nextVersionString = versionToString(parsedPublishVersion);
 	} else {
-		nextVersion = bumpVersion(latestVersion, bumpType);
+		let nextVersion;
+		if (requestedVersion) {
+			const parsed = parseVersionTag(requestedVersion);
+			if (!parsed) {
+				throw new Error(`Invalid version format: ${requestedVersion}. Expected x.y.z`);
+			}
+			if (compareVersions(parsed, latestVersion) <= 0) {
+				throw new Error(`Version ${parsed.raw} must be greater than latest tag ${latestVersion.raw}`);
+			}
+			nextVersion = parsed;
+		} else {
+			nextVersion = bumpVersion(latestVersion, bumpType);
+		}
+		nextVersionString = versionToString(nextVersion);
 	}
 
-	const nextVersionString = versionToString(nextVersion);
 	console.log(`${withColor("Latest tag:", colors.dim)} ${latestVersion.raw}`);
 	console.log(`${withColor("Next release:", colors.dim)} ${withColor(nextVersionString, colors.green)}`);
 
@@ -230,8 +272,23 @@ const release = async () => {
 		}
 	}
 
-	const packageJsonPath = path.resolve(process.cwd(), "package.json");
-	const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+	if (mode === "publish") {
+		if (!isDryRun && packageJson.version !== nextVersionString) {
+			throw new Error(`package.json version (${packageJson.version}) does not match publish version ${nextVersionString}.`);
+		}
+
+		run(`git tag -a ${nextVersionString} -m "Release ${nextVersionString}"`);
+		if (shouldPush) {
+			run(`git push origin ${nextVersionString}`);
+		}
+
+		console.log(withColor(`Release ${nextVersionString} published.`, colors.green));
+		if (!shouldPush) {
+			console.log(withColor("Tag is local only. Use --push to trigger deployment.", colors.yellow));
+		}
+		return;
+	}
+
 	if (packageJson.version === nextVersionString && !isDryRun) {
 		throw new Error(
 			`package.json is already at ${nextVersionString}. This usually means a previous release attempt was interrupted before commit/tag.`,
@@ -278,10 +335,35 @@ const release = async () => {
 		console.log(withColor("[dry-run] verify clean working tree after release commit", colors.cyan));
 	}
 
+	if (mode === "prepare") {
+		if (shouldPush) {
+			if (currentBranch === "main" && !isDryRun) {
+				throw new Error("Prepare mode with --push must run on a feature branch, not main.");
+			}
+			run("git push -u origin HEAD");
+		}
+		console.log(withColor(`Release ${nextVersionString} prepared.`, colors.green));
+		console.log(withColor("Open a PR, merge to main, then run: pnpm release --publish --push", colors.dim));
+		return;
+	}
+
 	run(`git tag -a ${nextVersionString} -m "Release ${nextVersionString}"`);
 
 	if (shouldPush) {
-		run("git push origin main");
+		try {
+			run("git push origin main");
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (message.includes("GH013") || message.toLowerCase().includes("pull request")) {
+				throw new Error(
+					`${message}\n\nDirect pushes to main are blocked. Use PR flow:\n` +
+						`1) pnpm release ${requestedVersion ? `--version ${nextVersionString}` : bumpType} --prepare\n` +
+						"2) open and merge a PR\n" +
+						"3) on updated main: pnpm release --publish --push",
+				);
+			}
+			throw error;
+		}
 		run(`git push origin ${nextVersionString}`);
 	}
 
