@@ -11,6 +11,9 @@ const colors = {
 
 const colorsEnabled = process.stdout.isTTY && process.env.NO_COLOR !== "1";
 const withColor = (text, color) => (colorsEnabled ? `${color}${text}${colors.reset}` : text);
+const args = process.argv.slice(2);
+const scopeValueIndex = args.indexOf("--scope");
+const requestedScope = scopeValueIndex >= 0 ? args[scopeValueIndex + 1] : null;
 
 const run = (command, options = {}) => {
 	const result = spawnSync(command, {
@@ -25,6 +28,22 @@ const run = (command, options = {}) => {
 	}
 
 	return options.capture ? result.stdout.trim() : "";
+};
+
+const hasOriginRemote = () => {
+	const result = spawnSync("git remote get-url origin", {
+		shell: true,
+		encoding: "utf8",
+		stdio: ["inherit", "pipe", "pipe"],
+	});
+	return result.status === 0;
+};
+
+const syncRemoteRefs = () => {
+	if (!hasOriginRemote()) {
+		throw new Error("No origin remote configured.");
+	}
+	run("git fetch origin main --tags");
 };
 
 const parseVersionTag = (tag) => {
@@ -66,8 +85,8 @@ const getLatestReleaseTag = () => {
 	return versions.length > 0 ? versions[versions.length - 1].raw : null;
 };
 
-const getPendingCommits = (latestTag) => {
-	const range = latestTag ? `${latestTag}..HEAD` : "HEAD";
+const getPendingCommits = (latestTag, ref) => {
+	const range = latestTag ? `${latestTag}..${ref}` : ref;
 	const output = run(`git log ${range} --pretty=format:%h%x09%s%x09%an`, { capture: true });
 	if (output.length === 0) {
 		return [];
@@ -79,9 +98,29 @@ const getPendingCommits = (latestTag) => {
 	});
 };
 
+const getCurrentBranch = () => run("git rev-parse --abbrev-ref HEAD", { capture: true });
+
+const getPendingCount = (latestTag, ref) => {
+	const range = latestTag ? `${latestTag}..${ref}` : ref;
+	const output = run(`git rev-list --count ${range}`, { capture: true });
+	return Number(output);
+};
+
 try {
+	if (requestedScope && requestedScope !== "main" && requestedScope !== "branch") {
+		throw new Error(`Invalid --scope value "${requestedScope}". Use "main" or "branch".`);
+	}
+	syncRemoteRefs();
+
 	const latestTag = getLatestReleaseTag();
-	const pendingCommits = getPendingCommits(latestTag);
+	const currentBranch = getCurrentBranch();
+	const hasOrigin = hasOriginRemote();
+	const mainRef = hasOrigin ? "origin/main" : "main";
+	const scope = requestedScope ?? "main";
+	const selectedRef = scope === "branch" ? "HEAD" : mainRef;
+	const scopeLabel = scope === "branch" ? currentBranch : mainRef;
+	const pendingCommits = getPendingCommits(latestTag, selectedRef);
+	const pendingCountSelected = getPendingCount(latestTag, selectedRef);
 
 	console.log(withColor("Release pending check", colors.bold));
 	console.log(
@@ -89,7 +128,15 @@ try {
 			latestTag ? withColor(latestTag, colors.green) : withColor("none", colors.yellow)
 		}`,
 	);
-	console.log(`${withColor("Unreleased commits:", colors.dim)} ${pendingCommits.length}`);
+	console.log(`${withColor("Scope:", colors.dim)} ${scopeLabel}`);
+	console.log(`${withColor("Unreleased commits:", colors.dim)} ${pendingCountSelected}`);
+
+	if (currentBranch !== "main") {
+		const branchCount = getPendingCount(latestTag, "HEAD");
+		const mainCount = getPendingCount(latestTag, mainRef);
+		console.log(`${withColor(`Unreleased commits (${currentBranch}):`, colors.dim)} ${branchCount}`);
+		console.log(`${withColor(`Unreleased commits (${mainRef}):`, colors.dim)} ${mainCount}`);
+	}
 
 	if (pendingCommits.length === 0) {
 		console.log(withColor("No unreleased commits.", colors.green));
