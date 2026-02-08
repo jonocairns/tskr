@@ -24,7 +24,9 @@
 		"compile": "tsc --pretty",
 		"test": "jest",
 		"check": "node ./scripts/check.cjs",
-		"prep": "node ./scripts/check.cjs --fix"
+		"prep": "node ./scripts/check.cjs --fix",
+		"release:pending": "node ./scripts/release-pending.cjs",
+		"release": "node ./scripts/release.cjs"
 	},
 	"dependencies": {
 		"@js-temporal/polyfill": "^0.5.1",
