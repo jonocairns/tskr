@@ -11,9 +11,6 @@ const colors = {
 
 const colorsEnabled = process.stdout.isTTY && process.env.NO_COLOR !== "1";
 const withColor = (text, color) => (colorsEnabled ? `${color}${text}${colors.reset}` : text);
-const args = process.argv.slice(2);
-const scopeValueIndex = args.indexOf("--scope");
-const requestedScope = scopeValueIndex >= 0 ? args[scopeValueIndex + 1] : null;
 
 const run = (command, options = {}) => {
 	const result = spawnSync(command, {
@@ -98,8 +95,6 @@ const getPendingCommits = (latestTag, ref) => {
 	});
 };
 
-const getCurrentBranch = () => run("git rev-parse --abbrev-ref HEAD", { capture: true });
-
 const getPendingCount = (latestTag, ref) => {
 	const range = latestTag ? `${latestTag}..${ref}` : ref;
 	const output = run(`git rev-list --count ${range}`, { capture: true });
@@ -107,20 +102,13 @@ const getPendingCount = (latestTag, ref) => {
 };
 
 try {
-	if (requestedScope && requestedScope !== "main" && requestedScope !== "branch") {
-		throw new Error(`Invalid --scope value "${requestedScope}". Use "main" or "branch".`);
-	}
 	syncRemoteRefs();
 
 	const latestTag = getLatestReleaseTag();
-	const currentBranch = getCurrentBranch();
 	const hasOrigin = hasOriginRemote();
 	const mainRef = hasOrigin ? "origin/main" : "main";
-	const scope = requestedScope ?? "main";
-	const selectedRef = scope === "branch" ? "HEAD" : mainRef;
-	const scopeLabel = scope === "branch" ? currentBranch : mainRef;
-	const pendingCommits = getPendingCommits(latestTag, selectedRef);
-	const pendingCountSelected = getPendingCount(latestTag, selectedRef);
+	const pendingCommits = getPendingCommits(latestTag, mainRef);
+	const pendingCount = getPendingCount(latestTag, mainRef);
 
 	console.log(withColor("Release pending check", colors.bold));
 	console.log(
@@ -128,15 +116,8 @@ try {
 			latestTag ? withColor(latestTag, colors.green) : withColor("none", colors.yellow)
 		}`,
 	);
-	console.log(`${withColor("Scope:", colors.dim)} ${scopeLabel}`);
-	console.log(`${withColor("Unreleased commits:", colors.dim)} ${pendingCountSelected}`);
-
-	if (currentBranch !== "main") {
-		const branchCount = getPendingCount(latestTag, "HEAD");
-		const mainCount = getPendingCount(latestTag, mainRef);
-		console.log(`${withColor(`Unreleased commits (${currentBranch}):`, colors.dim)} ${branchCount}`);
-		console.log(`${withColor(`Unreleased commits (${mainRef}):`, colors.dim)} ${mainCount}`);
-	}
+	console.log(`${withColor("Reference:", colors.dim)} ${mainRef}`);
+	console.log(`${withColor("Unreleased commits:", colors.dim)} ${pendingCount}`);
 
 	if (pendingCommits.length === 0) {
 		console.log(withColor("No unreleased commits.", colors.green));
