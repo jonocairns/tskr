@@ -23,7 +23,6 @@ const shouldPush = args.includes("--push");
 const skipPrompt = args.includes("--yes") || isDryRun;
 const isPrepareMode = args.includes("--prepare");
 const isPublishMode = args.includes("--publish");
-const skipFetch = args.includes("--no-fetch");
 
 const getOptionValue = (option) => {
 	const index = args.indexOf(option);
@@ -38,16 +37,16 @@ const bumpType = args.find((value) => ["patch", "minor", "major"].includes(value
 
 const usage = () => {
 	console.log("Usage:");
-	console.log("  pnpm release patch|minor|major [--dry-run] [--no-check] [--no-fetch] [--push] [--yes]");
-	console.log("  pnpm release --version <x.y.z> [--dry-run] [--no-check] [--no-fetch] [--push] [--yes]");
-	console.log("  pnpm release patch|minor|major --prepare [--dry-run] [--no-check] [--no-fetch] [--push] [--yes]");
-	console.log("  pnpm release --version <x.y.z> --prepare [--dry-run] [--no-check] [--no-fetch] [--push] [--yes]");
-	console.log("  pnpm release --publish [--version <x.y.z>] [--dry-run] [--no-fetch] [--push] [--yes]");
+	console.log("  pnpm release patch|minor|major [--dry-run] [--no-check] [--push] [--yes]");
+	console.log("  pnpm release --version <x.y.z> [--dry-run] [--no-check] [--push] [--yes]");
+	console.log("  pnpm release:prepare patch|minor|major [--dry-run] [--no-check] [--push] [--yes]");
+	console.log("  pnpm release:prepare --version <x.y.z> [--dry-run] [--no-check] [--push] [--yes]");
+	console.log("  pnpm release:publish [--version <x.y.z>] [--dry-run] [--push] [--yes]");
 	process.exit(1);
 };
 
 if (isPrepareMode && isPublishMode) {
-	console.error(withColor("Use either --prepare or --publish, not both.", colors.red));
+	console.error(withColor("Choose one mode. Prefer using pnpm release:prepare or pnpm release:publish.", colors.red));
 	process.exit(1);
 }
 
@@ -62,7 +61,7 @@ if (requestedVersion && bumpType) {
 
 if (isPublishMode && bumpType) {
 	console.error(
-		withColor("--publish does not support patch/minor/major. Use --version or package.json version.", colors.red),
+		withColor("release:publish does not accept patch/minor/major. Use --version or package.json version.", colors.red),
 	);
 	process.exit(1);
 }
@@ -112,15 +111,8 @@ const hasOriginRemote = () => {
 };
 
 const syncRemoteRefs = () => {
-	if (skipFetch) {
-		return;
-	}
 	if (!hasOriginRemote()) {
-		if (!isDryRun) {
-			throw new Error("No origin remote configured. Use --no-fetch only if you intentionally want local-only release state.");
-		}
-		console.log(withColor("Warning: no origin remote configured; skipping fetch.", colors.yellow));
-		return;
+		throw new Error("No origin remote configured.");
 	}
 	run("git fetch origin main --tags");
 };
@@ -262,9 +254,6 @@ const release = async () => {
 	if (mode !== "full") {
 		console.log(`${withColor("Release mode:", colors.dim)} ${mode}`);
 	}
-	if ((mode === "full" || mode === "publish") && shouldPush && skipFetch && !isDryRun) {
-		throw new Error("Cannot combine --no-fetch with --push in full or publish mode.");
-	}
 
 	const currentBranch = runCaptured("git rev-parse --abbrev-ref HEAD");
 	if ((mode === "full" || mode === "publish") && currentBranch !== "main" && !isDryRun) {
@@ -291,7 +280,7 @@ const release = async () => {
 	const originMainSha = getOriginMainSha();
 	if ((mode === "full" || mode === "publish") && !isDryRun) {
 		if (!originMainSha) {
-			throw new Error("Could not resolve origin/main. Ensure origin exists and run without --no-fetch.");
+			throw new Error("Could not resolve origin/main. Ensure origin exists and fetch succeeds.");
 		}
 		const headSha = getHeadSha();
 		if (mode === "full" && headSha !== originMainSha) {
@@ -421,11 +410,14 @@ const release = async () => {
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			if (message.includes("GH013") || message.toLowerCase().includes("pull request")) {
+				const prepareCommand = requestedVersion
+					? `pnpm release:prepare --version ${nextVersionString}`
+					: `pnpm release:prepare ${bumpType}`;
 				throw new Error(
 					`${message}\n\nDirect pushes to main are blocked. Use PR flow:\n` +
-						`1) pnpm release ${requestedVersion ? `--version ${nextVersionString}` : bumpType} --prepare\n` +
+						`1) ${prepareCommand}\n` +
 						"2) open and merge a PR\n" +
-						"3) on updated main: pnpm release --publish --push",
+						"3) on updated main: pnpm release:publish --push",
 				);
 			}
 			throw error;

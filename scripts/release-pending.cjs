@@ -12,7 +12,6 @@ const colors = {
 const colorsEnabled = process.stdout.isTTY && process.env.NO_COLOR !== "1";
 const withColor = (text, color) => (colorsEnabled ? `${color}${text}${colors.reset}` : text);
 const args = process.argv.slice(2);
-const skipFetch = args.includes("--no-fetch");
 const scopeValueIndex = args.indexOf("--scope");
 const requestedScope = scopeValueIndex >= 0 ? args[scopeValueIndex + 1] : null;
 
@@ -41,11 +40,8 @@ const hasOriginRemote = () => {
 };
 
 const syncRemoteRefs = () => {
-	if (skipFetch) {
-		return;
-	}
 	if (!hasOriginRemote()) {
-		throw new Error("No origin remote configured. Use --no-fetch only if you intentionally want local-only release state.");
+		throw new Error("No origin remote configured.");
 	}
 	run("git fetch origin main --tags");
 };
