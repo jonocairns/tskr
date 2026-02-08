@@ -95,7 +95,15 @@ const getStatusLines = () => {
 const formatStatusLines = (lines) => lines.map((line) => line.trim()).join("\n");
 
 const getLinePath = (line) => {
-	const rawPath = line.slice(3).trim();
+	const normalized = line.trimStart();
+	const rawPath =
+		normalized.length > 3 && normalized[2] === " "
+			? normalized.slice(3).trim()
+			: normalized
+					.split(/\s+/)
+					.slice(1)
+					.join(" ")
+					.trim();
 	if (rawPath.includes(" -> ")) {
 		return rawPath.split(" -> ").at(-1)?.trim() ?? rawPath;
 	}
@@ -224,6 +232,11 @@ const release = async () => {
 
 	const packageJsonPath = path.resolve(process.cwd(), "package.json");
 	const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+	if (packageJson.version === nextVersionString && !isDryRun) {
+		throw new Error(
+			`package.json is already at ${nextVersionString}. This usually means a previous release attempt was interrupted before commit/tag.`,
+		);
+	}
 	packageJson.version = nextVersionString;
 
 	if (isDryRun) {
