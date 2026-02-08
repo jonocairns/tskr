@@ -6,6 +6,7 @@ export type PresetOption = {
 	id: string;
 	label: string;
 	bucket: DurationKey;
+	templateKey: string | null;
 	isShared: boolean;
 };
 

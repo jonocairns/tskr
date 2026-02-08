@@ -1,9 +1,0 @@
-{
-	"CONFLICT": "That action conflicts with existing data.",
-	"FORBIDDEN": "You don't have permission to do that.",
-	"INTERNAL_SERVER_ERROR": "Something went wrong. Please try again.",
-	"INVALID_INPUT": "Please check the form and try again.",
-	"NOT_FOUND": "We couldn't find what you were looking for.",
-	"RATE_LIMITED": "Too many requests. Please try again soon.",
-	"UNAUTHORIZED": "You need to sign in to continue."
-}

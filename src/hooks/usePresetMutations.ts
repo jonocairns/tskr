@@ -2,51 +2,71 @@
 
 import { useToast } from "@/hooks/useToast";
 import type { PresetSummary } from "@/lib/dashboard/presets";
+import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
+import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
 import { trpc } from "@/lib/trpc/react";
 
 type UsePresetMutationsOptions = {
 	customPresets: PresetSummary[];
-	setCustomPresets: React.Dispatch<React.SetStateAction<PresetSummary[]>>;
+	setCustomPresetsAction: React.Dispatch<React.SetStateAction<PresetSummary[]>>;
 };
 
-export const usePresetMutations = ({ customPresets, setCustomPresets }: UsePresetMutationsOptions) => {
+const normalizePreset = <
+	TPreset extends {
+		bucket: string;
+		templateKey: string | null;
+		createdAt: Date;
+	},
+>(
+	preset: TPreset,
+) => ({
+	...preset,
+	bucket: preset.bucket as DurationKey,
+	templateKey: preset.templateKey ?? null,
+	createdAt: preset.createdAt.toISOString(),
+});
+
+export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: UsePresetMutationsOptions) => {
 	const { toast } = useToast();
+	const { t } = useTranslation();
 
 	const createPresetMutation = trpc.presets.create.useMutation({
 		onSuccess: (data) => {
-			setCustomPresets((prev) => [
-				{
-					...data.preset,
-					bucket: data.preset.bucket as DurationKey,
-					createdAt: data.preset.createdAt.toISOString(),
-				},
-				...prev,
-			]);
+			setCustomPresetsAction((prev) => [normalizePreset(data.preset), ...prev]);
 			toast({
-				title: "Preset added",
-				description: "Chore added to your presets.",
+				title: t("Preset added"),
+				description: t("Chore added to your presets."),
 			});
 		},
 		onError: (error) => {
 			toast({
-				title: "Unable to add preset",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to add preset"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 	});
 
 	const updatePresetMutation = trpc.presets.update.useMutation({
-		onMutate: async (variables) => {
+		onMutate: (variables) => {
 			const previousPresets = customPresets;
-			setCustomPresets((prev) =>
+			setCustomPresetsAction((prev) =>
 				prev.map((preset) =>
 					preset.id === variables.id
 						? {
 								...preset,
 								label: variables.label ?? preset.label,
 								bucket: variables.bucket ?? preset.bucket,
+								templateKey: shouldClearTemplateKeyOnPresetUpdate({
+									templateKey: preset.templateKey,
+									currentLabel: preset.label,
+									currentBucket: preset.bucket,
+									nextLabel: variables.label,
+									nextBucket: variables.bucket,
+								})
+									? null
+									: preset.templateKey,
 								approvalOverride: variables.approvalOverride ?? preset.approvalOverride,
 							}
 						: preset,
@@ -56,48 +76,39 @@ export const usePresetMutations = ({ customPresets, setCustomPresets }: UsePrese
 		},
 		onError: (error, _variables, context) => {
 			if (context?.previousPresets) {
-				setCustomPresets(context.previousPresets);
+				setCustomPresetsAction(context.previousPresets);
 			}
 			toast({
-				title: "Unable to update preset",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to update preset"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: (data) => {
-			setCustomPresets((prev) =>
-				prev.map((preset) =>
-					preset.id === data.preset.id
-						? {
-								...data.preset,
-								bucket: data.preset.bucket as DurationKey,
-								createdAt: data.preset.createdAt.toISOString(),
-							}
-						: preset,
-				),
-			);
-			toast({ title: "Preset updated" });
+			const updatedPreset = normalizePreset(data.preset);
+			setCustomPresetsAction((prev) => prev.map((preset) => (preset.id === updatedPreset.id ? updatedPreset : preset)));
+			toast({ title: t("Preset updated") });
 		},
 	});
 
 	const deletePresetMutation = trpc.presets.delete.useMutation({
-		onMutate: async (variables) => {
+		onMutate: (variables) => {
 			const previousPresets = customPresets;
-			setCustomPresets((prev) => prev.filter((item) => item.id !== variables.id));
+			setCustomPresetsAction((prev) => prev.filter((item) => item.id !== variables.id));
 			return { previousPresets };
 		},
 		onError: (error, _variables, context) => {
 			if (context?.previousPresets) {
-				setCustomPresets(context.previousPresets);
+				setCustomPresetsAction(context.previousPresets);
 			}
 			toast({
-				title: "Unable to delete preset",
-				description: error.message ?? "Please try again.",
+				title: t("Unable to delete preset"),
+				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: () => {
-			toast({ title: "Preset deleted" });
+			toast({ title: t("Preset deleted") });
 		},
 	});
 

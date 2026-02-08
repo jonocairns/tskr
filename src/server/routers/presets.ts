@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
+import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
 import { prisma } from "@/lib/prisma";
 import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
@@ -15,6 +16,7 @@ const presetSchema = z.object({
 	householdId: z.string().min(1),
 	label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 	bucket: z.enum(DURATION_KEYS),
+	templateKey: z.string().trim().min(1).max(100).nullish(),
 	isShared: z.boolean().optional(),
 	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
 });
@@ -53,6 +55,7 @@ export const presetsRouter = router({
 				householdId: true,
 				label: true,
 				bucket: true,
+				templateKey: true,
 				isShared: true,
 				createdById: true,
 				approvalOverride: true,
@@ -73,6 +76,7 @@ export const presetsRouter = router({
 				createdById: userId,
 				label: input.label,
 				bucket: input.bucket,
+				templateKey: input.templateKey ?? null,
 				isShared: input.isShared ?? true,
 				approvalOverride: input.approvalOverride ?? null,
 			},
@@ -80,6 +84,7 @@ export const presetsRouter = router({
 				id: true,
 				label: true,
 				bucket: true,
+				templateKey: true,
 				isShared: true,
 				createdById: true,
 				approvalOverride: true,
@@ -97,7 +102,14 @@ export const presetsRouter = router({
 
 		const preset = await prisma.presetTask.findFirst({
 			where: { id, householdId },
-			select: { id: true, createdById: true, isShared: true },
+			select: {
+				id: true,
+				createdById: true,
+				isShared: true,
+				label: true,
+				bucket: true,
+				templateKey: true,
+			},
 		});
 
 		if (!preset) {
@@ -113,11 +125,20 @@ export const presetsRouter = router({
 			throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can change sharing" });
 		}
 
+		const clearTemplateKey = shouldClearTemplateKeyOnPresetUpdate({
+			templateKey: preset.templateKey,
+			currentLabel: preset.label,
+			currentBucket: preset.bucket,
+			nextLabel: updates.label,
+			nextBucket: updates.bucket,
+		});
+
 		const updated = await prisma.presetTask.update({
 			where: { id },
 			data: {
 				label: updates.label,
 				bucket: updates.bucket,
+				templateKey: clearTemplateKey ? null : undefined,
 				isShared: isOwner ? updates.isShared : undefined,
 				approvalOverride: updates.approvalOverride === undefined ? undefined : updates.approvalOverride,
 			},
@@ -126,6 +147,7 @@ export const presetsRouter = router({
 				householdId: true,
 				label: true,
 				bucket: true,
+				templateKey: true,
 				isShared: true,
 				createdById: true,
 				approvalOverride: true,

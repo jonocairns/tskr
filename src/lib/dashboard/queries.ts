@@ -102,6 +102,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 				id: true,
 				label: true,
 				bucket: true,
+				templateKey: true,
 				isShared: true,
 				createdById: true,
 				approvalOverride: true,

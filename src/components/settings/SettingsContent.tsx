@@ -34,6 +34,13 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 	const { t } = useTranslation();
 	const router = useRouter();
 	const [language, setLanguage] = useState(normalizeLanguage(user.language ?? DEFAULT_LANGUAGE));
+	const languageLabelLocale = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language ?? DEFAULT_LANGUAGE);
+	const getDisplayLanguage = (value: string) => {
+		return getLanguageLabel(value, {
+			locale: languageLabelLocale,
+			pseudoLabel: t("Pseudo (dev)"),
+		});
+	};
 
 	const updateLanguage = trpc.profile.updateLanguage.useMutation({
 		onMutate: (input) => {
@@ -45,7 +52,10 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 			const normalizedLanguage = normalizeLanguage(data.language);
 			setLanguage(normalizedLanguage);
 			await i18n.changeLanguage(normalizedLanguage);
-			const languageLabel = t(getLanguageLabel(data.language));
+			const languageLabel = getLanguageLabel(data.language, {
+				locale: normalizedLanguage,
+				pseudoLabel: i18n.t("Pseudo (dev)", { lng: normalizedLanguage }),
+			});
 			toast({
 				title: t("Language updated"),
 				description: t("Language set to {{language}}.", { language: languageLabel }),
@@ -62,7 +72,6 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 			});
 		},
 	});
-	const getDisplayLanguage = (value: string) => t(getLanguageLabel(value));
 
 	const handleLanguageChange = (value: string) => {
 		const normalizedValue = normalizeLanguage(value);

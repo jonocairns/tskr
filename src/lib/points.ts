@@ -1,6 +1,7 @@
 export const DURATION_KEYS = ["TINY", "QUICK", "ROUTINE", "CHALLENGING", "HEAVY", "MAJOR"] as const;
 
 export type DurationKey = (typeof DURATION_KEYS)[number];
+type Translator = (value: string) => string;
 
 export const BUCKET_POINTS: Record<DurationKey, number> = {
 	TINY: 1,
@@ -11,12 +12,20 @@ export const BUCKET_POINTS: Record<DurationKey, number> = {
 	MAJOR: 21,
 };
 
-export const DURATION_BUCKETS: Array<{
+export type DurationBucket = {
 	key: DurationKey;
 	label: string;
 	window: string;
 	points: number;
-}> = [
+};
+
+export type PresetTask = {
+	key: string;
+	label: string;
+	bucket: DurationKey;
+};
+
+export const DURATION_BUCKETS: DurationBucket[] = [
 	{ key: "TINY", label: "Tiny", window: "< 1 min", points: BUCKET_POINTS.TINY },
 	{
 		key: "QUICK",
@@ -50,11 +59,15 @@ export const DURATION_BUCKETS: Array<{
 	},
 ];
 
-export const PRESET_TASKS: Array<{
-	key: string;
-	label: string;
-	bucket: DurationKey;
-}> = [
+export const getLocalizedDurationBuckets = (t: Translator): DurationBucket[] => {
+	return DURATION_BUCKETS.map((bucket) => ({
+		...bucket,
+		label: t(bucket.label),
+		window: t(bucket.window),
+	}));
+};
+
+export const PRESET_TASKS: PresetTask[] = [
 	{ key: "bins", label: "Bins", bucket: "QUICK" },
 	{ key: "toilet", label: "Toilet", bucket: "ROUTINE" },
 	{ key: "kitchen", label: "Kitchen", bucket: "QUICK" },
@@ -69,13 +82,20 @@ export const PRESET_TASKS: Array<{
 	{ key: "dishwasher", label: "Dishwasher", bucket: "QUICK" },
 ];
 
-export function findPreset(key: string) {
-	return PRESET_TASKS.find((task) => task.key === key);
-}
+export const getLocalizedPresetTasks = (t: Translator): PresetTask[] => {
+	return PRESET_TASKS.map((task) => ({
+		...task,
+		label: t(task.label),
+	}));
+};
 
-export function getBucketPoints(bucket: DurationKey) {
+export const findPreset = (key: string) => {
+	return PRESET_TASKS.find((task) => task.key === key);
+};
+
+export const getBucketPoints = (bucket: DurationKey) => {
 	return BUCKET_POINTS[bucket];
-}
+};
 
 export const LOG_KINDS = ["PRESET", "TIMED", "REWARD"] as const;
 export type LogKind = (typeof LOG_KINDS)[number];

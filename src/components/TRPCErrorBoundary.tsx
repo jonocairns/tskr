@@ -19,7 +19,7 @@ type State = {
 };
 
 const ErrorFallback = ({ error, onReset, onReload }: { error: Error; onReset: () => void; onReload: () => void }) => {
-	const { t } = useTranslation(["translation", "errors"]);
+	const { t } = useTranslation();
 	const appErrorCode = getAppErrorCode(error);
 	const errorMessage = getErrorMessage(error, t, appErrorCode);
 	const errorDescription = appErrorCode

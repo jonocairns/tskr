@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
+import { getServerT } from "@/lib/i18nServer";
 import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
@@ -70,7 +71,8 @@ export const logsRouter = router({
 
 	create: householdProcedure(createLogSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
-		const actorLabel = ctx.session.user.name ?? ctx.session.user.email ?? "Someone";
+		const t = await getServerT(ctx.session.user.language);
+		const actorLabel = ctx.session.user.name ?? ctx.session.user.email ?? t("Someone");
 
 		const { id: householdId, membership } = ctx.household;
 
@@ -84,8 +86,12 @@ export const logsRouter = router({
 			try {
 				await broadcastPush(
 					{
-						title: "Task logged",
-						body: `${actorLabel} logged ${points} points for "${trimmed}"`,
+						title: t("Task logged"),
+						body: t('{{actor}} logged {{points}} points for "{{task}}"', {
+							actor: actorLabel,
+							points,
+							task: trimmed,
+						}),
 						url: "/",
 						icon: "/icon-192.png",
 						badge: "/icon-192.png",

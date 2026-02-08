@@ -2,6 +2,7 @@ import "server-only";
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { getServerT } from "@/lib/i18nServer";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
 import { householdProcedure, protectedProcedure, publicProcedure, router } from "@/server/trpc";
@@ -82,6 +83,7 @@ export const pushRouter = router({
 	test: householdProcedure(testPushSchema).mutation(async ({ ctx }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
+		const t = await getServerT(ctx.session.user.language);
 
 		if (!isPushConfigured()) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Push is not configured" });
@@ -89,8 +91,8 @@ export const pushRouter = router({
 
 		await broadcastPush(
 			{
-				title: "tskr test notification",
-				body: "This is a test push from tskr.",
+				title: t("tskr test notification"),
+				body: t("This is a test push from tskr."),
 				url: "/",
 				icon: "/icon-192.png",
 				badge: "/icon-192.png",

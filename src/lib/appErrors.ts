@@ -22,10 +22,31 @@ export const getAppErrorCode = (error: unknown): AppErrorCode | null => {
 	return null;
 };
 
+const getTranslatedAppError = (code: AppErrorCode, t: Translator) => {
+	switch (code) {
+		case "INVALID_INPUT":
+			return t("INVALID_INPUT");
+		case "UNAUTHORIZED":
+			return t("UNAUTHORIZED");
+		case "FORBIDDEN":
+			return t("FORBIDDEN");
+		case "NOT_FOUND":
+			return t("NOT_FOUND");
+		case "CONFLICT":
+			return t("CONFLICT");
+		case "RATE_LIMITED":
+			return t("RATE_LIMITED");
+		case "INTERNAL_SERVER_ERROR":
+			return t("INTERNAL_SERVER_ERROR");
+		default:
+			return t("INTERNAL_SERVER_ERROR");
+	}
+};
+
 export const getErrorMessage = (error: unknown, t: Translator, appErrorCode?: AppErrorCode | null) => {
 	const resolvedCode = appErrorCode ?? getAppErrorCode(error);
 	if (resolvedCode) {
-		return t(resolvedCode, { ns: "errors" });
+		return getTranslatedAppError(resolvedCode, t);
 	}
 	if (error instanceof Error && error.message) {
 		return error.message;

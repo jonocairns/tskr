@@ -6,14 +6,48 @@ self.addEventListener("activate", (event) => {
 	event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener("push", (event) => {
-	const fallback = {
+const DEFAULT_NOTIFICATION_PAYLOAD = {
+	url: "/",
+	icon: "/icon-192.png",
+	badge: "/icon-192.png",
+};
+
+const FALLBACK_MESSAGES_BY_LOCALE = {
+	en: {
 		title: "tskr",
 		body: "New task activity",
-		url: "/",
-		icon: "/icon-192.png",
-		badge: "/icon-192.png",
+	},
+	pseudo: {
+		title: "tskr [pseudo]",
+		body: "New task activity [pseudo]",
+	},
+};
+
+const resolvePreferredLocale = () => {
+	const language =
+		self.navigator && typeof self.navigator.language === "string" ? self.navigator.language.toLowerCase() : "en";
+	if (language in FALLBACK_MESSAGES_BY_LOCALE) {
+		return language;
+	}
+
+	const [baseLanguage] = language.split("-");
+	if (baseLanguage && baseLanguage in FALLBACK_MESSAGES_BY_LOCALE) {
+		return baseLanguage;
+	}
+
+	return "en";
+};
+
+const getFallbackPayload = () => {
+	const locale = resolvePreferredLocale();
+	return {
+		...DEFAULT_NOTIFICATION_PAYLOAD,
+		...FALLBACK_MESSAGES_BY_LOCALE[locale],
 	};
+};
+
+self.addEventListener("push", (event) => {
+	const fallback = getFallbackPayload();
 
 	let payload = fallback;
 
