@@ -15,7 +15,7 @@ import { useLogMutation } from "@/hooks/useLogMutation";
 import { usePresetMutations } from "@/hooks/usePresetMutations";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
-import { DURATION_BUCKETS, PRESET_TASKS, type DurationKey, getLocalizedPresetTasks } from "@/lib/points";
+import { DURATION_BUCKETS, type DurationKey, getLocalizedPresetTasks, PRESET_TASKS } from "@/lib/points";
 
 export const PresetActionsCard = () => {
 	const {

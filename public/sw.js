@@ -24,7 +24,8 @@ const FALLBACK_MESSAGES_BY_LOCALE = {
 };
 
 const resolvePreferredLocale = () => {
-	const language = self.navigator && typeof self.navigator.language === "string" ? self.navigator.language.toLowerCase() : "en";
+	const language =
+		self.navigator && typeof self.navigator.language === "string" ? self.navigator.language.toLowerCase() : "en";
 	if (language in FALLBACK_MESSAGES_BY_LOCALE) {
 		return language;
 	}
