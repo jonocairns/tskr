@@ -5,6 +5,7 @@ import type { PresetSummary } from "@/lib/dashboard/presets";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
+import { normalizePresetIconKey } from "@/lib/presetIcons";
 import { trpc } from "@/lib/trpc/react";
 
 type UsePresetMutationsOptions = {
@@ -16,6 +17,7 @@ const normalizePreset = <
 	TPreset extends {
 		bucket: string;
 		templateKey: string | null;
+		iconKey: string | null;
 		createdAt: Date;
 	},
 >(
@@ -24,6 +26,7 @@ const normalizePreset = <
 	...preset,
 	bucket: preset.bucket as DurationKey,
 	templateKey: preset.templateKey ?? null,
+	iconKey: normalizePresetIconKey(preset.iconKey),
 	createdAt: preset.createdAt.toISOString(),
 });
 
@@ -67,6 +70,8 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 								})
 									? null
 									: preset.templateKey,
+								iconKey:
+									variables.iconKey !== undefined ? variables.iconKey : preset.iconKey,
 								approvalOverride: variables.approvalOverride ?? preset.approvalOverride,
 							}
 						: preset,

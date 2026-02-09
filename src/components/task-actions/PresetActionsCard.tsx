@@ -16,6 +16,7 @@ import { usePresetMutations } from "@/hooks/usePresetMutations";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
 import { DURATION_BUCKETS, type DurationKey, getLocalizedPresetTasks, PRESET_TASKS } from "@/lib/points";
+import type { PresetIconKey } from "@/lib/presetIcons";
 
 export const PresetActionsCard = () => {
 	const {
@@ -96,6 +97,7 @@ export const PresetActionsCard = () => {
 			label: preset.displayLabel,
 			bucket: preset.bucket,
 			templateKey: preset.templateKey,
+			iconKey: preset.iconKey,
 			isShared: preset.isShared,
 		}));
 	}, [resolvedPresetOptions]);
@@ -134,6 +136,7 @@ export const PresetActionsCard = () => {
 		template: PresetTemplate,
 		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
+		iconKey?: PresetIconKey | null,
 	) => {
 		if (appliedTemplateKeys.has(template.key)) {
 			return false;
@@ -147,6 +150,7 @@ export const PresetActionsCard = () => {
 				templateKey: template.key,
 				isShared,
 				approvalOverride,
+				iconKey,
 			}),
 		);
 		if (success) {
@@ -163,6 +167,7 @@ export const PresetActionsCard = () => {
 		bucket: DurationKey,
 		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
+		iconKey?: PresetIconKey | null,
 	): Promise<boolean> => {
 		if (label.trim().length < 2) {
 			return false;
@@ -175,6 +180,7 @@ export const PresetActionsCard = () => {
 				bucket,
 				isShared,
 				approvalOverride,
+				iconKey,
 			}),
 		);
 	};
@@ -210,6 +216,7 @@ export const PresetActionsCard = () => {
 		bucket: DurationKey,
 		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
+		iconKey?: PresetIconKey | null,
 	): Promise<boolean> => {
 		if (label.trim().length < 2) {
 			return false;
@@ -223,6 +230,7 @@ export const PresetActionsCard = () => {
 				bucket,
 				isShared,
 				approvalOverride,
+				iconKey,
 			}),
 		);
 	};

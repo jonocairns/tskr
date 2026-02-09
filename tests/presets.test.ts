@@ -7,6 +7,7 @@ const makePreset = (overrides: Partial<PresetRecord> = {}): PresetRecord => ({
 	label: "Cleanup",
 	bucket: "QUICK",
 	templateKey: null,
+	iconKey: null,
 	isShared: false,
 	createdById: "user-1",
 	approvalOverride: null,

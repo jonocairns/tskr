@@ -2,6 +2,7 @@ import { Loader2Icon } from "lucide-react";
 import type { SyntheticEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 
+import { PresetIconPicker } from "@/components/task-actions/PresetIconPicker";
 import { PresetListItem } from "@/components/task-actions/PresetListItem";
 import type { PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { getLocalizedDurationBuckets, getLocalizedPresetTasks } from "@/lib/points";
+import type { PresetIconKey } from "@/lib/presetIcons";
 import { cn } from "@/lib/utils";
 
 type ApprovalOverrideOption = "DEFAULT" | "REQUIRE" | "SKIP";
@@ -40,11 +42,13 @@ type Props = {
 		bucket: DurationKey,
 		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
+		iconKey?: PresetIconKey | null,
 	) => Promise<boolean>;
 	onCreatePresetFromTemplate: (
 		template: PresetTemplate,
 		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
+		iconKey?: PresetIconKey | null,
 	) => Promise<boolean>;
 	onUpdatePreset: (
 		presetId: string,
@@ -52,6 +56,7 @@ type Props = {
 		bucket: DurationKey,
 		isShared: boolean,
 		approvalOverride?: "REQUIRE" | "SKIP" | null,
+		iconKey?: PresetIconKey | null,
 	) => Promise<boolean>;
 	onDeletePreset: (presetId: string) => Promise<boolean>;
 	templatesByBucket: TemplatesByBucket;
@@ -106,11 +111,13 @@ export function PresetActionsDrawer({
 	const [customBucket, setCustomBucket] = useState<DurationKey>(defaultBucket);
 	const [customApprovalOverride, setCustomApprovalOverride] = useState<ApprovalOverrideOption>("DEFAULT");
 	const [customIsShared, setCustomIsShared] = useState(true);
+	const [customIconKey, setCustomIconKey] = useState<PresetIconKey | null>(null);
 	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
 	const [editLabel, setEditLabel] = useState("");
 	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
 	const [editApprovalOverride, setEditApprovalOverride] = useState<ApprovalOverrideOption>("DEFAULT");
 	const [editIsShared, setEditIsShared] = useState(true);
+	const [editIconKey, setEditIconKey] = useState<PresetIconKey | null>(null);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -118,11 +125,13 @@ export function PresetActionsDrawer({
 			setCustomBucket(defaultBucket);
 			setCustomApprovalOverride("DEFAULT");
 			setCustomIsShared(true);
+			setCustomIconKey(null);
 			setEditingPresetId(null);
 			setEditLabel("");
 			setEditBucket(defaultBucket);
 			setEditApprovalOverride("DEFAULT");
 			setEditIsShared(true);
+			setEditIconKey(null);
 		}
 	}, [isOpen, defaultBucket]);
 
@@ -131,6 +140,7 @@ export function PresetActionsDrawer({
 		setCustomBucket(defaultBucket);
 		setCustomApprovalOverride("DEFAULT");
 		setCustomIsShared(true);
+		setCustomIconKey(null);
 	};
 
 	const canCreate = customLabel.trim().length >= 2;
@@ -141,7 +151,7 @@ export function PresetActionsDrawer({
 	const handleCreatePreset = async (): Promise<void> => {
 		if (!canCreate) return;
 		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
-		const success = await onCreatePreset(customLabel, customBucket, customIsShared, approvalOverride);
+		const success = await onCreatePreset(customLabel, customBucket, customIsShared, approvalOverride, customIconKey);
 		if (success) {
 			resetCustomForm();
 		}
@@ -149,7 +159,7 @@ export function PresetActionsDrawer({
 
 	const handleCreatePresetFromTemplate = async (template: PresetTemplate): Promise<void> => {
 		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
-		const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride);
+		const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride, customIconKey);
 		if (success) {
 			resetCustomForm();
 		}
@@ -171,6 +181,7 @@ export function PresetActionsDrawer({
 		setEditBucket(preset.bucket);
 		setEditApprovalOverride(preset.approvalOverride ?? "DEFAULT");
 		setEditIsShared(preset.isShared);
+		setEditIconKey(preset.iconKey);
 	};
 
 	const cancelEdit = (): void => {
@@ -179,13 +190,14 @@ export function PresetActionsDrawer({
 		setEditBucket(defaultBucket);
 		setEditApprovalOverride("DEFAULT");
 		setEditIsShared(true);
+		setEditIconKey(null);
 	};
 
 	const handleUpdatePreset = async (event: SyntheticEvent<HTMLFormElement>, presetId: string): Promise<void> => {
 		event.preventDefault();
 		if (!canUpdate) return;
 		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, editApprovalOverride);
-		const success = await onUpdatePreset(presetId, editLabel, editBucket, editIsShared, approvalOverride);
+		const success = await onUpdatePreset(presetId, editLabel, editBucket, editIsShared, approvalOverride, editIconKey);
 		if (success) {
 			setEditingPresetId(null);
 		}
@@ -234,6 +246,19 @@ export function PresetActionsDrawer({
 										value={customLabel}
 										onChange={(e) => setCustomLabel(e.target.value)}
 										disabled={disabled}
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="custom-icon">{t("Icon")}</Label>
+									<PresetIconPicker
+										id="custom-icon"
+										value={customIconKey}
+										onChange={setCustomIconKey}
+										disabled={disabled}
+										placeholder={t("Pick an icon")}
+										searchPlaceholder={t("Search icons...")}
+										noneLabel={t("No icon")}
+										noResultsLabel={t("No icon found.")}
 									/>
 								</div>
 								<div className="space-y-2">
@@ -375,6 +400,8 @@ export function PresetActionsDrawer({
 											onEditApprovalOverrideChange={setEditApprovalOverride}
 											editIsShared={editIsShared}
 											onEditIsSharedChange={setEditIsShared}
+											editIconKey={editIconKey}
+											onEditIconKeyChange={setEditIconKey}
 											canUpdatePreset={canUpdate}
 											onUpdatePreset={handleUpdatePreset}
 											onCancelEdit={cancelEdit}

@@ -1,19 +1,22 @@
 import { useMemo } from "react";
 
+import { PresetIconGlyph } from "@/components/task-actions/presetIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useTranslation } from "@/lib/i18nClient";
 import { type DurationKey, getLocalizedDurationBuckets } from "@/lib/points";
+import type { PresetIconKey } from "@/lib/presetIcons";
 
 type TaskButtonProps = {
 	id: string;
 	label: string;
 	bucket: DurationKey;
+	iconKey: PresetIconKey | null;
 	disabled?: boolean;
 	onClick: (taskId: string) => void;
 };
 
-export const TaskButton = ({ id, label, bucket, disabled, onClick }: TaskButtonProps) => {
+export const TaskButton = ({ id, label, bucket, iconKey, disabled, onClick }: TaskButtonProps) => {
 	const { t } = useTranslation();
 	const durationBuckets = useMemo(() => getLocalizedDurationBuckets(t), [t]);
 	const bucketInfo = durationBuckets.find((b) => b.key === bucket);
@@ -26,7 +29,10 @@ export const TaskButton = ({ id, label, bucket, disabled, onClick }: TaskButtonP
 			disabled={disabled}
 		>
 			<div className="flex w-full items-center justify-between gap-2">
-				<span className="font-semibold">{label}</span>
+				<div className="flex items-center gap-2">
+					<PresetIconGlyph iconKey={iconKey} className="h-4 w-4 text-muted-foreground" />
+					<span className="font-semibold">{label}</span>
+				</div>
 				<div className="flex items-center gap-1">
 					<Badge variant="secondary">{bucketInfo?.label}</Badge>
 				</div>

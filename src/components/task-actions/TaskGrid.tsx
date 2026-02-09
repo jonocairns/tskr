@@ -29,6 +29,7 @@ export const TaskGrid = ({ presetOptions, filteredPresets, disabled, onTaskClick
 						id={task.id}
 						label={task.label}
 						bucket={task.bucket}
+						iconKey={task.iconKey}
 						disabled={disabled}
 						onClick={onTaskClick}
 					/>
