@@ -19,31 +19,38 @@ export const Toaster = () => {
 		if (variant === "warning") {
 			return <AlertTriangleIcon className="h-4 w-4 text-amber-600" aria-hidden="true" />;
 		}
-		return <InfoIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />;
+		return <InfoIcon className="h-4 w-4 text-foreground/85" aria-hidden="true" />;
 	};
 
 	return (
 		<ToastProvider>
-			{toasts.map(({ id, title, description, action, ...props }) => (
-				<Toast key={id} {...props}>
-					<div className="flex items-start gap-2">
-						<div
-							className={cn(
-								"mt-0.5 rounded-md border border-border/60 bg-background/70 p-1",
-								props.variant === "destructive" ? "border-destructive/30 bg-destructive/10" : null,
-							)}
-						>
-							{getToastIcon(props.variant)}
+			{toasts.map(({ id, title, description, action, ...props }) => {
+				const hasDescription = description !== undefined && description !== null;
+				const isDefaultVariant = props.variant === "default" || props.variant === undefined || props.variant === null;
+
+				return (
+					<Toast key={id} {...props}>
+						<div className={cn("flex gap-2", hasDescription ? "items-start" : "items-center")}>
+							<div
+								className={cn(
+									"rounded-md border border-border/60 bg-background/70 p-1",
+									hasDescription ? "mt-0.5" : null,
+									isDefaultVariant ? "border-foreground/20 bg-foreground/10" : null,
+									props.variant === "destructive" ? "border-destructive/30 bg-destructive/10" : null,
+								)}
+							>
+								{getToastIcon(props.variant)}
+							</div>
+							<div className="grid gap-0.5">
+								{title ? <ToastTitle>{title}</ToastTitle> : null}
+								{description ? <ToastDescription>{description}</ToastDescription> : null}
+							</div>
 						</div>
-						<div className="grid gap-0.5">
-							{title ? <ToastTitle>{title}</ToastTitle> : null}
-							{description ? <ToastDescription>{description}</ToastDescription> : null}
-						</div>
-					</div>
-					{action}
-					<ToastClose />
-				</Toast>
-			))}
+						{action}
+						<ToastClose />
+					</Toast>
+				);
+			})}
 			<ToastViewport />
 		</ToastProvider>
 	);
