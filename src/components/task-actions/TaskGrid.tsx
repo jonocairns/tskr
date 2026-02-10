@@ -1,5 +1,8 @@
+import { PlusIcon } from "lucide-react";
+
 import { TaskButton } from "@/components/task-actions/TaskButton";
 import type { PresetOption } from "@/components/task-actions/types";
+import { Button } from "@/components/ui/Button";
 import { useTranslation } from "@/lib/i18nClient";
 
 type TaskGridProps = {
@@ -7,9 +10,24 @@ type TaskGridProps = {
 	filteredPresets: PresetOption[];
 	disabled: boolean;
 	onTaskClick: (taskId: string) => void;
+	onOneOffClick: () => void;
+	isEditMode?: boolean;
+	onTaskEdit?: (taskId: string) => void;
+	onTaskDelete?: (taskId: string) => void;
+	canDeleteTask?: (taskId: string) => boolean;
 };
 
-export const TaskGrid = ({ presetOptions, filteredPresets, disabled, onTaskClick }: TaskGridProps) => {
+export const TaskGrid = ({
+	presetOptions,
+	filteredPresets,
+	disabled,
+	onTaskClick,
+	onOneOffClick,
+	isEditMode = false,
+	onTaskEdit,
+	onTaskDelete,
+	canDeleteTask,
+}: TaskGridProps) => {
 	const { t } = useTranslation();
 	const emptyState =
 		presetOptions.length === 0
@@ -19,9 +37,25 @@ export const TaskGrid = ({ presetOptions, filteredPresets, disabled, onTaskClick
 				: null;
 
 	return (
-		<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+		<div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3">
+			<Button
+				variant="outline"
+				className="group flex min-h-20 w-full flex-col items-start justify-start gap-1 rounded-xl border-dashed border-primary/40 bg-gradient-to-br from-primary/10 via-background to-background px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:from-primary/15 hover:shadow-md"
+				onClick={onOneOffClick}
+				disabled={disabled}
+			>
+				<div className="flex items-center gap-2">
+					<div className="rounded-md bg-white p-1.5 transition-colors group-hover:bg-white/90">
+						<PlusIcon className="h-4 w-4 text-black" />
+					</div>
+					<span className="font-semibold">{isEditMode ? t("Create new chore") : t("Log one off task")}</span>
+				</div>
+				<span className="text-xs font-medium leading-tight text-muted-foreground">
+					{isEditMode ? t("Open task form") : t("Log something not in your saved tasks")}
+				</span>
+			</Button>
 			{emptyState ? (
-				<p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">{emptyState}</p>
+				<p className="text-sm text-muted-foreground sm:col-span-1 xl:col-span-2">{emptyState}</p>
 			) : (
 				filteredPresets.map((task) => (
 					<TaskButton
@@ -32,6 +66,10 @@ export const TaskGrid = ({ presetOptions, filteredPresets, disabled, onTaskClick
 						iconKey={task.iconKey}
 						disabled={disabled}
 						onClick={onTaskClick}
+						isEditMode={isEditMode}
+						onEdit={onTaskEdit}
+						onDelete={onTaskDelete}
+						canDelete={canDeleteTask?.(task.id) ?? false}
 					/>
 				))
 			)}

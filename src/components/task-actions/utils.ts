@@ -1,1 +1,12 @@
+import type { DurationKey } from "@/lib/points";
+
+export const BUCKET_WINDOW_SHORT: Record<DurationKey, string> = {
+	TINY: "<1m",
+	QUICK: "1-5m",
+	ROUTINE: "5-15m",
+	CHALLENGING: "15-30m",
+	HEAVY: "30-60m",
+	MAJOR: "60-120m",
+};
+
 export const normalizeText = (value: string) => value.trim().toLowerCase();
