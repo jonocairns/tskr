@@ -5,25 +5,25 @@
 		var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
 		"Segoe UI Symbol", "Noto Color Emoji";
 
-	--color-border: hsl(240 5.9% 90%);
-	--color-input: hsl(240 5.9% 90%);
-	--color-ring: hsl(240 10% 3.9%);
-	--color-background: hsl(0 0% 100%);
-	--color-foreground: hsl(240 10% 3.9%);
+	--color-border: hsl(35 14% 84%);
+	--color-input: hsl(35 14% 84%);
+	--color-ring: hsl(215 22% 43%);
+	--color-background: hsl(44 26% 95%);
+	--color-foreground: hsl(220 25% 12%);
 	--color-primary: hsl(240 5.9% 10%);
 	--color-primary-foreground: hsl(0 0% 98%);
-	--color-secondary: hsl(240 4.8% 95.9%);
-	--color-secondary-foreground: hsl(240 5.9% 10%);
+	--color-secondary: hsl(42 22% 90%);
+	--color-secondary-foreground: hsl(220 25% 12%);
 	--color-destructive: hsl(0 84.2% 60.2%);
 	--color-destructive-foreground: hsl(0 0% 98%);
-	--color-muted: hsl(240 4.8% 95.9%);
-	--color-muted-foreground: hsl(240 3.8% 46.1%);
-	--color-accent: hsl(240 4.8% 95.9%);
-	--color-accent-foreground: hsl(240 5.9% 10%);
-	--color-popover: hsl(0 0% 100%);
-	--color-popover-foreground: hsl(240 10% 3.9%);
-	--color-card: hsl(0 0% 100%);
-	--color-card-foreground: hsl(240 10% 3.9%);
+	--color-muted: hsl(42 22% 90%);
+	--color-muted-foreground: hsl(25 7% 34%);
+	--color-accent: hsl(42 22% 90%);
+	--color-accent-foreground: hsl(220 25% 12%);
+	--color-popover: hsl(46 33% 97%);
+	--color-popover-foreground: hsl(220 25% 12%);
+	--color-card: hsl(46 33% 97%);
+	--color-card-foreground: hsl(220 25% 12%);
 	--color-chart-1: hsl(12 76% 61%);
 	--color-chart-2: hsl(173 58% 39%);
 	--color-chart-3: hsl(197 37% 24%);
@@ -36,6 +36,8 @@
 
 	--animate-accordion-down: accordion-down 0.2s ease-out;
 	--animate-accordion-up: accordion-up 0.2s ease-out;
+	--animate-edit-border-pulse: edit-border-pulse 1s ease-in-out infinite;
+	--animate-edit-mode-rainbow-pulse: edit-mode-rainbow-pulse 3s linear infinite;
 }
 
 @layer base {
@@ -91,4 +93,40 @@
 	to {
 		height: 0;
 	}
+}
+
+@keyframes edit-border-pulse {
+	0%,
+	100% {
+		border-color: rgb(255 255 255 / 0.9);
+		box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25);
+	}
+	50% {
+		border-color: rgb(8 8 8 / 0.95);
+		box-shadow: 0 0 0 1px rgb(8 8 8 / 0.45);
+	}
+}
+
+@keyframes edit-mode-rainbow-pulse {
+	0% {
+		background-position: 0% 50%;
+		filter: brightness(0.95);
+	}
+	50% {
+		background-position: 100% 50%;
+		filter: brightness(1.05);
+	}
+	100% {
+		background-position: 0% 50%;
+		filter: brightness(0.95);
+	}
+}
+
+@utility text-rainbow-smooth {
+	background-image: linear-gradient(90deg, #ff5f6d, #ffb86c, #fff36d, #6df7c1, #6da8ff, #d66dff, #ff5f6d);
+	background-size: 300% 100%;
+	background-clip: text;
+	-webkit-background-clip: text;
+	color: transparent;
+	-webkit-text-fill-color: transparent;
 }

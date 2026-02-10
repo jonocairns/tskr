@@ -262,6 +262,7 @@ model PresetTask {
   label       String
   bucket      String
   templateKey String?
+  iconKey     String?
   isShared    Boolean   @default(false)
   approvalOverride ApprovalOverride?
   logs        PointLog[]

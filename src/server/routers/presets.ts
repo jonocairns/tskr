@@ -12,11 +12,14 @@ const listPresetsSchema = z.object({
 	householdId: z.string().min(1),
 });
 
+const iconKeySchema = z.string().trim().min(1).max(100).nullish();
+
 const presetSchema = z.object({
 	householdId: z.string().min(1),
 	label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 	bucket: z.enum(DURATION_KEYS),
 	templateKey: z.string().trim().min(1).max(100).nullish(),
+	iconKey: iconKeySchema,
 	isShared: z.boolean().optional(),
 	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
 });
@@ -27,12 +30,21 @@ const updatePresetSchema = z
 		id: z.string(),
 		label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short").optional(),
 		bucket: z.enum(DURATION_KEYS).optional(),
+		iconKey: iconKeySchema,
 		isShared: z.boolean().optional(),
 		approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
 	})
-	.refine((data) => data.label || data.bucket || data.isShared !== undefined || data.approvalOverride !== undefined, {
-		message: "No updates provided",
-	});
+	.refine(
+		(data) =>
+			data.label ||
+			data.bucket ||
+			data.iconKey !== undefined ||
+			data.isShared !== undefined ||
+			data.approvalOverride !== undefined,
+		{
+			message: "No updates provided",
+		},
+	);
 
 const deletePresetSchema = z.object({
 	householdId: z.string().min(1),
@@ -56,6 +68,7 @@ export const presetsRouter = router({
 				label: true,
 				bucket: true,
 				templateKey: true,
+				iconKey: true,
 				isShared: true,
 				createdById: true,
 				approvalOverride: true,
@@ -77,6 +90,7 @@ export const presetsRouter = router({
 				label: input.label,
 				bucket: input.bucket,
 				templateKey: input.templateKey ?? null,
+				iconKey: input.iconKey ?? null,
 				isShared: input.isShared ?? true,
 				approvalOverride: input.approvalOverride ?? null,
 			},
@@ -85,6 +99,7 @@ export const presetsRouter = router({
 				label: true,
 				bucket: true,
 				templateKey: true,
+				iconKey: true,
 				isShared: true,
 				createdById: true,
 				approvalOverride: true,
@@ -109,6 +124,7 @@ export const presetsRouter = router({
 				label: true,
 				bucket: true,
 				templateKey: true,
+				iconKey: true,
 			},
 		});
 
@@ -139,6 +155,7 @@ export const presetsRouter = router({
 				label: updates.label,
 				bucket: updates.bucket,
 				templateKey: clearTemplateKey ? null : undefined,
+				iconKey: updates.iconKey === undefined ? undefined : updates.iconKey,
 				isShared: isOwner ? updates.isShared : undefined,
 				approvalOverride: updates.approvalOverride === undefined ? undefined : updates.approvalOverride,
 			},
@@ -148,6 +165,7 @@ export const presetsRouter = router({
 				label: true,
 				bucket: true,
 				templateKey: true,
+				iconKey: true,
 				isShared: true,
 				createdById: true,
 				approvalOverride: true,

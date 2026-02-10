@@ -1,4 +1,5 @@
 import type { DurationKey } from "@/lib/points";
+import type { PresetIconKey } from "@/lib/presetIcons";
 
 export type { PresetSummary } from "@/lib/dashboard/presets";
 
@@ -7,6 +8,7 @@ export type PresetOption = {
 	label: string;
 	bucket: DurationKey;
 	templateKey: string | null;
+	iconKey: PresetIconKey | null;
 	isShared: boolean;
 };
 

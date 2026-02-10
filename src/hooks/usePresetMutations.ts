@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/useToast";
 import type { PresetSummary } from "@/lib/dashboard/presets";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
+import { normalizePresetIconKey } from "@/lib/presetIcons";
 import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
 import { trpc } from "@/lib/trpc/react";
 
@@ -16,6 +17,7 @@ const normalizePreset = <
 	TPreset extends {
 		bucket: string;
 		templateKey: string | null;
+		iconKey: string | null;
 		createdAt: Date;
 	},
 >(
@@ -24,6 +26,7 @@ const normalizePreset = <
 	...preset,
 	bucket: preset.bucket as DurationKey,
 	templateKey: preset.templateKey ?? null,
+	iconKey: normalizePresetIconKey(preset.iconKey),
 	createdAt: preset.createdAt.toISOString(),
 });
 
@@ -37,6 +40,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 			toast({
 				title: t("Preset added"),
 				description: t("Chore added to your presets."),
+				variant: "success",
 			});
 		},
 		onError: (error) => {
@@ -67,6 +71,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 								})
 									? null
 									: preset.templateKey,
+								iconKey: variables.iconKey !== undefined ? variables.iconKey : preset.iconKey,
 								approvalOverride: variables.approvalOverride ?? preset.approvalOverride,
 							}
 						: preset,
@@ -87,7 +92,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 		onSuccess: (data) => {
 			const updatedPreset = normalizePreset(data.preset);
 			setCustomPresetsAction((prev) => prev.map((preset) => (preset.id === updatedPreset.id ? updatedPreset : preset)));
-			toast({ title: t("Preset updated") });
+			toast({ title: t("Preset updated"), variant: "success" });
 		},
 	});
 
@@ -108,7 +113,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 			});
 		},
 		onSuccess: () => {
-			toast({ title: t("Preset deleted") });
+			toast({ title: t("Preset deleted"), variant: "success" });
 		},
 	});
 

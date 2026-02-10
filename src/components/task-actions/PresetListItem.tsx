@@ -1,6 +1,8 @@
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import type { SyntheticEvent } from "react";
 
+import { PresetIconPicker } from "@/components/task-actions/PresetIconPicker";
+import { PresetIconGlyph } from "@/components/task-actions/presetIcons";
 import type { PresetSummary } from "@/components/task-actions/types";
 import {
 	AlertDialog,
@@ -19,6 +21,7 @@ import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import type { DurationKey } from "@/lib/points";
 import { DURATION_BUCKETS } from "@/lib/points";
+import type { PresetIconKey } from "@/lib/presetIcons";
 
 type Props = {
 	preset: PresetSummary;
@@ -33,6 +36,8 @@ type Props = {
 	onEditApprovalOverrideChange: (value: "DEFAULT" | "REQUIRE" | "SKIP") => void;
 	editIsShared: boolean;
 	onEditIsSharedChange: (value: boolean) => void;
+	editIconKey: PresetIconKey | null;
+	onEditIconKeyChange: (value: PresetIconKey | null) => void;
 	canUpdatePreset: boolean;
 	onUpdatePreset: (event: SyntheticEvent<HTMLFormElement>, presetId: string) => void;
 	onCancelEdit: () => void;
@@ -57,6 +62,8 @@ export function PresetListItem({
 	onEditApprovalOverrideChange,
 	editIsShared,
 	onEditIsSharedChange,
+	editIconKey,
+	onEditIconKeyChange,
 	canUpdatePreset,
 	onUpdatePreset,
 	onCancelEdit,
@@ -98,6 +105,15 @@ export function PresetListItem({
 						</SelectContent>
 					</Select>
 				</div>
+				<div className="space-y-2">
+					<Label htmlFor={`preset-icon-${preset.id}`}>Icon</Label>
+					<PresetIconPicker
+						id={`preset-icon-${preset.id}`}
+						value={editIconKey}
+						onChange={onEditIconKeyChange}
+						disabled={disabled}
+					/>
+				</div>
 				{canManagePresets ? (
 					<div className="space-y-2">
 						<label className="flex items-center gap-2">
@@ -131,11 +147,17 @@ export function PresetListItem({
 						</Select>
 					</div>
 				) : null}
-				<div className="flex items-center gap-2">
-					<Button type="submit" size="sm" disabled={disabled || !canUpdatePreset}>
+				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+					<Button type="submit" className="w-full" disabled={disabled || !canUpdatePreset}>
 						Save
 					</Button>
-					<Button type="button" variant="ghost" size="sm" onClick={onCancelEdit} disabled={disabled}>
+					<Button
+						type="button"
+						variant="outline"
+						className="w-full border-muted-foreground/40 hover:border-muted-foreground/60"
+						onClick={onCancelEdit}
+						disabled={disabled}
+					>
 						Cancel
 					</Button>
 				</div>
@@ -147,6 +169,7 @@ export function PresetListItem({
 		<div className="flex items-center justify-between gap-3 rounded-lg border p-3">
 			<div className="space-y-1">
 				<div className="flex items-center gap-2">
+					<PresetIconGlyph iconKey={preset.iconKey} className="h-4 w-4 text-muted-foreground" />
 					<p className="text-sm font-medium">{displayLabel}</p>
 					{!preset.isShared ? (
 						<span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Personal</span>
