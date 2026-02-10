@@ -600,7 +600,7 @@ export const PresetActionsDrawer = ({
 									role="dialog"
 									aria-modal="true"
 									aria-label={t("Create new chore")}
-									className="absolute left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background shadow-xl"
+									className="absolute inset-0 flex h-dvh w-full flex-col bg-background shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border"
 								>
 									<div className="flex items-center justify-between gap-2 border-b px-4 py-4">
 										<p className="text-sm font-semibold">{t("Create new chore")}</p>
@@ -608,7 +608,9 @@ export const PresetActionsDrawer = ({
 											{t("Close")}
 										</Button>
 									</div>
-									<div className="max-h-[80vh] overflow-y-auto p-4">{createFormPanel(false, false)}</div>
+									<div className="min-h-0 flex-1 overflow-y-auto p-4 sm:max-h-[80vh] sm:flex-none">
+										{createFormPanel(false, false)}
+									</div>
 								</div>
 							</div>,
 							document.body,
@@ -627,7 +629,7 @@ export const PresetActionsDrawer = ({
 									role="dialog"
 									aria-modal="true"
 									aria-label={t("Edit task")}
-									className="absolute left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background shadow-xl"
+									className="absolute inset-0 flex h-dvh w-full flex-col bg-background shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border"
 								>
 									<div className="flex items-center justify-between gap-2 border-b px-4 py-4">
 										<p className="text-sm font-semibold">{t("Edit task")}</p>
@@ -635,7 +637,9 @@ export const PresetActionsDrawer = ({
 											{t("Close")}
 										</Button>
 									</div>
-									<div className="max-h-[80vh] overflow-y-auto p-4">{editFormPanel(editingPreset)}</div>
+									<div className="min-h-0 flex-1 overflow-y-auto p-4 sm:max-h-[80vh] sm:flex-none">
+										{editFormPanel(editingPreset)}
+									</div>
 								</div>
 							</div>,
 							document.body,

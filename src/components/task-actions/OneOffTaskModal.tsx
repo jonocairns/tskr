@@ -74,7 +74,7 @@ export const OneOffTaskModal = ({
 				role="dialog"
 				aria-modal="true"
 				aria-label={t("Log one off task")}
-				className="absolute left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background shadow-xl"
+				className="absolute inset-0 flex h-dvh w-full flex-col bg-background shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:w-[calc(100%-2rem)] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border"
 			>
 				<div className="flex items-center justify-between gap-2 border-b px-4 py-4">
 					<p className="text-sm font-semibold">{t("Log one off task")}</p>
@@ -82,7 +82,7 @@ export const OneOffTaskModal = ({
 						{t("Close")}
 					</Button>
 				</div>
-				<div className="max-h-[80vh] space-y-4 overflow-y-auto p-4">
+				<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:max-h-[80vh] sm:flex-none">
 					<div className="space-y-2">
 						<Label htmlFor="one-off-task-name" className="text-xs text-muted-foreground">
 							{t("Task name")}
