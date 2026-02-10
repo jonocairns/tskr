@@ -5,13 +5,11 @@ import { cn } from "@/lib/utils";
 
 type Props = ComponentPropsWithoutRef<typeof Card>;
 
-export function DashboardCard({ className, ...props }: Props) {
+export function DashboardCard({ className, style, ...props }: Props) {
 	return (
 		<Card
-			className={cn(
-				"border-primary/10 bg-gradient-to-br from-primary/5 via-background to-background shadow-sm",
-				className,
-			)}
+			className={cn("border-border/80 bg-card bg-none shadow-sm", className)}
+			style={{ ...style, backgroundColor: "var(--color-card)", backgroundImage: "none" }}
 			{...props}
 		/>
 	);

@@ -25,8 +25,8 @@ const centeredSizeClasses: Record<NonNullable<Props["size"]>, string> = {
 export const PageShell = ({ children, size = "lg", layout = "default", className, containerClassName }: Props) => {
 	const mainClass =
 		layout === "centered"
-			? "flex min-h-screen items-center bg-gradient-to-br from-background via-background to-muted px-4 py-4"
-			: "min-h-screen bg-gradient-to-br from-background via-background to-muted";
+			? "flex min-h-screen items-center bg-background px-4 py-4 dark:bg-gradient-to-br dark:from-background dark:via-background dark:to-muted"
+			: "min-h-screen bg-background dark:bg-gradient-to-br dark:from-background dark:via-background dark:to-muted";
 	const containerClass =
 		layout === "centered"
 			? cn("mx-auto w-full", centeredSizeClasses[size])
