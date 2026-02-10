@@ -94,6 +94,7 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 			toast({
 				title: t("Preset added"),
 				description: t("Template added to your presets."),
+				variant: "success",
 			});
 		}
 		return success;

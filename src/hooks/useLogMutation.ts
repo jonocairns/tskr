@@ -19,6 +19,7 @@ export const useLogMutation = () => {
 				description: isPending
 					? t("Task logged and waiting for approval.")
 					: t("Time-based task recorded and points added."),
+				variant: isPending ? "warning" : "success",
 			});
 			utils.logs.invalidate();
 			router.refresh();

@@ -63,6 +63,7 @@ export const TaskActionsProvider = ({
 			toast({
 				title: isPending ? t("Submitted for approval") : t("Task logged"),
 				description: isPending ? t("Task logged and waiting for approval.") : t("Task recorded and points added."),
+				variant: isPending ? "warning" : "success",
 			});
 			utils.logs.invalidate();
 			router.refresh();

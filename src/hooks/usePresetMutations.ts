@@ -40,6 +40,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 			toast({
 				title: t("Preset added"),
 				description: t("Chore added to your presets."),
+				variant: "success",
 			});
 		},
 		onError: (error) => {
@@ -91,7 +92,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 		onSuccess: (data) => {
 			const updatedPreset = normalizePreset(data.preset);
 			setCustomPresetsAction((prev) => prev.map((preset) => (preset.id === updatedPreset.id ? updatedPreset : preset)));
-			toast({ title: t("Preset updated") });
+			toast({ title: t("Preset updated"), variant: "success" });
 		},
 	});
 
@@ -112,7 +113,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 			});
 		},
 		onSuccess: () => {
-			toast({ title: t("Preset deleted") });
+			toast({ title: t("Preset deleted"), variant: "success" });
 		},
 	});
 
