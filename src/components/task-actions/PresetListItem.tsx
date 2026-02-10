@@ -147,11 +147,17 @@ export function PresetListItem({
 						</Select>
 					</div>
 				) : null}
-				<div className="flex items-center gap-2">
-					<Button type="submit" size="sm" disabled={disabled || !canUpdatePreset}>
+				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+					<Button type="submit" className="w-full" disabled={disabled || !canUpdatePreset}>
 						Save
 					</Button>
-					<Button type="button" variant="ghost" size="sm" onClick={onCancelEdit} disabled={disabled}>
+					<Button
+						type="button"
+						variant="outline"
+						className="w-full border-muted-foreground/40 hover:border-muted-foreground/60"
+						onClick={onCancelEdit}
+						disabled={disabled}
+					>
 						Cancel
 					</Button>
 				</div>

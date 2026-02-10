@@ -4,8 +4,8 @@ import { useToast } from "@/hooks/useToast";
 import type { PresetSummary } from "@/lib/dashboard/presets";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
-import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
 import { normalizePresetIconKey } from "@/lib/presetIcons";
+import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
 import { trpc } from "@/lib/trpc/react";
 
 type UsePresetMutationsOptions = {
@@ -70,8 +70,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 								})
 									? null
 									: preset.templateKey,
-								iconKey:
-									variables.iconKey !== undefined ? variables.iconKey : preset.iconKey,
+								iconKey: variables.iconKey !== undefined ? variables.iconKey : preset.iconKey,
 								approvalOverride: variables.approvalOverride ?? preset.approvalOverride,
 							}
 						: preset,

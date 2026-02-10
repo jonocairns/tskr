@@ -1,5 +1,5 @@
 import { ClipboardListIcon } from "lucide-react";
-import { DynamicIcon, iconNames, type IconName } from "lucide-react/dynamic";
+import { DynamicIcon, type IconName, iconNames } from "lucide-react/dynamic";
 
 import { normalizePresetIconKey, type PresetIconKey } from "@/lib/presetIcons";
 

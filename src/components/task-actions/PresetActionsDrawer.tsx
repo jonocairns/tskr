@@ -10,6 +10,7 @@ import { CardDescription, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { getLocalizedDurationBuckets, getLocalizedPresetTasks } from "@/lib/points";
@@ -17,6 +18,7 @@ import type { PresetIconKey } from "@/lib/presetIcons";
 import { cn } from "@/lib/utils";
 
 type ApprovalOverrideOption = "DEFAULT" | "REQUIRE" | "SKIP";
+type TaskCreateMode = "preset" | "one-off";
 
 const BUCKET_WINDOW_SHORT: Record<DurationKey, string> = {
 	TINY: "<1m",
@@ -112,6 +114,7 @@ export function PresetActionsDrawer({
 	const [customApprovalOverride, setCustomApprovalOverride] = useState<ApprovalOverrideOption>("DEFAULT");
 	const [customIsShared, setCustomIsShared] = useState(true);
 	const [customIconKey, setCustomIconKey] = useState<PresetIconKey | null>(null);
+	const [taskCreateMode, setTaskCreateMode] = useState<TaskCreateMode>(canManagePresets ? "preset" : "one-off");
 	const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
 	const [editLabel, setEditLabel] = useState("");
 	const [editBucket, setEditBucket] = useState<DurationKey>(defaultBucket);
@@ -126,6 +129,7 @@ export function PresetActionsDrawer({
 			setCustomApprovalOverride("DEFAULT");
 			setCustomIsShared(true);
 			setCustomIconKey(null);
+			setTaskCreateMode(canManagePresets ? "preset" : "one-off");
 			setEditingPresetId(null);
 			setEditLabel("");
 			setEditBucket(defaultBucket);
@@ -133,7 +137,13 @@ export function PresetActionsDrawer({
 			setEditIsShared(true);
 			setEditIconKey(null);
 		}
-	}, [isOpen, defaultBucket]);
+	}, [isOpen, defaultBucket, canManagePresets]);
+
+	useEffect(() => {
+		if (!canManagePresets && taskCreateMode === "preset") {
+			setTaskCreateMode("one-off");
+		}
+	}, [canManagePresets, taskCreateMode]);
 
 	const resetCustomForm = (): void => {
 		setCustomLabel("");
@@ -145,6 +155,9 @@ export function PresetActionsDrawer({
 
 	const canCreate = customLabel.trim().length >= 2;
 	const canUpdate = editLabel.trim().length >= 2;
+	const isPresetMode = canManagePresets && taskCreateMode === "preset";
+	const primaryActionLabel = isPresetMode ? t("Create new chore") : t("Log one off task");
+	const primaryActionPending = isPresetMode ? isPresetPending : isPending;
 
 	if (!isOpen) return null;
 
@@ -237,9 +250,28 @@ export function PresetActionsDrawer({
 					<div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
 						<div className="space-y-3">
 							<div className="space-y-3 rounded-lg border p-3">
-								<p className="text-sm font-medium">{t("Add or log a one off chore")}</p>
+								{canManagePresets ? (
+									<Tabs
+										value={taskCreateMode}
+										onValueChange={(value) => setTaskCreateMode(value === "preset" ? "preset" : "one-off")}
+										className="w-full"
+									>
+										<TabsList className="grid w-full grid-cols-2" aria-label={t("Add or log a one off chore")}>
+											<TabsTrigger value="preset" disabled={disabled}>
+												{t("Create new chore")}
+											</TabsTrigger>
+											<TabsTrigger value="one-off" disabled={disabled}>
+												{t("Log one off task")}
+											</TabsTrigger>
+										</TabsList>
+									</Tabs>
+								) : (
+									<p className="text-sm font-medium">{t("Log one off task")}</p>
+								)}
 								<div className="space-y-2">
-									<Label htmlFor="custom-name">{t("Task name")}</Label>
+									<Label htmlFor="custom-name" className="text-xs text-muted-foreground">
+										{t("Task name")}
+									</Label>
 									<Input
 										id="custom-name"
 										placeholder={t("Name your task")}
@@ -248,19 +280,23 @@ export function PresetActionsDrawer({
 										disabled={disabled}
 									/>
 								</div>
-								<div className="space-y-2">
-									<Label htmlFor="custom-icon">{t("Icon")}</Label>
-									<PresetIconPicker
-										id="custom-icon"
-										value={customIconKey}
-										onChange={setCustomIconKey}
-										disabled={disabled}
-										placeholder={t("Pick an icon")}
-										searchPlaceholder={t("Search icons...")}
-										noneLabel={t("No icon")}
-										noResultsLabel={t("No icon found.")}
-									/>
-								</div>
+								{isPresetMode ? (
+									<div className="space-y-2">
+										<Label htmlFor="custom-icon" className="text-xs text-muted-foreground">
+											{t("Icon")}
+										</Label>
+										<PresetIconPicker
+											id="custom-icon"
+											value={customIconKey}
+											onChange={setCustomIconKey}
+											disabled={disabled}
+											placeholder={t("Pick an icon")}
+											searchPlaceholder={t("Search icons...")}
+											noneLabel={t("No icon")}
+											noResultsLabel={t("No icon found.")}
+										/>
+									</div>
+								) : null}
 								<div className="space-y-2">
 									<p className="text-xs font-medium text-muted-foreground">{t("Bucket")}</p>
 									<div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t("Bucket")}>
@@ -297,7 +333,7 @@ export function PresetActionsDrawer({
 									</div>
 								</div>
 
-								{canEditApprovalOverride ? (
+								{isPresetMode && canEditApprovalOverride ? (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">{t("Approval override")}</p>
 										<Select
@@ -316,7 +352,7 @@ export function PresetActionsDrawer({
 										</Select>
 									</div>
 								) : null}
-								{canManagePresets ? (
+								{isPresetMode && canManagePresets ? (
 									<div className="space-y-2">
 										<label className="flex items-center gap-2">
 											<input
@@ -335,30 +371,16 @@ export function PresetActionsDrawer({
 										</p>
 									</div>
 								) : null}
-								<div className="grid gap-2 sm:grid-cols-2">
-									<Button
-										type="button"
-										variant="secondary"
-										className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
-										onClick={handleLogTimed}
-										disabled={disabled || !canCreate}
-									>
-										{isPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-										{t("Log one off task")}
-									</Button>
-									{canManagePresets ? (
-										<Button
-											type="button"
-											className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
-											onClick={handleCreatePreset}
-											disabled={disabled || !canCreate}
-										>
-											{isPresetPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-											{t("Create new chore")}
-										</Button>
-									) : null}
-								</div>
-								{canManagePresets && templatesByBucket.length > 0 ? (
+								<Button
+									type="button"
+									className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
+									onClick={isPresetMode ? handleCreatePreset : handleLogTimed}
+									disabled={disabled || !canCreate}
+								>
+									{primaryActionPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
+									{primaryActionLabel}
+								</Button>
+								{isPresetMode && canManagePresets && templatesByBucket.length > 0 ? (
 									<div className="space-y-2">
 										<p className="text-xs font-medium text-muted-foreground">{t("Templates")}</p>
 										<div className="flex flex-wrap gap-2">

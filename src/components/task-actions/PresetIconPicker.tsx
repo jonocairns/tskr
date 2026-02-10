@@ -2,15 +2,14 @@
 
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-import { Command, CommandInput } from "@/components/ui/Command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/Popover";
 import {
 	getPresetIconLabel,
 	PRESET_ICON_OPTIONS,
 	PresetIconGlyph,
 	resolvePresetIconKey,
 } from "@/components/task-actions/presetIcons";
+import { Command, CommandInput } from "@/components/ui/Command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/Popover";
 import type { PresetIconKey } from "@/lib/presetIcons";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +59,13 @@ export const PresetIconPicker = ({
 	const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN_ROWS);
 	const endIndex = Math.min(filteredIconOptions.length, startIndex + visibleRowCount);
 	const visibleRows = filteredIconOptions.slice(startIndex, endIndex);
+	const handleQueryChange = (nextQuery: string) => {
+		setQuery(nextQuery);
+		if (viewportRef.current) {
+			viewportRef.current.scrollTop = 0;
+		}
+		setScrollTop(0);
+	};
 
 	useEffect(() => {
 		if (!open) {
@@ -94,7 +100,7 @@ export const PresetIconPicker = ({
 			viewportRef.current.scrollTop = 0;
 		}
 		setScrollTop(0);
-	}, [open, query]);
+	}, [open]);
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -121,7 +127,7 @@ export const PresetIconPicker = ({
 				className="min-w-[var(--radix-popper-anchor-width)] w-[var(--radix-popper-anchor-width)] p-0"
 			>
 				<Command shouldFilter={false}>
-					<CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
+					<CommandInput placeholder={searchPlaceholder} value={query} onValueChange={handleQueryChange} />
 					<div className="border-b p-1">
 						<button
 							type="button"
