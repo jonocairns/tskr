@@ -3,6 +3,7 @@ import { LogStatus } from "@prisma/client";
 
 import { buildAssignedTaskEntries } from "@/lib/dashboard/assigned";
 import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from "@/lib/formatDate";
+import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_TIME_ZONE, getTimeZoneDayNumber } from "@/lib/timeZones";
 
@@ -31,6 +32,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		recentLogs,
 		pendingLogs,
 		presets,
+		presetOrders,
 		assignedTasks,
 		weeklyTaskCount,
 		weeklyPointSum,
@@ -97,7 +99,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 				householdId,
 				OR: [{ isShared: true }, { createdById: userId }],
 			},
-			orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+			orderBy: { createdAt: "asc" },
 			select: {
 				id: true,
 				label: true,
@@ -105,10 +107,16 @@ export async function getDashboardData(userId: string, householdId: string) {
 				templateKey: true,
 				iconKey: true,
 				isShared: true,
-				sortOrder: true,
 				createdById: true,
 				approvalOverride: true,
 				createdAt: true,
+			},
+		}),
+		prisma.presetTaskOrder.findMany({
+			where: { householdId, userId },
+			select: {
+				presetId: true,
+				sortOrder: true,
 			},
 		}),
 		prisma.assignedTask.findMany({
@@ -185,6 +193,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		userId: item.userId,
 		_min: { createdAt: item._min.createdAt },
 	}));
+	const orderedPresets = applyUserPresetOrdering(presets, presetOrders);
 
 	return {
 		pointSums,
@@ -203,7 +212,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		hasMoreHistory,
 		pendingLogs: trimmedApprovals,
 		hasMoreApprovals,
-		presets,
+		presets: orderedPresets,
 		assignedTasks: buildAssignedTaskEntries({
 			tasks: assignedTasks,
 			timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,

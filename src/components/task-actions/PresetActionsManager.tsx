@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
 import { PresetActionsDrawer } from "@/components/task-actions/PresetActionsDrawer";
@@ -36,6 +36,7 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 	const { t } = useTranslation();
 	const canManagePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = canManagePresets;
+	const isReorderPendingRef = useRef(false);
 
 	const { createPresetMutation, updatePresetMutation, deletePresetMutation, reorderPresetMutation } =
 		usePresetMutations({
@@ -151,15 +152,16 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 	};
 
 	const handleReorderPresets = async (orderedPresetIds: string[]): Promise<boolean> => {
-		if (orderedPresetIds.length === 0) {
+		if (orderedPresetIds.length === 0 || isReorderPendingRef.current) {
 			return false;
 		}
 
+		isReorderPendingRef.current = true;
 		try {
-			await reorderPresetMutation.mutateAsync({ householdId, orderedPresetIds });
-			return true;
-		} catch {
-			return false;
+			const success = await runPresetMutation(() => reorderPresetMutation.mutateAsync({ householdId, orderedPresetIds }));
+			return success;
+		} finally {
+			isReorderPendingRef.current = false;
 		}
 	};
 

@@ -92,7 +92,16 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 		},
 		onSuccess: (data) => {
 			const updatedPreset = normalizePreset(data.preset);
-			setCustomPresetsAction((prev) => prev.map((preset) => (preset.id === updatedPreset.id ? updatedPreset : preset)));
+			setCustomPresetsAction((prev) =>
+				prev.map((preset) =>
+					preset.id === updatedPreset.id
+						? {
+								...updatedPreset,
+								sortOrder: preset.sortOrder,
+							}
+						: preset,
+				),
+			);
 			toast({ title: t("Preset updated"), variant: "success" });
 		},
 	});
