@@ -6,6 +6,7 @@ import { useTaskActions } from "@/components/task-actions/Context";
 import { PresetActionsDrawer } from "@/components/task-actions/PresetActionsDrawer";
 import type { PresetTemplate } from "@/components/task-actions/types";
 import { useLocalizedPresetOptions } from "@/components/task-actions/useLocalizedPresetOptions";
+import { sortEditablePresets } from "@/components/task-actions/utils";
 import { usePresetMutations } from "@/hooks/usePresetMutations";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
@@ -42,11 +43,7 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 	});
 
 	const sortedEditablePresets = useMemo(() => {
-		return [...customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId)].sort(
-			(a, b) => {
-				return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-			},
-		);
+		return sortEditablePresets(customPresets, currentUserId);
 	}, [currentUserId, customPresets]);
 
 	const { appliedTemplateKeys, presetDisplayLabels } = useLocalizedPresetOptions(presetOptions, t);
