@@ -51,6 +51,11 @@ const deletePresetSchema = z.object({
 	id: z.string(),
 });
 
+const reorderPresetsSchema = z.object({
+	householdId: z.string().min(1),
+	orderedPresetIds: z.array(z.string().min(1)).min(1),
+});
+
 export const presetsRouter = router({
 	list: householdProcedure(listPresetsSchema).query(async ({ ctx }) => {
 		const householdId = ctx.household.id;
@@ -61,7 +66,7 @@ export const presetsRouter = router({
 				householdId,
 				OR: [{ isShared: true }, { createdById: userId }],
 			},
-			orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
+			orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
 			select: {
 				id: true,
 				householdId: true,
@@ -70,6 +75,7 @@ export const presetsRouter = router({
 				templateKey: true,
 				iconKey: true,
 				isShared: true,
+				sortOrder: true,
 				createdById: true,
 				approvalOverride: true,
 				createdAt: true,
@@ -82,6 +88,11 @@ export const presetsRouter = router({
 	create: approverProcedure(presetSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
+		const maxSortOrder = await prisma.presetTask.aggregate({
+			where: { householdId },
+			_max: { sortOrder: true },
+		});
+		const nextSortOrder = (maxSortOrder._max.sortOrder ?? -1) + 1;
 
 		const preset = await prisma.presetTask.create({
 			data: {
@@ -92,6 +103,7 @@ export const presetsRouter = router({
 				templateKey: input.templateKey ?? null,
 				iconKey: input.iconKey ?? null,
 				isShared: input.isShared ?? true,
+				sortOrder: nextSortOrder,
 				approvalOverride: input.approvalOverride ?? null,
 			},
 			select: {
@@ -101,6 +113,7 @@ export const presetsRouter = router({
 				templateKey: true,
 				iconKey: true,
 				isShared: true,
+				sortOrder: true,
 				createdById: true,
 				approvalOverride: true,
 				createdAt: true,
@@ -167,6 +180,7 @@ export const presetsRouter = router({
 				templateKey: true,
 				iconKey: true,
 				isShared: true,
+				sortOrder: true,
 				createdById: true,
 				approvalOverride: true,
 				createdAt: true,
@@ -190,6 +204,40 @@ export const presetsRouter = router({
 		}
 
 		await prisma.presetTask.delete({ where: { id: input.id } });
+
+		return { ok: true };
+	}),
+
+	reorder: approverProcedure(reorderPresetsSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
+		const userId = ctx.session.user.id;
+		const uniquePresetIds = [...new Set(input.orderedPresetIds)];
+
+		if (uniquePresetIds.length !== input.orderedPresetIds.length) {
+			throw new TRPCError({ code: "BAD_REQUEST", message: "Duplicate preset id in reorder payload" });
+		}
+
+		const visiblePresets = await prisma.presetTask.findMany({
+			where: {
+				householdId,
+				id: { in: uniquePresetIds },
+				OR: [{ isShared: true }, { createdById: userId }],
+			},
+			select: { id: true },
+		});
+
+		if (visiblePresets.length !== uniquePresetIds.length) {
+			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+		}
+
+		await prisma.$transaction(
+			uniquePresetIds.map((presetId, index) =>
+				prisma.presetTask.update({
+					where: { id: presetId },
+					data: { sortOrder: index },
+				}),
+			),
+		);
 
 		return { ok: true };
 	}),

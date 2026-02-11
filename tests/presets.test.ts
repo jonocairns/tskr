@@ -9,6 +9,7 @@ const makePreset = (overrides: Partial<PresetRecord> = {}): PresetRecord => ({
 	templateKey: null,
 	iconKey: null,
 	isShared: false,
+	sortOrder: 0,
 	createdById: "user-1",
 	approvalOverride: null,
 	createdAt: new Date("2024-01-02T03:04:05.000Z"),

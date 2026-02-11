@@ -36,7 +36,7 @@ export default async function AssignmentsPage({ params }: Props) {
 				householdId,
 				OR: [{ isShared: true }, { createdById: userId }],
 			},
-			orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
+			orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
 			select: {
 				id: true,
 				label: true,
@@ -44,6 +44,7 @@ export default async function AssignmentsPage({ params }: Props) {
 				templateKey: true,
 				iconKey: true,
 				isShared: true,
+				sortOrder: true,
 				createdById: true,
 				approvalOverride: true,
 				createdAt: true,

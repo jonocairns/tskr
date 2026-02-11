@@ -37,10 +37,11 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 	const canManagePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = canManagePresets;
 
-	const { createPresetMutation, updatePresetMutation, deletePresetMutation } = usePresetMutations({
-		customPresets,
-		setCustomPresetsAction: setCustomPresets,
-	});
+	const { createPresetMutation, updatePresetMutation, deletePresetMutation, reorderPresetMutation } =
+		usePresetMutations({
+			customPresets,
+			setCustomPresetsAction: setCustomPresets,
+		});
 
 	const sortedEditablePresets = useMemo(() => {
 		return sortEditablePresets(customPresets, currentUserId);
@@ -149,6 +150,19 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 		return runPresetMutation(() => deletePresetMutation.mutateAsync({ householdId, id: presetId }));
 	};
 
+	const handleReorderPresets = async (orderedPresetIds: string[]): Promise<boolean> => {
+		if (orderedPresetIds.length === 0) {
+			return false;
+		}
+
+		try {
+			await reorderPresetMutation.mutateAsync({ householdId, orderedPresetIds });
+			return true;
+		} catch {
+			return false;
+		}
+	};
+
 	return canManagePresets ? (
 		<PresetActionsDrawer
 			defaultBucket={defaultBucket}
@@ -156,6 +170,7 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 			onCreatePresetFromTemplate={handleCreatePresetFromTemplate}
 			onUpdatePreset={handleUpdatePreset}
 			onDeletePreset={handleDeletePreset}
+			onReorderPresets={handleReorderPresets}
 			templatesByBucket={templatesByBucket}
 			disabled={disabled}
 			isPending={isPending}

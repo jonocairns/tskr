@@ -90,6 +90,7 @@ export const TaskActionsProvider = ({
 		templateKey: task.templateKey,
 		iconKey: task.iconKey,
 		isShared: task.isShared,
+		sortOrder: task.sortOrder,
 	}));
 
 	const logPreset = (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => {

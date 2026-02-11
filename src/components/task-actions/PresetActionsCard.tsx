@@ -56,6 +56,7 @@ export const PresetActionsCard = () => {
 			templateKey: preset.templateKey,
 			iconKey: preset.iconKey,
 			isShared: preset.isShared,
+			sortOrder: preset.sortOrder,
 		}));
 	}, [localizedLabelById, sortedEditablePresets]);
 	const normalizedQuery = normalizeText(searchQuery);

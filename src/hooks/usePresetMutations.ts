@@ -18,6 +18,7 @@ const normalizePreset = <
 		bucket: string;
 		templateKey: string | null;
 		iconKey: string | null;
+		sortOrder: number;
 		createdAt: Date;
 	},
 >(
@@ -117,9 +118,42 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 		},
 	});
 
+	const reorderPresetMutation = trpc.presets.reorder.useMutation({
+		onMutate: (variables) => {
+			const previousPresets = customPresets;
+			const sortOrderById = new Map(variables.orderedPresetIds.map((presetId, index) => [presetId, index]));
+			setCustomPresetsAction((prev) =>
+				prev.map((preset) => {
+					const nextSortOrder = sortOrderById.get(preset.id);
+					if (nextSortOrder === undefined) {
+						return preset;
+					}
+
+					return {
+						...preset,
+						sortOrder: nextSortOrder,
+					};
+				}),
+			);
+
+			return { previousPresets };
+		},
+		onError: (error, _variables, context) => {
+			if (context?.previousPresets) {
+				setCustomPresetsAction(context.previousPresets);
+			}
+			toast({
+				title: t("Unable to reorder presets"),
+				description: error.message ?? t("Please try again."),
+				variant: "destructive",
+			});
+		},
+	});
+
 	return {
 		createPresetMutation,
 		updatePresetMutation,
 		deletePresetMutation,
+		reorderPresetMutation,
 	};
 };

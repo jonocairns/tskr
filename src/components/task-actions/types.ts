@@ -10,6 +10,7 @@ export type PresetOption = {
 	templateKey: string | null;
 	iconKey: PresetIconKey | null;
 	isShared: boolean;
+	sortOrder: number;
 };
 
 export type PresetTemplate = {

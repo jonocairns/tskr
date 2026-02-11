@@ -264,6 +264,7 @@ model PresetTask {
   templateKey String?
   iconKey     String?
   isShared    Boolean   @default(false)
+  sortOrder   Int       @default(0)
   approvalOverride ApprovalOverride?
   logs        PointLog[]
   assignedTasks AssignedTask[]
@@ -275,6 +276,7 @@ model PresetTask {
   @@index([isShared])
   @@index([bucket])
   @@index([templateKey])
+  @@index([householdId, sortOrder])
 }
 
 model AssignedTask {
