@@ -158,10 +158,10 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 
 		isReorderPendingRef.current = true;
 		try {
-			const success = await runPresetMutation(() =>
-				reorderPresetMutation.mutateAsync({ householdId, orderedPresetIds }),
-			);
-			return success;
+			await reorderPresetMutation.mutateAsync({ householdId, orderedPresetIds });
+			return true;
+		} catch {
+			return false;
 		} finally {
 			isReorderPendingRef.current = false;
 		}

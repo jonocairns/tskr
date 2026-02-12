@@ -214,6 +214,8 @@ export const PresetActionsDrawer = ({
 		!disabled &&
 		!isPresetPending &&
 		editingPresetId === null;
+	const shouldRenderReorderContext =
+		useTaskCardGrid && normalizedPresetSearchQuery.length === 0 && Boolean(onReorderPresets);
 	const {
 		sensors,
 		dragOrderedPresetIds,
@@ -665,7 +667,7 @@ export const PresetActionsDrawer = ({
 						<span className="text-xs font-medium leading-tight text-muted-foreground">{t("Open task form")}</span>
 					</Button>
 					{sortedEditablePresets.length > 0 ? (
-						canReorderPresets ? (
+						shouldRenderReorderContext ? (
 							<DndContext
 								sensors={sensors}
 								collisionDetection={closestCenter}
