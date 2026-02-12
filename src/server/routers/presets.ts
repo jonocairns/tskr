@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
+import { validatePresetReorderPayload } from "@/lib/presetReorderValidation";
 import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
 import { createPresetWithOrdering } from "@/lib/presetTaskOrderManagement";
 import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
@@ -210,11 +211,6 @@ export const presetsRouter = router({
 	reorder: approverProcedure(reorderPresetsSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
-		const uniquePresetIds = [...new Set(input.orderedPresetIds)];
-
-		if (uniquePresetIds.length !== input.orderedPresetIds.length) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Duplicate preset id in reorder payload" });
-		}
 
 		const visiblePresetIds = (
 			await prisma.presetTask.findMany({
@@ -223,19 +219,14 @@ export const presetsRouter = router({
 			})
 		).map((preset) => preset.id);
 
-		if (visiblePresetIds.length === 0) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "No presets available to reorder" });
+		const validation = validatePresetReorderPayload({
+			orderedPresetIds: input.orderedPresetIds,
+			visiblePresetIds,
+		});
+		if (!validation.ok) {
+			throw new TRPCError({ code: validation.code, message: validation.message });
 		}
-
-		const visiblePresetIdSet = new Set(visiblePresetIds);
-		if (uniquePresetIds.length !== visiblePresetIds.length) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Reorder payload must include all visible presets" });
-		}
-
-		const includesUnknownPreset = uniquePresetIds.some((presetId) => !visiblePresetIdSet.has(presetId));
-		if (includesUnknownPreset) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
-		}
+		const { uniquePresetIds } = validation;
 
 		await prisma.$transaction(async (tx) => {
 			await tx.presetTaskOrder.deleteMany({
