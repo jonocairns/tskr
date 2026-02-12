@@ -36,7 +36,7 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 	const { t } = useTranslation();
 	const canManagePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = canManagePresets;
-	const isReorderPendingRef = useRef(false);
+	const isPresetMutationPendingRef = useRef(false);
 
 	const { createPresetMutation, updatePresetMutation, deletePresetMutation, reorderPresetMutation } =
 		usePresetMutations({
@@ -58,14 +58,28 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 		})).filter((group) => group.templates.length > 0);
 	}, [appliedTemplateKeys, presetTemplates]);
 
-	const runPresetMutation = async (mutation: () => Promise<unknown>) => {
-		return new Promise<boolean>((resolve) =>
-			startPresetTransition(() => {
-				void mutation()
-					.then(() => resolve(true))
-					.catch(() => resolve(false));
-			}),
-		);
+	const runPresetMutation = async (mutation: () => Promise<unknown>, useTransition: boolean = true) => {
+		if (isPresetMutationPendingRef.current) {
+			return false;
+		}
+
+		isPresetMutationPendingRef.current = true;
+		try {
+			if (!useTransition) {
+				await mutation();
+				return true;
+			}
+
+			return await new Promise<boolean>((resolve) =>
+				startPresetTransition(() => {
+					void mutation()
+						.then(() => resolve(true))
+						.catch(() => resolve(false));
+				}),
+			);
+		} finally {
+			isPresetMutationPendingRef.current = false;
+		}
 	};
 
 	const handleCreatePresetFromTemplate = async (
@@ -152,19 +166,11 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 	};
 
 	const handleReorderPresets = async (orderedPresetIds: string[]): Promise<boolean> => {
-		if (orderedPresetIds.length === 0 || isReorderPendingRef.current) {
+		if (orderedPresetIds.length === 0) {
 			return false;
 		}
 
-		isReorderPendingRef.current = true;
-		try {
-			await reorderPresetMutation.mutateAsync({ householdId, orderedPresetIds });
-			return true;
-		} catch {
-			return false;
-		} finally {
-			isReorderPendingRef.current = false;
-		}
+		return runPresetMutation(() => reorderPresetMutation.mutateAsync({ householdId, orderedPresetIds }), false);
 	};
 
 	return canManagePresets ? (
