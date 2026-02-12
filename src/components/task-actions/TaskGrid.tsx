@@ -51,26 +51,28 @@ export const TaskGrid = ({
 						{isEditMode ? t("Open task form") : t("Log something not in your saved tasks")}
 					</span>
 				</Button>
-				{hasNoSavedTasks || hasNoMatchingTasks ? null : (
-					filteredPresets.map((task) => (
-						<TaskButton
-							key={task.id}
-						id={task.id}
-						label={task.label}
-						bucket={task.bucket}
-						iconKey={task.iconKey}
-						disabled={disabled}
-						onClick={onTaskClick}
-						isEditMode={isEditMode}
-						onEdit={onTaskEdit}
-						onDelete={onTaskDelete}
-						canDelete={canDeleteTask?.(task.id) ?? false}
-						/>
-					))
-				)}
+				{hasNoSavedTasks || hasNoMatchingTasks
+					? null
+					: filteredPresets.map((task) => (
+							<TaskButton
+								key={task.id}
+								id={task.id}
+								label={task.label}
+								bucket={task.bucket}
+								iconKey={task.iconKey}
+								disabled={disabled}
+								onClick={onTaskClick}
+								isEditMode={isEditMode}
+								onEdit={onTaskEdit}
+								onDelete={onTaskDelete}
+								canDelete={canDeleteTask?.(task.id) ?? false}
+							/>
+						))}
 			</div>
 			{hasNoSavedTasks ? <p className="pt-4 text-xs text-muted-foreground">{t("No saved tasks yet.")}</p> : null}
-			{hasNoMatchingTasks ? <p className="pt-4 text-xs text-muted-foreground">{t("No tasks match that search.")}</p> : null}
+			{hasNoMatchingTasks ? (
+				<p className="pt-4 text-xs text-muted-foreground">{t("No tasks match that search.")}</p>
+			) : null}
 		</div>
 	);
 };

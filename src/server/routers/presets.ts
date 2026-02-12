@@ -98,11 +98,72 @@ export const presetsRouter = router({
 		const userId = ctx.session.user.id;
 
 		const { preset, sortOrder } = await prisma.$transaction(async (tx) => {
-			const maxSortOrder = await tx.presetTaskOrder.aggregate({
-				where: { householdId, userId },
-				_max: { sortOrder: true },
+			const visiblePresets = await tx.presetTask.findMany({
+				where: {
+					householdId,
+					OR: [{ isShared: true }, { createdById: userId }],
+				},
+				select: {
+					id: true,
+					createdAt: true,
+					createdById: true,
+				},
 			});
-			const nextSortOrder = (maxSortOrder._max.sortOrder ?? -1) + 1;
+			const visiblePresetIds = visiblePresets.map((preset) => preset.id);
+			const existingOrders = visiblePresetIds.length
+				? await tx.presetTaskOrder.findMany({
+						where: {
+							householdId,
+							userId,
+							presetId: { in: visiblePresetIds },
+						},
+						select: {
+							presetId: true,
+							sortOrder: true,
+						},
+					})
+				: [];
+			const hasMissingVisibleOrderRows = existingOrders.length < visiblePresets.length;
+			const orderedPresetIdSet = new Set(existingOrders.map((entry) => entry.presetId));
+			const hasSharedPresetOrderRow = visiblePresets.some(
+				(preset) => orderedPresetIdSet.has(preset.id) && preset.createdById !== userId,
+			);
+			const orderedVisiblePresets =
+				hasMissingVisibleOrderRows && !hasSharedPresetOrderRow
+					? [...visiblePresets].sort((a, b) => {
+							const createdAtDifference = a.createdAt.getTime() - b.createdAt.getTime();
+							if (createdAtDifference !== 0) {
+								return createdAtDifference;
+							}
+
+							return a.id.localeCompare(b.id);
+						})
+					: applyUserPresetOrdering(visiblePresets, existingOrders);
+
+			if (hasMissingVisibleOrderRows) {
+				await Promise.all(
+					orderedVisiblePresets.map((preset, index) =>
+						tx.presetTaskOrder.upsert({
+							where: {
+								householdId_userId_presetId: {
+									householdId,
+									userId,
+									presetId: preset.id,
+								},
+							},
+							update: { sortOrder: index },
+							create: {
+								householdId,
+								userId,
+								presetId: preset.id,
+								sortOrder: index,
+							},
+						}),
+					),
+				);
+			}
+
+			const nextSortOrder = orderedVisiblePresets.length;
 
 			const createdPreset = await tx.presetTask.create({
 				data: {

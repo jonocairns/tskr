@@ -346,7 +346,14 @@ export const PresetActionsDrawer = ({
 		setIsEditActionPending(true);
 		try {
 			const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, editApprovalOverride);
-			const success = await onUpdatePreset(presetId, editLabel, editBucket, editIsShared, approvalOverride, editIconKey);
+			const success = await onUpdatePreset(
+				presetId,
+				editLabel,
+				editBucket,
+				editIsShared,
+				approvalOverride,
+				editIconKey,
+			);
 			if (success) {
 				setEditingPresetId(null);
 			}
@@ -443,10 +450,10 @@ export const PresetActionsDrawer = ({
 					key={preset.id}
 					id={preset.id}
 					label={presetDisplayLabels.get(preset.id) ?? preset.label}
-						bucket={preset.bucket}
-						iconKey={preset.iconKey}
-						disabled={disabled || isEditActionPending}
-						onClick={() => undefined}
+					bucket={preset.bucket}
+					iconKey={preset.iconKey}
+					disabled={disabled || isEditActionPending}
+					onClick={() => undefined}
 					isEditMode
 					onEdit={() => startEdit(preset)}
 					onDelete={() => void handleDeletePreset(preset.id)}
@@ -479,11 +486,11 @@ export const PresetActionsDrawer = ({
 				onDeletePreset={handleDeletePreset}
 				canDelete={preset.createdById === currentUserId}
 				canEditApprovalOverride={canEditApprovalOverride}
-					canManagePresets={canManagePresets}
-					disabled={disabled || isEditActionPending}
-				/>
-			);
-		};
+				canManagePresets={canManagePresets}
+				disabled={disabled || isEditActionPending}
+			/>
+		);
+	};
 
 	const editFormPanel = (preset: PresetSummary) => (
 		<form className="space-y-3" onSubmit={(event) => handleUpdatePreset(event, preset.id)}>
@@ -491,18 +498,22 @@ export const PresetActionsDrawer = ({
 				<Label htmlFor={`preset-edit-${preset.id}`} className="text-xs text-muted-foreground">
 					{t("Task name")}
 				</Label>
-					<Input
-						id={`preset-edit-${preset.id}`}
-						value={editLabel}
-						onChange={(event) => setEditLabel(event.target.value)}
-						disabled={editFormDisabled}
-					/>
-				</div>
+				<Input
+					id={`preset-edit-${preset.id}`}
+					value={editLabel}
+					onChange={(event) => setEditLabel(event.target.value)}
+					disabled={editFormDisabled}
+				/>
+			</div>
 			<div className="space-y-2">
 				<Label htmlFor={`preset-bucket-${preset.id}`} className="text-xs text-muted-foreground">
 					{t("Bucket")}
 				</Label>
-					<Select value={editBucket} onValueChange={(value: DurationKey) => setEditBucket(value)} disabled={editFormDisabled}>
+				<Select
+					value={editBucket}
+					onValueChange={(value: DurationKey) => setEditBucket(value)}
+					disabled={editFormDisabled}
+				>
 					<SelectTrigger id={`preset-bucket-${preset.id}`}>
 						<SelectValue placeholder={t("Bucket")} />
 					</SelectTrigger>
@@ -519,11 +530,11 @@ export const PresetActionsDrawer = ({
 				<Label htmlFor={`preset-icon-${preset.id}`} className="text-xs text-muted-foreground">
 					{t("Icon")}
 				</Label>
-					<PresetIconPicker
-						id={`preset-icon-${preset.id}`}
-						value={editIconKey}
-						onChange={setEditIconKey}
-						disabled={editFormDisabled}
+				<PresetIconPicker
+					id={`preset-icon-${preset.id}`}
+					value={editIconKey}
+					onChange={setEditIconKey}
+					disabled={editFormDisabled}
 					placeholder={t("Pick an icon")}
 					searchPlaceholder={t("Search icons...")}
 					noneLabel={t("No icon")}
@@ -533,13 +544,13 @@ export const PresetActionsDrawer = ({
 			{canManagePresets ? (
 				<div className="space-y-2">
 					<label className="flex items-center gap-2">
-							<input
-								type="checkbox"
-								checked={editIsShared}
-								onChange={(event) => setEditIsShared(event.target.checked)}
-								disabled={editFormDisabled}
-								className="h-4 w-4"
-							/>
+						<input
+							type="checkbox"
+							checked={editIsShared}
+							onChange={(event) => setEditIsShared(event.target.checked)}
+							disabled={editFormDisabled}
+							className="h-4 w-4"
+						/>
 						<span className="text-sm">{t("Share with household")}</span>
 					</label>
 				</div>
@@ -547,11 +558,11 @@ export const PresetActionsDrawer = ({
 			{canEditApprovalOverride ? (
 				<div className="space-y-2">
 					<p className="text-xs font-medium text-muted-foreground">{t("Approval override")}</p>
-						<Select
-							value={editApprovalOverride}
-							onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setEditApprovalOverride(value)}
-							disabled={editFormDisabled}
-						>
+					<Select
+						value={editApprovalOverride}
+						onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setEditApprovalOverride(value)}
+						disabled={editFormDisabled}
+					>
 						<SelectTrigger id={`preset-approval-${preset.id}`}>
 							<SelectValue placeholder={t("Use member default")} />
 						</SelectTrigger>
@@ -564,17 +575,17 @@ export const PresetActionsDrawer = ({
 				</div>
 			) : null}
 			<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-					<Button type="submit" className="w-full" disabled={editFormDisabled || !canUpdate}>
-						{editActionPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-						{t("Save")}
-					</Button>
+				<Button type="submit" className="w-full" disabled={editFormDisabled || !canUpdate}>
+					{editActionPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
+					{t("Save")}
+				</Button>
 				<Button
 					type="button"
-						variant="outline"
-						className="w-full border-muted-foreground/40 hover:border-muted-foreground/60"
-						onClick={cancelEdit}
-						disabled={editFormDisabled}
-					>
+					variant="outline"
+					className="w-full border-muted-foreground/40 hover:border-muted-foreground/60"
+					onClick={cancelEdit}
+					disabled={editFormDisabled}
+				>
 					{t("Cancel")}
 				</Button>
 			</div>
@@ -590,14 +601,14 @@ export const PresetActionsDrawer = ({
 						onValueChange={(value) => setTaskCreateMode(value === "preset" ? "preset" : "one-off")}
 						className="w-full"
 					>
-					<TabsList className="grid w-full grid-cols-2" aria-label={t("Add or log a one off chore")}>
-						<TabsTrigger value="preset" disabled={createFormDisabled}>
-							{t("Create new chore")}
-						</TabsTrigger>
-						<TabsTrigger value="one-off" disabled={createFormDisabled}>
-							{t("Log one off task")}
-						</TabsTrigger>
-					</TabsList>
+						<TabsList className="grid w-full grid-cols-2" aria-label={t("Add or log a one off chore")}>
+							<TabsTrigger value="preset" disabled={createFormDisabled}>
+								{t("Create new chore")}
+							</TabsTrigger>
+							<TabsTrigger value="one-off" disabled={createFormDisabled}>
+								{t("Log one off task")}
+							</TabsTrigger>
+						</TabsList>
 					</Tabs>
 				) : (
 					<p className="text-sm font-medium">{isPresetMode ? t("Create new chore") : t("Log one off task")}</p>
@@ -607,14 +618,14 @@ export const PresetActionsDrawer = ({
 				<Label htmlFor="custom-name" className="text-xs text-muted-foreground">
 					{t("Task name")}
 				</Label>
-					<Input
-						id="custom-name"
-						placeholder={t("Name your task")}
-						value={customLabel}
-						onChange={(event) => setCustomLabel(event.target.value)}
-						disabled={createFormDisabled}
-					/>
-				</div>
+				<Input
+					id="custom-name"
+					placeholder={t("Name your task")}
+					value={customLabel}
+					onChange={(event) => setCustomLabel(event.target.value)}
+					disabled={createFormDisabled}
+				/>
+			</div>
 			{isPresetMode ? (
 				<div className="space-y-2">
 					<Label htmlFor="custom-icon" className="text-xs text-muted-foreground">
@@ -646,15 +657,15 @@ export const PresetActionsDrawer = ({
 									disabled ? "pointer-events-none opacity-50" : "hover:border-primary",
 								)}
 							>
-									<input
+								<input
 									type="radio"
 									name="custom-bucket"
 									value={bucket.key}
 									checked={isSelected}
 									onChange={() => setCustomBucket(bucket.key)}
 									className="sr-only"
-										disabled={createFormDisabled}
-									/>
+									disabled={createFormDisabled}
+								/>
 								<span className="text-sm font-semibold">{bucket.label}</span>
 								<span className="text-xs text-muted-foreground">
 									{t("{{points}} pts · {{window}}", {
@@ -670,11 +681,11 @@ export const PresetActionsDrawer = ({
 			{isPresetMode && canEditApprovalOverride ? (
 				<div className="space-y-2">
 					<p className="text-xs font-medium text-muted-foreground">{t("Approval override")}</p>
-						<Select
-							value={customApprovalOverride}
-							onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setCustomApprovalOverride(value)}
-							disabled={createFormDisabled}
-						>
+					<Select
+						value={customApprovalOverride}
+						onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setCustomApprovalOverride(value)}
+						disabled={createFormDisabled}
+					>
 						<SelectTrigger>
 							<SelectValue placeholder={t("Use member default")} />
 						</SelectTrigger>
@@ -689,13 +700,13 @@ export const PresetActionsDrawer = ({
 			{isPresetMode && canManagePresets ? (
 				<div className="space-y-2">
 					<label className="flex items-center gap-2">
-							<input
-								type="checkbox"
-								checked={customIsShared}
-								onChange={(event) => setCustomIsShared(event.target.checked)}
-								disabled={createFormDisabled}
-								className="h-4 w-4"
-							/>
+						<input
+							type="checkbox"
+							checked={customIsShared}
+							onChange={(event) => setCustomIsShared(event.target.checked)}
+							disabled={createFormDisabled}
+							className="h-4 w-4"
+						/>
 						<span className="text-sm">{t("Share with household")}</span>
 					</label>
 					<p className="text-xs text-muted-foreground">
@@ -704,22 +715,22 @@ export const PresetActionsDrawer = ({
 				</div>
 			) : null}
 			<Button
-					type="button"
-					className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
-					onClick={isPresetMode ? handleCreatePreset : handleLogTimed}
-					disabled={createFormDisabled || !canCreate}
-				>
+				type="button"
+				className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
+				onClick={isPresetMode ? handleCreatePreset : handleLogTimed}
+				disabled={createFormDisabled || !canCreate}
+			>
 				{primaryActionPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 				{primaryActionLabel}
 			</Button>
 			{useTaskCardGrid ? (
 				<Button
-						type="button"
-						variant="outline"
-						className="w-full"
-						onClick={() => setCreateModalOpen(false)}
-						disabled={createFormDisabled}
-					>
+					type="button"
+					variant="outline"
+					className="w-full"
+					onClick={() => setCreateModalOpen(false)}
+					disabled={createFormDisabled}
+				>
 					{t("Cancel")}
 				</Button>
 			) : null}
@@ -731,13 +742,13 @@ export const PresetActionsDrawer = ({
 							templates.map((template) => (
 								<Button
 									key={template.key}
-										type="button"
+									type="button"
 									variant="outline"
 									size="sm"
 									className="rounded-full px-3"
-										onClick={() => handleCreatePresetFromTemplate(template)}
-										disabled={createFormDisabled}
-									>
+									onClick={() => handleCreatePresetFromTemplate(template)}
+									disabled={createFormDisabled}
+								>
 									{localizedPresetLabels.get(template.key) ?? template.label}
 								</Button>
 							)),
