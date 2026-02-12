@@ -1,24 +1,9 @@
-import {
-	closestCenter,
-	DndContext,
-	type DragEndEvent,
-	type DragStartEvent,
-	KeyboardSensor,
-	PointerSensor,
-	useSensor,
-	useSensors,
-} from "@dnd-kit/core";
-import {
-	arrayMove,
-	rectSortingStrategy,
-	SortableContext,
-	sortableKeyboardCoordinates,
-	useSortable,
-} from "@dnd-kit/sortable";
+import { closestCenter, DndContext } from "@dnd-kit/core";
+import { rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Loader2Icon, PlusIcon } from "lucide-react";
 import type { ReactNode, SyntheticEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { PresetIconPicker } from "@/components/task-actions/PresetIconPicker";
@@ -26,6 +11,7 @@ import { PresetListItem } from "@/components/task-actions/PresetListItem";
 import { TaskButton } from "@/components/task-actions/TaskButton";
 import { TaskSearchBar } from "@/components/task-actions/TaskSearchBar";
 import type { PresetSummary, PresetTemplate } from "@/components/task-actions/types";
+import { usePresetReorder } from "@/components/task-actions/usePresetReorder";
 import { BUCKET_WINDOW_SHORT, normalizeText } from "@/components/task-actions/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -174,12 +160,6 @@ export const PresetActionsDrawer = ({
 	const [isMounted, setIsMounted] = useState(false);
 	const [isCreateActionPending, setIsCreateActionPending] = useState(false);
 	const [isEditActionPending, setIsEditActionPending] = useState(false);
-	const [dragOrderedPresetIds, setDragOrderedPresetIds] = useState<string[]>(() => {
-		return sortedEditablePresets.map((preset) => preset.id);
-	});
-	const [activeDragPresetId, setActiveDragPresetId] = useState<string | null>(null);
-	const dragStartOrderRef = useRef<string[]>([]);
-	const isLocalReorderPendingRef = useRef(false);
 
 	useEffect(() => {
 		if (!canManagePresets && taskCreateMode === "preset") {
@@ -223,9 +203,6 @@ export const PresetActionsDrawer = ({
 					return normalizeText(displayLabel).includes(normalizedPresetSearchQuery);
 				})
 			: sortedEditablePresets;
-	const sortedEditablePresetIds = useMemo(() => {
-		return sortedEditablePresets.map((preset) => preset.id);
-	}, [sortedEditablePresets]);
 	const sortedEditablePresetsById = useMemo(() => {
 		return new Map(sortedEditablePresets.map((preset) => [preset.id, preset]));
 	}, [sortedEditablePresets]);
@@ -236,38 +213,21 @@ export const PresetActionsDrawer = ({
 		!disabled &&
 		!isPresetPending &&
 		editingPresetId === null;
-	const sensors = useSensors(
-		useSensor(PointerSensor, {
-			activationConstraint: {
-				distance: 8,
-			},
-		}),
-		useSensor(KeyboardSensor, {
-			coordinateGetter: sortableKeyboardCoordinates,
-		}),
-	);
+	const {
+		sensors,
+		dragOrderedPresetIds,
+		activeDragPresetId,
+		handleReorderDragStart,
+		handleReorderDragCancel,
+		handleReorderDragEnd,
+	} = usePresetReorder({
+		sortedEditablePresets,
+		canReorderPresets,
+		onReorderPresets,
+	});
 	const editingPreset = editingPresetId
 		? (sortedEditablePresets.find((preset) => preset.id === editingPresetId) ?? null)
 		: null;
-
-	useEffect(() => {
-		if (activeDragPresetId !== null) {
-			return;
-		}
-
-		setDragOrderedPresetIds((previousIds) => {
-			const isSameOrder =
-				previousIds.length === sortedEditablePresetIds.length &&
-				previousIds.every((presetId, index) => presetId === sortedEditablePresetIds[index]);
-			if (isLocalReorderPendingRef.current) {
-				if (isSameOrder) {
-					isLocalReorderPendingRef.current = false;
-				}
-				return previousIds;
-			}
-			return isSameOrder ? previousIds : sortedEditablePresetIds;
-		});
-	}, [activeDragPresetId, sortedEditablePresetIds]);
 
 	const handleCreatePreset = async (): Promise<void> => {
 		if (!canCreate || isCreateActionPending) return;
@@ -371,73 +331,6 @@ export const PresetActionsDrawer = ({
 		} finally {
 			setIsEditActionPending(false);
 		}
-	};
-
-	const handleReorderDragStart = (event: DragStartEvent) => {
-		if (!canReorderPresets || isLocalReorderPendingRef.current) {
-			return;
-		}
-
-		dragStartOrderRef.current = dragOrderedPresetIds;
-		setActiveDragPresetId(String(event.active.id));
-	};
-
-	const handleReorderDragCancel = () => {
-		isLocalReorderPendingRef.current = false;
-		setActiveDragPresetId(null);
-		setDragOrderedPresetIds(dragStartOrderRef.current);
-	};
-
-	const handleReorderDragEnd = (event: DragEndEvent) => {
-		setActiveDragPresetId(null);
-
-		if (!canReorderPresets || !onReorderPresets) {
-			isLocalReorderPendingRef.current = false;
-			return;
-		}
-		if (isLocalReorderPendingRef.current) {
-			return;
-		}
-
-		if (!event.over) {
-			isLocalReorderPendingRef.current = false;
-			setDragOrderedPresetIds(dragStartOrderRef.current);
-			return;
-		}
-
-		const activeId = String(event.active.id);
-		const overId = String(event.over.id);
-		if (activeId === overId) {
-			isLocalReorderPendingRef.current = false;
-			return;
-		}
-
-		const fromIndex = dragOrderedPresetIds.indexOf(activeId);
-		const toIndex = dragOrderedPresetIds.indexOf(overId);
-		if (fromIndex < 0 || toIndex < 0) {
-			isLocalReorderPendingRef.current = false;
-			return;
-		}
-
-		const previousOrderIds = dragStartOrderRef.current;
-		const nextIds = arrayMove(dragOrderedPresetIds, fromIndex, toIndex);
-		setDragOrderedPresetIds(nextIds);
-
-		const hasOrderChanged = dragStartOrderRef.current.some((presetId, index) => presetId !== nextIds[index]);
-		if (!hasOrderChanged) {
-			isLocalReorderPendingRef.current = false;
-			return;
-		}
-
-		isLocalReorderPendingRef.current = true;
-		void onReorderPresets(nextIds).then((success) => {
-			if (success) {
-				return;
-			}
-
-			isLocalReorderPendingRef.current = false;
-			setDragOrderedPresetIds(previousOrderIds);
-		});
 	};
 
 	const renderPresetItem = (preset: PresetSummary) => {
