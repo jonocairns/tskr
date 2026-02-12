@@ -120,14 +120,22 @@ export const usePresetReorder = ({
 		}
 
 		isLocalReorderPendingRef.current = true;
-		void onReorderPresets(nextIds).then((success) => {
-			if (success) {
-				return;
-			}
-
+		const rollback = () => {
 			isLocalReorderPendingRef.current = false;
 			setDragOrderedPresetIds(previousOrderIds);
-		});
+		};
+
+		void onReorderPresets(nextIds)
+			.then((success) => {
+				if (success) {
+					return;
+				}
+
+				rollback();
+			})
+			.catch(() => {
+				rollback();
+			});
 	};
 
 	return {

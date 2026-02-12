@@ -66,8 +66,12 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 		isPresetMutationPendingRef.current = true;
 		try {
 			if (!useTransition) {
-				await mutation();
-				return true;
+				try {
+					await mutation();
+					return true;
+				} catch {
+					return false;
+				}
 			}
 
 			return await new Promise<boolean>((resolve) =>
