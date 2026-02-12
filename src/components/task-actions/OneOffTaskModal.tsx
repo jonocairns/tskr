@@ -7,6 +7,7 @@ import { BUCKET_WINDOW_SHORT } from "@/components/task-actions/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { getLocalizedDurationBuckets } from "@/lib/points";
@@ -34,15 +35,15 @@ export const OneOffTaskModal = ({
 	const [taskLabel, setTaskLabel] = useState("");
 	const [taskBucket, setTaskBucket] = useState<DurationKey>(defaultBucket);
 	const [isMounted, setIsMounted] = useState(false);
-	const [isSubmitPending, setIsSubmitPending] = useState(false);
+	const { isPending: isSubmitPending, run: runSubmit, reset: resetSubmit } = useAsyncAction();
 
 	useEffect(() => {
 		if (!open) {
 			setTaskLabel("");
 			setTaskBucket(defaultBucket);
-			setIsSubmitPending(false);
+			resetSubmit();
 		}
-	}, [open, defaultBucket]);
+	}, [open, defaultBucket, resetSubmit]);
 
 	useEffect(() => {
 		setIsMounted(true);
@@ -57,19 +58,16 @@ export const OneOffTaskModal = ({
 	const submitPending = isPending || isSubmitPending;
 
 	const handleSubmit = async (): Promise<void> => {
-		if (!canSubmit || isSubmitPending) {
+		if (!canSubmit) {
 			return;
 		}
 
-		setIsSubmitPending(true);
-		try {
+		await runSubmit(async () => {
 			const success = await onSubmit(taskLabel, taskBucket);
 			if (success) {
 				onClose();
 			}
-		} finally {
-			setIsSubmitPending(false);
-		}
+		});
 	};
 
 	return createPortal(

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { getLocalizedDurationBuckets, getLocalizedPresetTasks } from "@/lib/points";
@@ -158,8 +159,8 @@ export const PresetActionsDrawer = ({
 	const [presetSearchQuery, setPresetSearchQuery] = useState("");
 	const [createModalOpen, setCreateModalOpen] = useState(false);
 	const [isMounted, setIsMounted] = useState(false);
-	const [isCreateActionPending, setIsCreateActionPending] = useState(false);
-	const [isEditActionPending, setIsEditActionPending] = useState(false);
+	const { isPending: isCreateActionPending, run: runCreateAction, reset: resetCreateAction } = useAsyncAction();
+	const { isPending: isEditActionPending, run: runEditAction, reset: resetEditAction } = useAsyncAction();
 
 	useEffect(() => {
 		if (!canManagePresets && taskCreateMode === "preset") {
@@ -230,10 +231,9 @@ export const PresetActionsDrawer = ({
 		: null;
 
 	const handleCreatePreset = async (): Promise<void> => {
-		if (!canCreate || isCreateActionPending) return;
+		if (!canCreate) return;
 
-		setIsCreateActionPending(true);
-		try {
+		await runCreateAction(async () => {
 			const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
 			const success = await onCreatePreset(customLabel, customBucket, customIsShared, approvalOverride, customIconKey);
 			if (success) {
@@ -242,24 +242,17 @@ export const PresetActionsDrawer = ({
 					setCreateModalOpen(false);
 				}
 			}
-		} finally {
-			setIsCreateActionPending(false);
-		}
+		});
 	};
 
 	const handleCreatePresetFromTemplate = async (template: PresetTemplate): Promise<void> => {
-		if (isCreateActionPending) return;
-
-		setIsCreateActionPending(true);
-		try {
+		await runCreateAction(async () => {
 			const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
 			const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride, customIconKey);
 			if (success) {
 				resetCustomForm();
 			}
-		} finally {
-			setIsCreateActionPending(false);
-		}
+		});
 	};
 
 	const handleLogTimed = async (): Promise<void> => {
@@ -276,8 +269,8 @@ export const PresetActionsDrawer = ({
 		if (useTaskCardGrid) {
 			setCreateModalOpen(false);
 		}
-		setIsCreateActionPending(false);
-		setIsEditActionPending(false);
+		resetCreateAction();
+		resetEditAction();
 		setEditingPresetId(preset.id);
 		setEditLabel(preset.label);
 		setEditBucket(preset.bucket);
@@ -287,7 +280,7 @@ export const PresetActionsDrawer = ({
 	};
 
 	const cancelEdit = (): void => {
-		setIsEditActionPending(false);
+		resetEditAction();
 		setEditingPresetId(null);
 		setEditLabel("");
 		setEditBucket(defaultBucket);
@@ -298,10 +291,9 @@ export const PresetActionsDrawer = ({
 
 	const handleUpdatePreset = async (event: SyntheticEvent<HTMLFormElement>, presetId: string): Promise<void> => {
 		event.preventDefault();
-		if (!canUpdate || isEditActionPending) return;
+		if (!canUpdate) return;
 
-		setIsEditActionPending(true);
-		try {
+		await runEditAction(async () => {
 			const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, editApprovalOverride);
 			const success = await onUpdatePreset(
 				presetId,
@@ -314,23 +306,16 @@ export const PresetActionsDrawer = ({
 			if (success) {
 				setEditingPresetId(null);
 			}
-		} finally {
-			setIsEditActionPending(false);
-		}
+		});
 	};
 
 	const handleDeletePreset = async (presetId: string): Promise<void> => {
-		if (isEditActionPending) return;
-
-		setIsEditActionPending(true);
-		try {
+		await runEditAction(async () => {
 			const success = await onDeletePreset(presetId);
 			if (success && editingPresetId === presetId) {
 				setEditingPresetId(null);
 			}
-		} finally {
-			setIsEditActionPending(false);
-		}
+		});
 	};
 
 	const renderPresetItem = (preset: PresetSummary) => {
