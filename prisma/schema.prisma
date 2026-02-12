@@ -71,6 +71,7 @@ model User {
   approvedLogs      PointLog[] @relation("ApprovedBy")
   rejectedLogs      PointLog[] @relation("RejectedBy")
   presetTasks       PresetTask[]
+  presetTaskOrders  PresetTaskOrder[]
   assignedTasks     AssignedTask[] @relation("AssignedTo")
   createdAssignedTasks AssignedTask[] @relation("AssignedBy")
   pushSubscriptions PushSubscription[]
@@ -99,6 +100,7 @@ model Household {
   lastHouseholdUsers User[]            @relation("UserLastHousehold")
   invites           HouseholdInvite[]
   presetTasks       PresetTask[]
+  presetTaskOrders  PresetTaskOrder[]
   assignedTasks     AssignedTask[]
   pointLogs         PointLog[]
   createdAt         DateTime          @default(now())
@@ -266,6 +268,7 @@ model PresetTask {
   isShared    Boolean   @default(false)
   approvalOverride ApprovalOverride?
   logs        PointLog[]
+  orderEntries PresetTaskOrder[]
   assignedTasks AssignedTask[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -275,6 +278,22 @@ model PresetTask {
   @@index([isShared])
   @@index([bucket])
   @@index([templateKey])
+}
+
+model PresetTaskOrder {
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  presetId    String
+  preset      PresetTask @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  sortOrder   Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@id([householdId, userId, presetId])
+  @@index([householdId, userId, sortOrder])
+  @@index([presetId])
 }
 
 model AssignedTask {

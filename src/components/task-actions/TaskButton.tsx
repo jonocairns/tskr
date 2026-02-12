@@ -92,9 +92,9 @@ export const TaskButton = ({
 				</div>
 				<span className="block text-xs font-medium leading-tight text-muted-foreground">{metaText}</span>
 			</div>
-			<div className="flex w-[4.5rem] shrink-0 items-start justify-end">
+			<div className={cn("flex w-[5.75rem] shrink-0 items-center justify-center", isEditMode ? "self-center" : null)}>
 				{isEditMode ? (
-					<div className="flex w-full items-center justify-end gap-1">
+					<div className="flex w-full items-center justify-center overflow-hidden rounded-lg border border-border/70">
 						<Button
 							type="button"
 							variant="ghost"
@@ -102,9 +102,9 @@ export const TaskButton = ({
 							onClick={() => onEdit?.(id)}
 							disabled={disabled}
 							aria-label={t("Edit task")}
-							className="h-8 w-8"
+							className="h-12 w-12 rounded-none border-0 bg-background/70"
 						>
-							<PencilIcon className="h-4 w-4" />
+							<PencilIcon className="h-7 w-7" />
 						</Button>
 						{canDelete ? (
 							<AlertDialog>
@@ -115,9 +115,9 @@ export const TaskButton = ({
 										size="icon"
 										disabled={disabled}
 										aria-label={t("Delete task")}
-										className="h-8 w-8"
+										className="h-12 w-12 rounded-none border-0 border-l border-border/70 bg-destructive/5"
 									>
-										<Trash2Icon className="h-4 w-4 text-destructive" />
+										<Trash2Icon className="h-7 w-7 text-destructive" />
 									</Button>
 								</AlertDialogTrigger>
 								<AlertDialogContent>

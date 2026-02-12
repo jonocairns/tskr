@@ -3,6 +3,8 @@ import { LogStatus } from "@prisma/client";
 
 import { buildAssignedTaskEntries } from "@/lib/dashboard/assigned";
 import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from "@/lib/formatDate";
+import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
+import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_TIME_ZONE, getTimeZoneDayNumber } from "@/lib/timeZones";
 
@@ -31,6 +33,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		recentLogs,
 		pendingLogs,
 		presets,
+		presetOrders,
 		assignedTasks,
 		weeklyTaskCount,
 		weeklyPointSum,
@@ -93,11 +96,8 @@ export async function getDashboardData(userId: string, householdId: string) {
 			take: APPROVALS_LIMIT + 1,
 		}),
 		prisma.presetTask.findMany({
-			where: {
-				householdId,
-				OR: [{ isShared: true }, { createdById: userId }],
-			},
-			orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
+			where: getVisiblePresetWhere(householdId, userId),
+			orderBy: { createdAt: "asc" },
 			select: {
 				id: true,
 				label: true,
@@ -108,6 +108,13 @@ export async function getDashboardData(userId: string, householdId: string) {
 				createdById: true,
 				approvalOverride: true,
 				createdAt: true,
+			},
+		}),
+		prisma.presetTaskOrder.findMany({
+			where: { householdId, userId },
+			select: {
+				presetId: true,
+				sortOrder: true,
 			},
 		}),
 		prisma.assignedTask.findMany({
@@ -184,6 +191,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		userId: item.userId,
 		_min: { createdAt: item._min.createdAt },
 	}));
+	const orderedPresets = applyUserPresetOrdering(presets, presetOrders);
 
 	return {
 		pointSums,
@@ -202,7 +210,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		hasMoreHistory,
 		pendingLogs: trimmedApprovals,
 		hasMoreApprovals,
-		presets,
+		presets: orderedPresets,
 		assignedTasks: buildAssignedTaskEntries({
 			tasks: assignedTasks,
 			timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,

@@ -7,6 +7,7 @@ import { BUCKET_WINDOW_SHORT } from "@/components/task-actions/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { getLocalizedDurationBuckets } from "@/lib/points";
@@ -34,13 +35,15 @@ export const OneOffTaskModal = ({
 	const [taskLabel, setTaskLabel] = useState("");
 	const [taskBucket, setTaskBucket] = useState<DurationKey>(defaultBucket);
 	const [isMounted, setIsMounted] = useState(false);
+	const { isPending: isSubmitPending, run: runSubmit, reset: resetSubmit } = useAsyncAction();
 
 	useEffect(() => {
 		if (!open) {
 			setTaskLabel("");
 			setTaskBucket(defaultBucket);
+			resetSubmit();
 		}
-	}, [open, defaultBucket]);
+	}, [open, defaultBucket, resetSubmit]);
 
 	useEffect(() => {
 		setIsMounted(true);
@@ -51,15 +54,20 @@ export const OneOffTaskModal = ({
 	}
 
 	const canSubmit = taskLabel.trim().length >= 2;
+	const modalDisabled = disabled || isSubmitPending;
+	const submitPending = isPending || isSubmitPending;
 
 	const handleSubmit = async (): Promise<void> => {
 		if (!canSubmit) {
 			return;
 		}
-		const success = await onSubmit(taskLabel, taskBucket);
-		if (success) {
-			onClose();
-		}
+
+		await runSubmit(async () => {
+			const success = await onSubmit(taskLabel, taskBucket);
+			if (success) {
+				onClose();
+			}
+		});
 	};
 
 	return createPortal(
@@ -69,6 +77,7 @@ export const OneOffTaskModal = ({
 				className="absolute inset-0 bg-background/80 backdrop-blur-sm"
 				onClick={onClose}
 				aria-label={t("Close")}
+				disabled={isSubmitPending}
 			/>
 			<div
 				role="dialog"
@@ -78,7 +87,7 @@ export const OneOffTaskModal = ({
 			>
 				<div className="flex items-center justify-between gap-2 border-b px-4 py-4">
 					<p className="text-sm font-semibold">{t("Log one off task")}</p>
-					<Button type="button" variant="ghost" size="sm" onClick={onClose}>
+					<Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isSubmitPending}>
 						{t("Close")}
 					</Button>
 				</div>
@@ -92,7 +101,7 @@ export const OneOffTaskModal = ({
 							placeholder={t("Name your task")}
 							value={taskLabel}
 							onChange={(event) => setTaskLabel(event.target.value)}
-							disabled={disabled}
+							disabled={modalDisabled}
 						/>
 					</div>
 					<div className="space-y-2">
@@ -106,7 +115,7 @@ export const OneOffTaskModal = ({
 										className={cn(
 											"flex w-full flex-col items-start rounded-lg border p-3 text-left transition",
 											isSelected && "border-primary bg-primary/5",
-											disabled ? "pointer-events-none opacity-50" : "hover:border-primary",
+											modalDisabled ? "pointer-events-none opacity-50" : "hover:border-primary",
 										)}
 									>
 										<input
@@ -116,7 +125,7 @@ export const OneOffTaskModal = ({
 											checked={isSelected}
 											onChange={() => setTaskBucket(bucket.key)}
 											className="sr-only"
-											disabled={disabled}
+											disabled={modalDisabled}
 										/>
 										<span className="text-sm font-semibold">{bucket.label}</span>
 										<span className="text-xs text-muted-foreground">
@@ -131,11 +140,11 @@ export const OneOffTaskModal = ({
 						</div>
 					</div>
 					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<Button type="button" variant="outline" onClick={onClose} disabled={disabled}>
+						<Button type="button" variant="outline" onClick={onClose} disabled={modalDisabled}>
 							{t("Cancel")}
 						</Button>
-						<Button type="button" onClick={handleSubmit} disabled={disabled || !canSubmit}>
-							{isPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
+						<Button type="button" onClick={handleSubmit} disabled={modalDisabled || !canSubmit}>
+							{submitPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 							{t("Log one off task")}
 						</Button>
 					</div>

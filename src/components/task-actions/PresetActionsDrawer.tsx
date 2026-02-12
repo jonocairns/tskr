@@ -1,5 +1,8 @@
+import { closestCenter, DndContext } from "@dnd-kit/core";
+import { rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Loader2Icon, PlusIcon } from "lucide-react";
-import type { SyntheticEvent } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -8,12 +11,14 @@ import { PresetListItem } from "@/components/task-actions/PresetListItem";
 import { TaskButton } from "@/components/task-actions/TaskButton";
 import { TaskSearchBar } from "@/components/task-actions/TaskSearchBar";
 import type { PresetSummary, PresetTemplate } from "@/components/task-actions/types";
+import { usePresetReorder } from "@/components/task-actions/usePresetReorder";
 import { BUCKET_WINDOW_SHORT, normalizeText } from "@/components/task-actions/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { getLocalizedDurationBuckets, getLocalizedPresetTasks } from "@/lib/points";
@@ -53,6 +58,7 @@ type Props = {
 		iconKey?: PresetIconKey | null,
 	) => Promise<boolean>;
 	onDeletePreset: (presetId: string) => Promise<boolean>;
+	onReorderPresets?: (orderedPresetIds: string[]) => Promise<boolean>;
 	templatesByBucket: TemplatesByBucket;
 	disabled: boolean;
 	isPending: boolean;
@@ -81,6 +87,36 @@ const resolveApprovalOverride = (
 	return value;
 };
 
+type SortableGridItemProps = {
+	id: string;
+	disabled: boolean;
+	isActive: boolean;
+	children: ReactNode;
+};
+
+const SortableGridItem = ({ id, disabled, isActive, children }: SortableGridItemProps) => {
+	const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled });
+
+	return (
+		<div
+			ref={setNodeRef}
+			style={{
+				transform: CSS.Transform.toString(transform),
+				transition,
+			}}
+			className={cn(
+				"touch-none",
+				disabled ? null : "cursor-grab select-none active:cursor-grabbing",
+				isActive ? "z-10 scale-[1.01] shadow-lg" : null,
+			)}
+			{...attributes}
+			{...listeners}
+		>
+			{children}
+		</div>
+	);
+};
+
 export const PresetActionsDrawer = ({
 	defaultBucket,
 	onLogTimed,
@@ -88,6 +124,7 @@ export const PresetActionsDrawer = ({
 	onCreatePresetFromTemplate,
 	onUpdatePreset,
 	onDeletePreset,
+	onReorderPresets,
 	templatesByBucket,
 	disabled,
 	isPending,
@@ -122,6 +159,8 @@ export const PresetActionsDrawer = ({
 	const [presetSearchQuery, setPresetSearchQuery] = useState("");
 	const [createModalOpen, setCreateModalOpen] = useState(false);
 	const [isMounted, setIsMounted] = useState(false);
+	const { isPending: isCreateActionPending, run: runCreateAction, reset: resetCreateAction } = useAsyncAction();
+	const { isPending: isEditActionPending, run: runEditAction, reset: resetEditAction } = useAsyncAction();
 
 	useEffect(() => {
 		if (!canManagePresets && taskCreateMode === "preset") {
@@ -153,7 +192,10 @@ export const PresetActionsDrawer = ({
 	const canUpdate = editLabel.trim().length >= 2;
 	const isPresetMode = allowOneOffMode ? canManagePresets && taskCreateMode === "preset" : true;
 	const primaryActionLabel = isPresetMode ? t("Create new chore") : t("Log one off task");
-	const primaryActionPending = isPresetMode ? isPresetPending : isPending;
+	const primaryActionPending = isPresetMode ? isPresetPending || isCreateActionPending : isPending;
+	const createFormDisabled = disabled || isCreateActionPending;
+	const editActionPending = isPresetPending || isEditActionPending;
+	const editFormDisabled = disabled || isEditActionPending;
 	const normalizedPresetSearchQuery = normalizeText(presetSearchQuery);
 	const filteredEditablePresets =
 		normalizedPresetSearchQuery.length > 0
@@ -162,31 +204,57 @@ export const PresetActionsDrawer = ({
 					return normalizeText(displayLabel).includes(normalizedPresetSearchQuery);
 				})
 			: sortedEditablePresets;
+	const sortedEditablePresetsById = useMemo(() => {
+		return new Map(sortedEditablePresets.map((preset) => [preset.id, preset]));
+	}, [sortedEditablePresets]);
+	const canReorderPresets =
+		useTaskCardGrid &&
+		normalizedPresetSearchQuery.length === 0 &&
+		Boolean(onReorderPresets) &&
+		!disabled &&
+		!isPresetPending &&
+		editingPresetId === null;
+	const shouldRenderReorderContext =
+		useTaskCardGrid && normalizedPresetSearchQuery.length === 0 && Boolean(onReorderPresets);
+	const {
+		sensors,
+		dragOrderedPresetIds,
+		activeDragPresetId,
+		handleReorderDragStart,
+		handleReorderDragCancel,
+		handleReorderDragEnd,
+	} = usePresetReorder({
+		sortedEditablePresets,
+		canReorderPresets,
+		onReorderPresets,
+	});
 	const editingPreset = editingPresetId
 		? (sortedEditablePresets.find((preset) => preset.id === editingPresetId) ?? null)
 		: null;
 
 	const handleCreatePreset = async (): Promise<void> => {
 		if (!canCreate) return;
-		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
-		const success = await onCreatePreset(customLabel, customBucket, customIsShared, approvalOverride, customIconKey);
-		if (success) {
-			resetCustomForm();
-			if (useTaskCardGrid) {
-				setCreateModalOpen(false);
+
+		await runCreateAction(async () => {
+			const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
+			const success = await onCreatePreset(customLabel, customBucket, customIsShared, approvalOverride, customIconKey);
+			if (success) {
+				resetCustomForm();
+				if (useTaskCardGrid) {
+					setCreateModalOpen(false);
+				}
 			}
-		}
+		});
 	};
 
 	const handleCreatePresetFromTemplate = async (template: PresetTemplate): Promise<void> => {
-		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
-		const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride, customIconKey);
-		if (success) {
-			resetCustomForm();
-			if (useTaskCardGrid) {
-				setCreateModalOpen(false);
+		await runCreateAction(async () => {
+			const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, customApprovalOverride);
+			const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride, customIconKey);
+			if (success) {
+				resetCustomForm();
 			}
-		}
+		});
 	};
 
 	const handleLogTimed = async (): Promise<void> => {
@@ -203,6 +271,8 @@ export const PresetActionsDrawer = ({
 		if (useTaskCardGrid) {
 			setCreateModalOpen(false);
 		}
+		resetCreateAction();
+		resetEditAction();
 		setEditingPresetId(preset.id);
 		setEditLabel(preset.label);
 		setEditBucket(preset.bucket);
@@ -212,6 +282,7 @@ export const PresetActionsDrawer = ({
 	};
 
 	const cancelEdit = (): void => {
+		resetEditAction();
 		setEditingPresetId(null);
 		setEditLabel("");
 		setEditBucket(defaultBucket);
@@ -223,18 +294,30 @@ export const PresetActionsDrawer = ({
 	const handleUpdatePreset = async (event: SyntheticEvent<HTMLFormElement>, presetId: string): Promise<void> => {
 		event.preventDefault();
 		if (!canUpdate) return;
-		const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, editApprovalOverride);
-		const success = await onUpdatePreset(presetId, editLabel, editBucket, editIsShared, approvalOverride, editIconKey);
-		if (success) {
-			setEditingPresetId(null);
-		}
+
+		await runEditAction(async () => {
+			const approvalOverride = resolveApprovalOverride(canEditApprovalOverride, editApprovalOverride);
+			const success = await onUpdatePreset(
+				presetId,
+				editLabel,
+				editBucket,
+				editIsShared,
+				approvalOverride,
+				editIconKey,
+			);
+			if (success) {
+				setEditingPresetId(null);
+			}
+		});
 	};
 
 	const handleDeletePreset = async (presetId: string): Promise<void> => {
-		const success = await onDeletePreset(presetId);
-		if (success && editingPresetId === presetId) {
-			setEditingPresetId(null);
-		}
+		await runEditAction(async () => {
+			const success = await onDeletePreset(presetId);
+			if (success && editingPresetId === presetId) {
+				setEditingPresetId(null);
+			}
+		});
 	};
 
 	const renderPresetItem = (preset: PresetSummary) => {
@@ -246,7 +329,7 @@ export const PresetActionsDrawer = ({
 					label={presetDisplayLabels.get(preset.id) ?? preset.label}
 					bucket={preset.bucket}
 					iconKey={preset.iconKey}
-					disabled={disabled}
+					disabled={disabled || isEditActionPending}
 					onClick={() => undefined}
 					isEditMode
 					onEdit={() => startEdit(preset)}
@@ -281,7 +364,7 @@ export const PresetActionsDrawer = ({
 				canDelete={preset.createdById === currentUserId}
 				canEditApprovalOverride={canEditApprovalOverride}
 				canManagePresets={canManagePresets}
-				disabled={disabled}
+				disabled={disabled || isEditActionPending}
 			/>
 		);
 	};
@@ -296,14 +379,18 @@ export const PresetActionsDrawer = ({
 					id={`preset-edit-${preset.id}`}
 					value={editLabel}
 					onChange={(event) => setEditLabel(event.target.value)}
-					disabled={disabled}
+					disabled={editFormDisabled}
 				/>
 			</div>
 			<div className="space-y-2">
 				<Label htmlFor={`preset-bucket-${preset.id}`} className="text-xs text-muted-foreground">
 					{t("Bucket")}
 				</Label>
-				<Select value={editBucket} onValueChange={(value: DurationKey) => setEditBucket(value)} disabled={disabled}>
+				<Select
+					value={editBucket}
+					onValueChange={(value: DurationKey) => setEditBucket(value)}
+					disabled={editFormDisabled}
+				>
 					<SelectTrigger id={`preset-bucket-${preset.id}`}>
 						<SelectValue placeholder={t("Bucket")} />
 					</SelectTrigger>
@@ -324,7 +411,7 @@ export const PresetActionsDrawer = ({
 					id={`preset-icon-${preset.id}`}
 					value={editIconKey}
 					onChange={setEditIconKey}
-					disabled={disabled}
+					disabled={editFormDisabled}
 					placeholder={t("Pick an icon")}
 					searchPlaceholder={t("Search icons...")}
 					noneLabel={t("No icon")}
@@ -338,7 +425,7 @@ export const PresetActionsDrawer = ({
 							type="checkbox"
 							checked={editIsShared}
 							onChange={(event) => setEditIsShared(event.target.checked)}
-							disabled={disabled}
+							disabled={editFormDisabled}
 							className="h-4 w-4"
 						/>
 						<span className="text-sm">{t("Share with household")}</span>
@@ -351,7 +438,7 @@ export const PresetActionsDrawer = ({
 					<Select
 						value={editApprovalOverride}
 						onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setEditApprovalOverride(value)}
-						disabled={disabled}
+						disabled={editFormDisabled}
 					>
 						<SelectTrigger id={`preset-approval-${preset.id}`}>
 							<SelectValue placeholder={t("Use member default")} />
@@ -365,8 +452,8 @@ export const PresetActionsDrawer = ({
 				</div>
 			) : null}
 			<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-				<Button type="submit" className="w-full" disabled={disabled || !canUpdate}>
-					{isPresetPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
+				<Button type="submit" className="w-full" disabled={editFormDisabled || !canUpdate}>
+					{editActionPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 					{t("Save")}
 				</Button>
 				<Button
@@ -374,7 +461,7 @@ export const PresetActionsDrawer = ({
 					variant="outline"
 					className="w-full border-muted-foreground/40 hover:border-muted-foreground/60"
 					onClick={cancelEdit}
-					disabled={disabled}
+					disabled={editFormDisabled}
 				>
 					{t("Cancel")}
 				</Button>
@@ -392,10 +479,10 @@ export const PresetActionsDrawer = ({
 						className="w-full"
 					>
 						<TabsList className="grid w-full grid-cols-2" aria-label={t("Add or log a one off chore")}>
-							<TabsTrigger value="preset" disabled={disabled}>
+							<TabsTrigger value="preset" disabled={createFormDisabled}>
 								{t("Create new chore")}
 							</TabsTrigger>
-							<TabsTrigger value="one-off" disabled={disabled}>
+							<TabsTrigger value="one-off" disabled={createFormDisabled}>
 								{t("Log one off task")}
 							</TabsTrigger>
 						</TabsList>
@@ -413,7 +500,7 @@ export const PresetActionsDrawer = ({
 					placeholder={t("Name your task")}
 					value={customLabel}
 					onChange={(event) => setCustomLabel(event.target.value)}
-					disabled={disabled}
+					disabled={createFormDisabled}
 				/>
 			</div>
 			{isPresetMode ? (
@@ -425,7 +512,7 @@ export const PresetActionsDrawer = ({
 						id="custom-icon"
 						value={customIconKey}
 						onChange={setCustomIconKey}
-						disabled={disabled}
+						disabled={createFormDisabled}
 						placeholder={t("Pick an icon")}
 						searchPlaceholder={t("Search icons...")}
 						noneLabel={t("No icon")}
@@ -454,7 +541,7 @@ export const PresetActionsDrawer = ({
 									checked={isSelected}
 									onChange={() => setCustomBucket(bucket.key)}
 									className="sr-only"
-									disabled={disabled}
+									disabled={createFormDisabled}
 								/>
 								<span className="text-sm font-semibold">{bucket.label}</span>
 								<span className="text-xs text-muted-foreground">
@@ -474,7 +561,7 @@ export const PresetActionsDrawer = ({
 					<Select
 						value={customApprovalOverride}
 						onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setCustomApprovalOverride(value)}
-						disabled={disabled}
+						disabled={createFormDisabled}
 					>
 						<SelectTrigger>
 							<SelectValue placeholder={t("Use member default")} />
@@ -494,7 +581,7 @@ export const PresetActionsDrawer = ({
 							type="checkbox"
 							checked={customIsShared}
 							onChange={(event) => setCustomIsShared(event.target.checked)}
-							disabled={disabled}
+							disabled={createFormDisabled}
 							className="h-4 w-4"
 						/>
 						<span className="text-sm">{t("Share with household")}</span>
@@ -508,7 +595,7 @@ export const PresetActionsDrawer = ({
 				type="button"
 				className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
 				onClick={isPresetMode ? handleCreatePreset : handleLogTimed}
-				disabled={disabled || !canCreate}
+				disabled={createFormDisabled || !canCreate}
 			>
 				{primaryActionPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 				{primaryActionLabel}
@@ -519,7 +606,7 @@ export const PresetActionsDrawer = ({
 					variant="outline"
 					className="w-full"
 					onClick={() => setCreateModalOpen(false)}
-					disabled={disabled}
+					disabled={createFormDisabled}
 				>
 					{t("Cancel")}
 				</Button>
@@ -537,7 +624,7 @@ export const PresetActionsDrawer = ({
 									size="sm"
 									className="rounded-full px-3"
 									onClick={() => handleCreatePresetFromTemplate(template)}
-									disabled={disabled}
+									disabled={createFormDisabled}
 								>
 									{localizedPresetLabels.get(template.key) ?? template.label}
 								</Button>
@@ -579,8 +666,47 @@ export const PresetActionsDrawer = ({
 						</div>
 						<span className="text-xs font-medium leading-tight text-muted-foreground">{t("Open task form")}</span>
 					</Button>
-					{filteredEditablePresets.map((preset) => renderPresetItem(preset))}
+					{sortedEditablePresets.length > 0 ? (
+						shouldRenderReorderContext ? (
+							<DndContext
+								sensors={sensors}
+								collisionDetection={closestCenter}
+								onDragStart={handleReorderDragStart}
+								onDragEnd={handleReorderDragEnd}
+								onDragCancel={handleReorderDragCancel}
+							>
+								<SortableContext items={dragOrderedPresetIds} strategy={rectSortingStrategy}>
+									{dragOrderedPresetIds.map((presetId) => {
+										const preset = sortedEditablePresetsById.get(presetId);
+										if (!preset) {
+											return null;
+										}
+
+										return (
+											<SortableGridItem
+												key={preset.id}
+												id={preset.id}
+												disabled={!canReorderPresets}
+												isActive={activeDragPresetId === preset.id}
+											>
+												{renderPresetItem(preset)}
+											</SortableGridItem>
+										);
+									})}
+								</SortableContext>
+							</DndContext>
+						) : (
+							filteredEditablePresets.map((preset) => renderPresetItem(preset))
+						)
+					) : null}
 				</div>
+				{onReorderPresets && sortedEditablePresets.length > 0 ? (
+					<p className="text-xs text-muted-foreground">
+						{normalizedPresetSearchQuery.length === 0
+							? t("Drag and drop tasks to reorder.")
+							: t("Clear search to reorder tasks.")}
+					</p>
+				) : null}
 				{sortedEditablePresets.length === 0 ? (
 					<p className="text-xs text-muted-foreground">{t("No tasks yet")}</p>
 				) : null}

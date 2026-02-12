@@ -1,7 +1,7 @@
 "use client";
 
 import { PencilIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
 import { OneOffTaskModal } from "@/components/task-actions/OneOffTaskModal";
@@ -10,7 +10,7 @@ import { TaskConfirmationDialog } from "@/components/task-actions/TaskConfirmati
 import { TaskGrid } from "@/components/task-actions/TaskGrid";
 import { TaskSearchBar } from "@/components/task-actions/TaskSearchBar";
 import { useLocalizedPresetOptions } from "@/components/task-actions/useLocalizedPresetOptions";
-import { normalizeText } from "@/components/task-actions/utils";
+import { normalizeText, sortEditablePresets } from "@/components/task-actions/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -20,7 +20,16 @@ import type { DurationKey } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 export const PresetActionsCard = () => {
-	const { householdId, presetOptions, currentUserRole, disabled, defaultBucket, logPreset } = useTaskActions();
+	const {
+		householdId,
+		presetOptions,
+		customPresets,
+		currentUserId,
+		currentUserRole,
+		disabled,
+		defaultBucket,
+		logPreset,
+	} = useTaskActions();
 	const [lastPressedTaskId, setLastPressedTaskId] = useState<string | null>(null);
 	const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 	const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
@@ -33,11 +42,28 @@ export const PresetActionsCard = () => {
 	const createLogMutation = useLogMutation();
 
 	const { localizedPresetOptions } = useLocalizedPresetOptions(presetOptions, t);
+	const sortedEditablePresets = useMemo(() => {
+		return sortEditablePresets(customPresets, currentUserId);
+	}, [customPresets, currentUserId]);
+	const localizedLabelById = useMemo(() => {
+		return new Map(localizedPresetOptions.map((preset) => [preset.id, preset.label]));
+	}, [localizedPresetOptions]);
+	const sortedLocalizedPresets = useMemo(() => {
+		return sortedEditablePresets.map((preset) => ({
+			id: preset.id,
+			label: localizedLabelById.get(preset.id) ?? preset.label,
+			bucket: preset.bucket,
+			templateKey: preset.templateKey,
+			iconKey: preset.iconKey,
+			isShared: preset.isShared,
+			sortOrder: preset.sortOrder,
+		}));
+	}, [localizedLabelById, sortedEditablePresets]);
 	const normalizedQuery = normalizeText(searchQuery);
 	const filteredPresets =
 		normalizedQuery.length > 0
-			? localizedPresetOptions.filter((preset) => normalizeText(preset.label).includes(normalizedQuery))
-			: localizedPresetOptions;
+			? sortedLocalizedPresets.filter((preset) => normalizeText(preset.label).includes(normalizedQuery))
+			: sortedLocalizedPresets;
 
 	const handleTaskClick = (taskId: string) => {
 		if (lastPressedTaskId === taskId) {
@@ -150,7 +176,7 @@ export const PresetActionsCard = () => {
 						<>
 							<TaskSearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 							<TaskGrid
-								presetOptions={localizedPresetOptions}
+								presetOptions={sortedLocalizedPresets}
 								filteredPresets={filteredPresets}
 								disabled={disabled}
 								onTaskClick={handleTaskClick}

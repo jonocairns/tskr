@@ -7,6 +7,8 @@ import { PageShell } from "@/components/PageShell";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
 import { getServerT } from "@/lib/i18nServer";
+import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
+import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
 
@@ -25,18 +27,15 @@ export default async function AssignmentsPage({ params }: Props) {
 		redirect(`/${householdId}`);
 	}
 
-	const [members, presets, assignedTasks] = await Promise.all([
+	const [members, presets, presetOrders, assignedTasks] = await Promise.all([
 		prisma.user.findMany({
 			where: { memberships: { some: { householdId } } },
 			select: { id: true, name: true, email: true },
 			orderBy: { createdAt: "asc" },
 		}),
 		prisma.presetTask.findMany({
-			where: {
-				householdId,
-				OR: [{ isShared: true }, { createdById: userId }],
-			},
-			orderBy: [{ isShared: "desc" }, { createdAt: "asc" }],
+			where: getVisiblePresetWhere(householdId, userId),
+			orderBy: { createdAt: "asc" },
 			select: {
 				id: true,
 				label: true,
@@ -47,6 +46,13 @@ export default async function AssignmentsPage({ params }: Props) {
 				createdById: true,
 				approvalOverride: true,
 				createdAt: true,
+			},
+		}),
+		prisma.presetTaskOrder.findMany({
+			where: { householdId, userId },
+			select: {
+				presetId: true,
+				sortOrder: true,
 			},
 		}),
 		prisma.assignedTask.findMany({
@@ -62,7 +68,7 @@ export default async function AssignmentsPage({ params }: Props) {
 		}),
 	]);
 
-	const presetSummaries = mapPresetSummaries(presets);
+	const presetSummaries = mapPresetSummaries(applyUserPresetOrdering(presets, presetOrders));
 	const assignedTaskEntries = assignedTasks
 		.filter((task) => Boolean(task.preset))
 		.map((task) => ({

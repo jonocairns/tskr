@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import { useTaskActions } from "@/components/task-actions/Context";
 import { PresetActionsDrawer } from "@/components/task-actions/PresetActionsDrawer";
 import type { PresetTemplate } from "@/components/task-actions/types";
 import { useLocalizedPresetOptions } from "@/components/task-actions/useLocalizedPresetOptions";
+import { sortEditablePresets } from "@/components/task-actions/utils";
 import { usePresetMutations } from "@/hooks/usePresetMutations";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
@@ -35,18 +36,16 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 	const { t } = useTranslation();
 	const canManagePresets = currentUserRole !== "DOER";
 	const canEditApprovalOverride = canManagePresets;
+	const isPresetMutationPendingRef = useRef(false);
 
-	const { createPresetMutation, updatePresetMutation, deletePresetMutation } = usePresetMutations({
-		customPresets,
-		setCustomPresetsAction: setCustomPresets,
-	});
+	const { createPresetMutation, updatePresetMutation, deletePresetMutation, reorderPresetMutation } =
+		usePresetMutations({
+			customPresets,
+			setCustomPresetsAction: setCustomPresets,
+		});
 
 	const sortedEditablePresets = useMemo(() => {
-		return [...customPresets.filter((preset) => preset.isShared || preset.createdById === currentUserId)].sort(
-			(a, b) => {
-				return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-			},
-		);
+		return sortEditablePresets(customPresets, currentUserId);
 	}, [currentUserId, customPresets]);
 
 	const { appliedTemplateKeys, presetDisplayLabels } = useLocalizedPresetOptions(presetOptions, t);
@@ -59,14 +58,32 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 		})).filter((group) => group.templates.length > 0);
 	}, [appliedTemplateKeys, presetTemplates]);
 
-	const runPresetMutation = async (mutation: () => Promise<unknown>) => {
-		return new Promise<boolean>((resolve) =>
-			startPresetTransition(() => {
-				void mutation()
-					.then(() => resolve(true))
-					.catch(() => resolve(false));
-			}),
-		);
+	const runPresetMutation = async (mutation: () => Promise<unknown>, useTransition: boolean = true) => {
+		if (isPresetMutationPendingRef.current) {
+			return false;
+		}
+
+		isPresetMutationPendingRef.current = true;
+		try {
+			if (!useTransition) {
+				try {
+					await mutation();
+					return true;
+				} catch {
+					return false;
+				}
+			}
+
+			return await new Promise<boolean>((resolve) =>
+				startPresetTransition(() => {
+					void mutation()
+						.then(() => resolve(true))
+						.catch(() => resolve(false));
+				}),
+			);
+		} finally {
+			isPresetMutationPendingRef.current = false;
+		}
 	};
 
 	const handleCreatePresetFromTemplate = async (
@@ -152,6 +169,14 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 		return runPresetMutation(() => deletePresetMutation.mutateAsync({ householdId, id: presetId }));
 	};
 
+	const handleReorderPresets = async (orderedPresetIds: string[]): Promise<boolean> => {
+		if (orderedPresetIds.length === 0) {
+			return false;
+		}
+
+		return runPresetMutation(() => reorderPresetMutation.mutateAsync({ householdId, orderedPresetIds }), false);
+	};
+
 	return canManagePresets ? (
 		<PresetActionsDrawer
 			defaultBucket={defaultBucket}
@@ -159,6 +184,7 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 			onCreatePresetFromTemplate={handleCreatePresetFromTemplate}
 			onUpdatePreset={handleUpdatePreset}
 			onDeletePreset={handleDeletePreset}
+			onReorderPresets={handleReorderPresets}
 			templatesByBucket={templatesByBucket}
 			disabled={disabled}
 			isPending={isPending}

@@ -8,6 +8,7 @@ type PresetRecord = {
 	templateKey: string | null;
 	iconKey: string | null;
 	isShared: boolean;
+	sortOrder: number;
 	createdById: string;
 	approvalOverride: string | null;
 	createdAt: Date;
@@ -20,6 +21,7 @@ export type PresetSummary = {
 	templateKey: string | null;
 	iconKey: PresetIconKey | null;
 	isShared: boolean;
+	sortOrder: number;
 	createdById: string;
 	approvalOverride: "REQUIRE" | "SKIP" | null;
 	createdAt: string;
