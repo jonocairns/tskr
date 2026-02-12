@@ -5,7 +5,9 @@ import { z } from "zod";
 
 import { DURATION_KEYS } from "@/lib/points";
 import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
+import { createPresetWithOrdering } from "@/lib/presetTaskOrderManagement";
 import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
+import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
@@ -64,10 +66,7 @@ export const presetsRouter = router({
 
 		const [presets, presetOrders] = await Promise.all([
 			prisma.presetTask.findMany({
-				where: {
-					householdId,
-					OR: [{ isShared: true }, { createdById: userId }],
-				},
+				where: getVisiblePresetWhere(householdId, userId),
 				select: {
 					id: true,
 					householdId: true,
@@ -97,104 +96,18 @@ export const presetsRouter = router({
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 
-		const { preset, sortOrder } = await prisma.$transaction(async (tx) => {
-			const visiblePresets = await tx.presetTask.findMany({
-				where: {
-					householdId,
-					OR: [{ isShared: true }, { createdById: userId }],
-				},
-				select: {
-					id: true,
-					createdAt: true,
-				},
-			});
-			const visiblePresetIds = visiblePresets.map((preset) => preset.id);
-			const existingOrders = visiblePresetIds.length
-				? await tx.presetTaskOrder.findMany({
-						where: {
-							householdId,
-							userId,
-							presetId: { in: visiblePresetIds },
-						},
-						select: {
-							presetId: true,
-							sortOrder: true,
-						},
-					})
-				: [];
-			const hasMissingVisibleOrderRows = existingOrders.length < visiblePresets.length;
-			const orderedVisiblePresets = applyUserPresetOrdering(visiblePresets, existingOrders);
-
-			if (hasMissingVisibleOrderRows) {
-				await Promise.all(
-					orderedVisiblePresets.map((preset, index) =>
-						tx.presetTaskOrder.upsert({
-							where: {
-								householdId_userId_presetId: {
-									householdId,
-									userId,
-									presetId: preset.id,
-								},
-							},
-							update: { sortOrder: index },
-							create: {
-								householdId,
-								userId,
-								presetId: preset.id,
-								sortOrder: index,
-							},
-						}),
-					),
-				);
-			}
-
-			const nextSortOrder = hasMissingVisibleOrderRows
-				? orderedVisiblePresets.length
-				: existingOrders.reduce((maxSortOrder, entry) => Math.max(maxSortOrder, entry.sortOrder), -1) + 1;
-
-			const createdPreset = await tx.presetTask.create({
-				data: {
-					householdId,
-					createdById: userId,
-					label: input.label,
-					bucket: input.bucket,
-					templateKey: input.templateKey ?? null,
-					iconKey: input.iconKey ?? null,
-					isShared: input.isShared ?? true,
-					approvalOverride: input.approvalOverride ?? null,
-				},
-				select: {
-					id: true,
-					label: true,
-					bucket: true,
-					templateKey: true,
-					iconKey: true,
-					isShared: true,
-					createdById: true,
-					approvalOverride: true,
-					createdAt: true,
-				},
-			});
-
-			await tx.presetTaskOrder.upsert({
-				where: {
-					householdId_userId_presetId: {
-						householdId,
-						userId,
-						presetId: createdPreset.id,
-					},
-				},
-				update: { sortOrder: nextSortOrder },
-				create: {
-					householdId,
-					userId,
-					presetId: createdPreset.id,
-					sortOrder: nextSortOrder,
-				},
-			});
-
-			return { preset: createdPreset, sortOrder: nextSortOrder };
-		});
+		const { preset, sortOrder } = await prisma.$transaction((tx) =>
+			createPresetWithOrdering(tx, {
+				householdId,
+				userId,
+				label: input.label,
+				bucket: input.bucket,
+				templateKey: input.templateKey,
+				iconKey: input.iconKey,
+				isShared: input.isShared,
+				approvalOverride: input.approvalOverride,
+			}),
+		);
 
 		return { preset: { ...preset, sortOrder } };
 	}),
@@ -305,10 +218,7 @@ export const presetsRouter = router({
 
 		const visiblePresetIds = (
 			await prisma.presetTask.findMany({
-				where: {
-					householdId,
-					OR: [{ isShared: true }, { createdById: userId }],
-				},
+				where: getVisiblePresetWhere(householdId, userId),
 				select: { id: true },
 			})
 		).map((preset) => preset.id);

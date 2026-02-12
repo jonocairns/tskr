@@ -4,6 +4,7 @@ import { LogStatus } from "@prisma/client";
 import { buildAssignedTaskEntries } from "@/lib/dashboard/assigned";
 import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from "@/lib/formatDate";
 import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
+import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_TIME_ZONE, getTimeZoneDayNumber } from "@/lib/timeZones";
 
@@ -95,10 +96,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 			take: APPROVALS_LIMIT + 1,
 		}),
 		prisma.presetTask.findMany({
-			where: {
-				householdId,
-				OR: [{ isShared: true }, { createdById: userId }],
-			},
+			where: getVisiblePresetWhere(householdId, userId),
 			orderBy: { createdAt: "asc" },
 			select: {
 				id: true,

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { getServerT } from "@/lib/i18nServer";
 import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/lib/points";
+import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
 import { householdProcedure, protectedProcedure, router } from "@/server/trpc";
@@ -140,8 +141,7 @@ export const logsRouter = router({
 					const preset = await prisma.presetTask.findFirst({
 						where: {
 							id: input.presetId,
-							householdId,
-							OR: [{ isShared: true }, { createdById: userId }],
+							...getVisiblePresetWhere(householdId, userId),
 						},
 						select: {
 							id: true,

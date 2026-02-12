@@ -8,6 +8,7 @@ import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
 import { getServerT } from "@/lib/i18nServer";
 import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
+import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
 
@@ -33,10 +34,7 @@ export default async function AssignmentsPage({ params }: Props) {
 			orderBy: { createdAt: "asc" },
 		}),
 		prisma.presetTask.findMany({
-			where: {
-				householdId,
-				OR: [{ isShared: true }, { createdById: userId }],
-			},
+			where: getVisiblePresetWhere(householdId, userId),
 			orderBy: { createdAt: "asc" },
 			select: {
 				id: true,
