@@ -163,7 +163,9 @@ export const presetsRouter = router({
 				);
 			}
 
-			const nextSortOrder = orderedVisiblePresets.length;
+			const nextSortOrder = hasMissingVisibleOrderRows
+				? orderedVisiblePresets.length
+				: existingOrders.reduce((maxSortOrder, entry) => Math.max(maxSortOrder, entry.sortOrder), -1) + 1;
 
 			const createdPreset = await tx.presetTask.create({
 				data: {
