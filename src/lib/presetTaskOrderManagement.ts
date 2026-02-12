@@ -2,7 +2,7 @@ import "server-only";
 
 import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
 import { getVisiblePresetWhere } from "@/lib/presetVisibility";
-import { prisma } from "@/lib/prisma";
+import type { prisma } from "@/lib/prisma";
 
 type CreatePresetWithOrderingInput = {
 	householdId: string;

@@ -296,9 +296,6 @@ export const PresetActionsDrawer = ({
 			const success = await onCreatePresetFromTemplate(template, customIsShared, approvalOverride, customIconKey);
 			if (success) {
 				resetCustomForm();
-				if (useTaskCardGrid) {
-					setCreateModalOpen(false);
-				}
 			}
 		} finally {
 			setIsCreateActionPending(false);
