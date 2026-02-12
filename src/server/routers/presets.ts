@@ -106,7 +106,6 @@ export const presetsRouter = router({
 				select: {
 					id: true,
 					createdAt: true,
-					createdById: true,
 				},
 			});
 			const visiblePresetIds = visiblePresets.map((preset) => preset.id);
@@ -124,21 +123,7 @@ export const presetsRouter = router({
 					})
 				: [];
 			const hasMissingVisibleOrderRows = existingOrders.length < visiblePresets.length;
-			const orderedPresetIdSet = new Set(existingOrders.map((entry) => entry.presetId));
-			const hasSharedPresetOrderRow = visiblePresets.some(
-				(preset) => orderedPresetIdSet.has(preset.id) && preset.createdById !== userId,
-			);
-			const orderedVisiblePresets =
-				hasMissingVisibleOrderRows && !hasSharedPresetOrderRow
-					? [...visiblePresets].sort((a, b) => {
-							const createdAtDifference = a.createdAt.getTime() - b.createdAt.getTime();
-							if (createdAtDifference !== 0) {
-								return createdAtDifference;
-							}
-
-							return a.id.localeCompare(b.id);
-						})
-					: applyUserPresetOrdering(visiblePresets, existingOrders);
+			const orderedVisiblePresets = applyUserPresetOrdering(visiblePresets, existingOrders);
 
 			if (hasMissingVisibleOrderRows) {
 				await Promise.all(
