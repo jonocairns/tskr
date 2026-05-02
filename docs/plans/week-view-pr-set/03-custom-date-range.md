@@ -39,6 +39,8 @@ The user can look back across different periods without losing the positive comp
 
 - Parse and validate date params on the server page.
 - Normalize the selected local dates to household-time-zone boundaries before querying/building timeline data.
+- Replace any defensive recurring-occurrence loop cap with deterministic period stepping that can safely cover long selected ranges.
+- Compute the first cadence period containing the selected range start and advance period-by-period from there.
 - Keep page architecture server-first; the control can still submit/replace URL params.
 
 ## Acceptance Criteria
@@ -48,3 +50,4 @@ The user can look back across different periods without losing the positive comp
 - The selected range is reflected in the URL.
 - Timeline ordering remains chronological.
 - Date-boundary behavior is stable in the household time zone.
+- Planned-occurrence generation does not silently truncate when the selected range grows.

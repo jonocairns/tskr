@@ -50,10 +50,17 @@ The user can quickly see what they have done recently and what is coming up, wit
 
 - Add a week-view data layer under `src/lib/week-view/`.
 - Keep the dashboard history logic separate; this page needs range-aware merging, not just existing audit-log output.
+- Keep any range labels exposed from the data layer typed as explicit keys/discriminators rather than unstructured strings.
+- Keep status assumptions explicit in the timeline builder; `PENDING` and `APPROVED` should be treated as an enforced invariant, not just an implicit query detail.
 - Introduce a timeline entry union for:
   - completed
   - pending approval
   - planned
+
+## Follow-Up For Later Slices
+
+- A defensive recurring-occurrence loop is acceptable in this fixed-range slice, but it should not become the long-term shape for custom-range support.
+- Do not spend this PR on generalized cadence stepping if it materially slows delivery; capture that work in the custom-range and hardening slices.
 
 ## Acceptance Criteria
 

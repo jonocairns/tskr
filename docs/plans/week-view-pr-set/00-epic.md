@@ -57,6 +57,14 @@ Order:
 - Introduce a week-view domain layer instead of bolting this onto dashboard query code.
 - Planned timeline entries need range-aware occurrence generation, not just the current “active now” assigned-task state.
 - Planned entries must be deduped against matching `PENDING` or `APPROVED` completions so the same occurrence does not show as both done and still pending.
+- Keep translation keys owned by the page/UI layer rather than burying them inside the domain builder.
+- Preserve strong invariants around timeline entry status values rather than relying only on upstream query filters.
+
+## Follow-Up Notes From PR 1
+
+- The initial recurring-occurrence builder is acceptable for the fixed `Past 7 days` slice, but it should be replaced before broader custom ranges ship.
+- For custom ranges, occurrence stepping should advance deterministically by cadence period rather than relying on a defensive loop cap or minute-by-minute fallback.
+- Small cleanup items such as translation-key typing and status invariant hardening can be folded into later slices instead of reopening PR 1.
 
 ## Known Open Detail
 

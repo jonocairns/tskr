@@ -21,6 +21,7 @@ The page behaves consistently across approvals, one-off tasks, date boundaries, 
 - Add tests for date-boundary behavior in household time zones.
 - Tighten empty states and status styling.
 - Improve loading/refresh behavior where needed.
+- Clean up any remaining domain/UI seams such as translation-key ownership and timeline-status invariant checks.
 - Reconcile any rough edges discovered in earlier slices.
 
 ## Edge Cases To Cover
@@ -30,6 +31,8 @@ The page behaves consistently across approvals, one-off tasks, date boundaries, 
 - cadence windows that overlap selected-range boundaries
 - duplicate suppression between planned entries and matching `PENDING`/`APPROVED` completions
 - selected-user behavior versus acting-user permission gates
+- translation labels leaking from the domain layer instead of being explicit UI keys
+- timeline builders accepting broader status values than intended without asserting the invariant
 
 ## Out Of Scope
 
@@ -43,3 +46,4 @@ The page behaves consistently across approvals, one-off tasks, date boundaries, 
 - Pending approval state is visually clear and consistent.
 - Empty states remain positive and on-message.
 - Mobile interactions remain straightforward with large tap targets.
+- Week-view domain helpers expose explicit, stable contracts rather than relying on incidental query behavior.
