@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardListIcon, HomeIcon, LogOutIcon, SettingsIcon } from "lucide-react";
+import { CalendarDaysIcon, ClipboardListIcon, HomeIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 
@@ -55,6 +55,12 @@ export const UserMenu = ({ user, household }: Props) => {
 							<Link href={`/${householdId}/household`}>
 								<HomeIcon className="mr-2 h-4 w-4" />
 								{t("Household")}
+							</Link>
+						</DropdownMenuItem>
+						<DropdownMenuItem asChild>
+							<Link href={`/${householdId}/week`}>
+								<CalendarDaysIcon className="mr-2 h-4 w-4" />
+								{t("Week view")}
 							</Link>
 						</DropdownMenuItem>
 						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (

@@ -82,7 +82,7 @@ const getDateParts = (value: string | Date, timeZone?: string) => {
 	};
 };
 
-const formatTime = (value: string | Date, timeFormat: TimeFormat, timeZone?: string) => {
+export const formatTime = (value: string | Date, timeFormat: TimeFormat, timeZone?: string) => {
 	const date = toDate(value);
 	const use12Hour = timeFormat === "H12";
 	const parts = getTimeFormatter(timeZone, use12Hour).formatToParts(date);
