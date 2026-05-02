@@ -109,6 +109,10 @@ const getPeriodBounds = (now: Date, intervalMinutes: number, timeZone: string) =
 	return { periodStart, periodEnd };
 };
 
+export const getAssignedTaskPeriodBounds = (now: Date, intervalMinutes: number, timeZone: string) => {
+	return getPeriodBounds(now, intervalMinutes, timeZone);
+};
+
 type ComputeAssignedTaskStateInput = {
 	task: AssignedTaskConfig;
 	logs: AssignedTaskLog[];
