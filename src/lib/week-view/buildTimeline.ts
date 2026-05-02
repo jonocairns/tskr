@@ -6,7 +6,7 @@ import { addDaysInTimeZone, getStartOfDayInTimeZone } from "@/lib/timeZones";
 export type WeekViewRange = {
 	start: Date;
 	end: Date;
-	label: string;
+	labelKey: "past7Days";
 };
 
 export type WeekViewCompletedEntry = {
@@ -79,8 +79,8 @@ const getDefaultWeekViewRange = ({ now = new Date(), timeZone }: { now?: Date; t
 	return {
 		start,
 		end,
-		label: "Past 7 days",
-	};
+		labelKey: "past7Days",
+	} satisfies WeekViewRange;
 };
 
 const buildCompletedEntries = (completedLogs: CompletedLogRecord[]) => {

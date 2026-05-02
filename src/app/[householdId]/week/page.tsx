@@ -19,6 +19,7 @@ export default async function WeekViewPage({ params }: Props) {
 	const { session, userId, membership } = await getHouseholdContext(householdId);
 	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
 	const data = await getWeekViewData({ householdId, userId });
+	const rangeTitle = t("Past 7 days");
 
 	return (
 		<PageShell size="lg">
@@ -40,7 +41,7 @@ export default async function WeekViewPage({ params }: Props) {
 				pendingCount={data.pendingCount}
 				approvedPoints={data.approvedPoints}
 				plannedCount={data.plannedCount}
-				title={t(data.range.label)}
+				title={rangeTitle}
 				labels={{
 					completed: t("Completed"),
 					pendingApproval: t("Pending approval"),

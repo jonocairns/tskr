@@ -34,7 +34,7 @@ const TIME_ZONE = "America/Los_Angeles";
 const makeRange = (start: Date, end: Date) => ({
 	start,
 	end,
-	label: "Past 7 days",
+	labelKey: "past7Days" as const,
 });
 
 const makeLog = (overrides: Partial<CompletedLogRecord> = {}): CompletedLogRecord => ({
@@ -131,7 +131,7 @@ test("builds the default range from household-local day boundaries", () => {
 	const now = atZoned(TIME_ZONE, 2024, 1, 7, 15, 45);
 	const range = getDefaultWeekViewRange({ now, timeZone: TIME_ZONE });
 
-	expect(range.label).toBe("Past 7 days");
+	expect(range.labelKey).toBe("past7Days");
 	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0).toISOString());
 	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 8, 0, 0).toISOString());
 });
