@@ -78,22 +78,13 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 	});
 	const rangeTitle = data.range.labelKey === "past7Days" ? t("Past 7 days") : t("Custom range");
 	const summaryTitle = viewingSelf || !selectedMember ? rangeTitle : `${rangeTitle} · ${selectedMember.name}`;
-	const pageDescription = viewingSelf
-		? t("Recent completions and planned tasks in one simple timeline.")
-		: t("Recent completions and planned tasks for the selected household member.");
-	const timelineDescription = viewingSelf
-		? t("Completed activity and planned task windows together.")
-		: t("Completed activity and planned task windows for the selected household member.");
-	const emptyDescription = viewingSelf
-		? t("When something gets logged or assigned here, it will show up in this timeline.")
-		: t("When something gets logged or assigned for this member in this range, it will show up here.");
 
 	return (
 		<PageShell size="lg">
 			<PageHeader
 				eyebrow={t("tskr")}
 				title={t("Week view")}
-				description={pageDescription}
+				description={t("Recent completions and planned tasks in one simple timeline.")}
 				backHref={`/${householdId}`}
 				backLabel={t("Back to dashboard")}
 				user={session.user}
@@ -144,9 +135,9 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 				canCompletePlannedEntries={viewingSelf}
 				labels={{
 					title: t("Timeline"),
-					description: timelineDescription,
+					description: t("Completed activity and planned task windows together."),
 					emptyTitle: t("No activity in this range yet."),
-					emptyDescription: emptyDescription,
+					emptyDescription: t("When something gets logged or assigned here, it will show up in this timeline."),
 					completed: t("Completed"),
 					pendingApproval: t("Pending approval"),
 					planned: t("Planned"),
