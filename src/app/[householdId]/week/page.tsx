@@ -52,9 +52,11 @@ export default async function WeekViewPage({ params }: Props) {
 
 			<WeekViewTimeline
 				entries={data.timeline}
+				householdId={householdId}
 				timeZone={data.timeZone}
 				dateFormat={data.dateFormat}
 				timeFormat={data.timeFormat}
+				canCompletePlannedEntries
 				labels={{
 					title: t("Timeline"),
 					description: t("Completed activity and planned task windows together."),
