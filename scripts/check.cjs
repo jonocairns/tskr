@@ -22,6 +22,7 @@ const steps = [
 	{ label: "Sync i18n", command: "pnpm i18n:sync" },
 	{ label: args.includes("--fix") ? "Lint (fix)" : "Lint", command: lintCommand },
 	{ label: "Compile", command: "pnpm compile" },
+	{ label: "Build", command: "pnpm build" },
 	{ label: "Test", command: "pnpm test" },
 ];
 

@@ -6,6 +6,7 @@ import { WeekViewSummary } from "@/components/WeekViewSummary";
 import { WeekViewTimeline } from "@/components/WeekViewTimeline";
 import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
 import { getServerT } from "@/lib/i18nServer";
+import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
 import { parseWeekViewRange } from "@/lib/week-view/buildTimeline";
 import { getWeekViewData, getWeekViewHouseholdSettings } from "@/lib/week-view/queries";
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = {
 	from?: string | string[];
 	to?: string | string[];
+	userId?: string | string[];
 };
 
 type Props = {
@@ -34,7 +36,35 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 	const resolvedSearchParams = searchParams ? await searchParams : {};
 	const { session, userId, membership } = await getHouseholdContext(householdId);
 	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
-	const settings = await getWeekViewHouseholdSettings(householdId);
+	const [settings, householdMembers] = await Promise.all([
+		getWeekViewHouseholdSettings(householdId),
+		prisma.householdMember.findMany({
+			where: { householdId },
+			select: {
+				userId: true,
+				user: {
+					select: {
+						name: true,
+						email: true,
+					},
+				},
+			},
+		}),
+	]);
+	const getMemberLabel = (member: { user: { name: string | null; email: string | null } }) =>
+		member.user.name ?? member.user.email ?? t("Unknown");
+	const members = householdMembers
+		.map((member) => ({
+			id: member.userId,
+			label: member.userId === userId ? `${getMemberLabel(member)} (${t("You")})` : getMemberLabel(member),
+			name: getMemberLabel(member),
+		}))
+		.sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }));
+	const selectedUserIdFromSearch = getSingleSearchParamValue(resolvedSearchParams.userId);
+	const selectedMember =
+		members.find((member) => member.id === selectedUserIdFromSearch) ?? members.find((member) => member.id === userId);
+	const selectedUserId = selectedMember?.id ?? userId;
+	const viewingSelf = selectedUserId === userId;
 	const range = parseWeekViewRange({
 		from: getSingleSearchParamValue(resolvedSearchParams.from),
 		to: getSingleSearchParamValue(resolvedSearchParams.to),
@@ -42,11 +72,12 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 	});
 	const data = await getWeekViewData({
 		householdId,
-		userId,
+		userId: selectedUserId,
 		range,
 		...settings,
 	});
 	const rangeTitle = data.range.labelKey === "past7Days" ? t("Past 7 days") : t("Custom range");
+	const summaryTitle = viewingSelf || !selectedMember ? rangeTitle : `${rangeTitle} · ${selectedMember.name}`;
 
 	return (
 		<PageShell size="lg">
@@ -62,11 +93,15 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 
 			<WeekViewRangeControls
 				householdId={householdId}
+				actingUserId={userId}
+				selectedUserId={selectedUserId}
+				members={members}
 				range={data.range}
 				timeZone={data.timeZone}
 				labels={{
-					title: t("Date range"),
-					description: t("Pick household-local dates and update the timeline by URL."),
+					title: t("View options"),
+					description: t("Pick a household member and household-local dates to update the timeline by URL."),
+					member: t("Member"),
 					from: t("From"),
 					to: t("To"),
 					apply: t("Apply range"),
@@ -82,7 +117,7 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 				pendingCount={data.pendingCount}
 				approvedPoints={data.approvedPoints}
 				plannedCount={data.plannedCount}
-				title={rangeTitle}
+				title={summaryTitle}
 				labels={{
 					completed: t("Completed"),
 					pendingApproval: t("Pending approval"),
@@ -97,7 +132,7 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 				timeZone={data.timeZone}
 				dateFormat={data.dateFormat}
 				timeFormat={data.timeFormat}
-				canCompletePlannedEntries
+				canCompletePlannedEntries={viewingSelf}
 				labels={{
 					title: t("Timeline"),
 					description: t("Completed activity and planned task windows together."),
