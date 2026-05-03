@@ -2,7 +2,6 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { WeekViewRangeControls } from "@/components/WeekViewRangeControls";
-import { WeekViewSummary } from "@/components/WeekViewSummary";
 import { WeekViewTimeline } from "@/components/WeekViewTimeline";
 import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
 import { getServerT } from "@/lib/i18nServer";
@@ -95,12 +94,8 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 				household={{ id: householdId, role: membership.role }}
 			/>
 
-			<WeekViewSummary
-				completedCount={data.completedCount}
-				pendingCount={data.pendingCount}
-				approvedPoints={data.approvedPoints}
-				plannedCount={data.plannedCount}
-				controls={
+			<WeekViewTimeline
+				header={
 					<WeekViewRangeControls
 						householdId={householdId}
 						actingUserId={userId}
@@ -124,24 +119,12 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 						}}
 					/>
 				}
-				labels={{
-					completed: t("Completed"),
-					pendingApproval: t("Pending approval"),
-					approvedPoints: t("Approved points"),
-					planned: t("Planned"),
-				}}
-			/>
-
-			<WeekViewTimeline
 				entries={data.timeline}
 				householdId={householdId}
 				timeZone={data.timeZone}
-				dateFormat={data.dateFormat}
 				timeFormat={data.timeFormat}
 				canCompletePlannedEntries={viewingSelf}
 				labels={{
-					title: t("Timeline"),
-					description: t("Completed activity and planned task windows together."),
 					emptyTitle: t("No activity in this range yet."),
 					emptyDescription: t("Upcoming assigned tasks and fresh completions will show up here."),
 					completed: t("Completed"),

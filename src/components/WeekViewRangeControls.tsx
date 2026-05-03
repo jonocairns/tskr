@@ -2,7 +2,7 @@
 
 import { CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -75,6 +75,8 @@ export const WeekViewRangeControls = ({
 	const router = useRouter();
 	const [isPending, startTransition] = useTransition();
 	const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+	const fromInputRef = useRef<HTMLInputElement>(null);
+	const toInputRef = useRef<HTMLInputElement>(null);
 
 	const fromInput = formatDateInTimeZoneForInput(range.start, timeZone);
 	const toInput = formatDateInTimeZoneForInput(addDaysInTimeZone(range.end, -1, timeZone), timeZone);
@@ -141,11 +143,20 @@ export const WeekViewRangeControls = ({
 		{ timeZone, dateFormat },
 	)}`;
 
-	const showReset = range.labelKey !== "thisWeek";
+	const showReset = range.labelKey !== "thisFortnight";
+
+	const openPicker = (input: HTMLInputElement | null) => {
+		if (!input) {
+			return;
+		}
+
+		input.focus();
+		input.showPicker?.();
+	};
 
 	return (
-		<div className="space-y-3">
-			<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+		<div className="flex flex-col items-start gap-3 lg:flex-row lg:items-start lg:justify-between">
+			<div className="min-w-0">
 				{members.length > 1 ? (
 					<WeekViewMemberSelector
 						disabled={isPending}
@@ -155,87 +166,113 @@ export const WeekViewRangeControls = ({
 						srLabel={labels.member}
 					/>
 				) : (
-					<span className="text-xl font-semibold">
+					<span className="block truncate text-xl font-semibold">
 						{members.find((member) => member.id === selectedUserId)?.label ?? ""}
 					</span>
 				)}
-				<Popover open={isPopoverOpen} onOpenChange={onCustomOpen}>
-					<PopoverTrigger asChild>
-						<button
-							type="button"
-							aria-label={labels.dateRange}
-							disabled={isPending}
-							className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-						>
-							<CalendarIcon className="size-4" aria-hidden />
-							<span>{rangeLabel}</span>
-						</button>
-					</PopoverTrigger>
-					<PopoverContent align="start" className="w-auto min-w-[18rem]">
-						<form
-							onSubmit={(event) => {
-								event.preventDefault();
-								onApplyCustom();
-							}}
-							className="space-y-3"
-						>
-							<div className="space-y-1.5">
-								<Label htmlFor="week-view-from">{labels.from}</Label>
-								<Input
-									id="week-view-from"
-									type="date"
-									required
-									value={draftFrom}
-									onChange={(event) => setDraftFrom(event.target.value)}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="week-view-to">{labels.to}</Label>
-								<Input
-									id="week-view-to"
-									type="date"
-									required
-									value={draftTo}
-									onChange={(event) => setDraftTo(event.target.value)}
-								/>
-							</div>
-							<Button type="submit" className="w-full">
-								{labels.apply}
-							</Button>
-						</form>
-					</PopoverContent>
-				</Popover>
 			</div>
-			<div className="flex flex-wrap items-center gap-2">
-				{WEEK_VIEW_PRESETS.map((option) => {
-					const isActive = range.labelKey === option;
-					return (
+			<div className="flex w-full min-w-0 flex-col items-start gap-3 lg:w-auto lg:items-end">
+				<div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+					{WEEK_VIEW_PRESETS.map((option) => {
+						const isActive = range.labelKey === option;
+						return (
+							<button
+								key={option}
+								type="button"
+								onClick={() => onPresetChange(option)}
+								disabled={isPending}
+								className={cn(
+									"rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+									isActive
+										? "border-transparent bg-primary text-primary-foreground"
+										: "border-border bg-transparent text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+								)}
+							>
+								{labels.presets[option]}
+							</button>
+						);
+					})}
+					{showReset ? (
 						<button
-							key={option}
 							type="button"
-							onClick={() => onPresetChange(option)}
+							onClick={() => onPresetChange("thisFortnight")}
 							disabled={isPending}
-							className={cn(
-								"rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50",
-								isActive
-									? "border-transparent bg-primary text-primary-foreground"
-									: "border-border bg-transparent text-muted-foreground hover:border-foreground/30 hover:text-foreground",
-							)}
+							className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50"
 						>
-							{labels.presets[option]}
+							{labels.reset}
 						</button>
-					);
-				})}
-				{showReset ? (
-					<button
-						type="button"
-						onClick={() => onPresetChange("thisWeek")}
-						disabled={isPending}
-						className="ml-auto text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50"
-					>
-						{labels.reset}
-					</button>
-				) : null}
+					) : null}
+					<Popover open={isPopoverOpen} onOpenChange={onCustomOpen}>
+						<PopoverTrigger asChild>
+							<button
+								type="button"
+								aria-label={labels.dateRange}
+								disabled={isPending}
+								className="inline-flex shrink-0 items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 lg:ml-1"
+							>
+								<CalendarIcon className="size-4" aria-hidden />
+								<span>{rangeLabel}</span>
+							</button>
+						</PopoverTrigger>
+						<PopoverContent align="end" className="w-auto min-w-[18rem]">
+							<form
+								onSubmit={(event) => {
+									event.preventDefault();
+									onApplyCustom();
+								}}
+								className="space-y-3"
+							>
+								<div className="space-y-1.5">
+									<Label htmlFor="week-view-from">{labels.from}</Label>
+									<div className="relative">
+										<Input
+											ref={fromInputRef}
+											id="week-view-from"
+											type="date"
+											required
+											value={draftFrom}
+											onChange={(event) => setDraftFrom(event.target.value)}
+											className="pr-10 [&::-webkit-calendar-picker-indicator]:opacity-0"
+										/>
+										<button
+											type="button"
+											aria-label={labels.from}
+											className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+											onClick={() => openPicker(fromInputRef.current)}
+										>
+											<CalendarIcon className="size-4" aria-hidden />
+										</button>
+									</div>
+								</div>
+								<div className="space-y-1.5">
+									<Label htmlFor="week-view-to">{labels.to}</Label>
+									<div className="relative">
+										<Input
+											ref={toInputRef}
+											id="week-view-to"
+											type="date"
+											required
+											value={draftTo}
+											onChange={(event) => setDraftTo(event.target.value)}
+											className="pr-10 [&::-webkit-calendar-picker-indicator]:opacity-0"
+										/>
+										<button
+											type="button"
+											aria-label={labels.to}
+											className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+											onClick={() => openPicker(toInputRef.current)}
+										>
+											<CalendarIcon className="size-4" aria-hidden />
+										</button>
+									</div>
+								</div>
+								<Button type="submit" className="w-full">
+									{labels.apply}
+								</Button>
+							</form>
+						</PopoverContent>
+					</Popover>
+				</div>
 			</div>
 		</div>
 	);

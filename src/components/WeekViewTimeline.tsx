@@ -2,22 +2,21 @@
 
 import { CalendarClockIcon, CheckCircle2Icon, CheckIcon, Clock3Icon, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { useToast } from "@/hooks/useToast";
-import { type DateFormat, formatDate, formatTime, type TimeFormat } from "@/lib/formatDate";
+import { formatDate, formatReadableDate, formatTime, type TimeFormat } from "@/lib/formatDate";
 import { useTranslation } from "@/lib/i18nClient";
 import { DURATION_BUCKETS } from "@/lib/points";
+import { getTimeZoneDayNumber } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 import type { WeekViewTimelineEntry } from "@/lib/week-view/buildTimeline";
 
 type Labels = {
-	title: string;
-	description: string;
 	emptyTitle: string;
 	emptyDescription: string;
 	completed: string;
@@ -27,8 +26,8 @@ type Labels = {
 };
 
 type Props = {
-	dateFormat: DateFormat;
 	entries: WeekViewTimelineEntry[];
+	header?: ReactNode;
 	householdId: string;
 	labels: Labels;
 	timeFormat: TimeFormat;
@@ -39,52 +38,84 @@ type Props = {
 const bucketLabelMap = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]));
 
 type EntryAppearance = {
-	toneClass: string;
 	iconClass: string;
 	badgeClass: string;
 	icon: LucideIcon;
 	statusLabel: string;
+	showStatusBadge: boolean;
 };
 
 const getEntryAppearance = (entry: WeekViewTimelineEntry, labels: Labels): EntryAppearance => {
 	if (entry.type === "planned") {
 		return {
-			toneClass: "border-sky-500/20 bg-sky-500/5",
 			iconClass: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
 			badgeClass: "bg-sky-500/15 text-sky-700 dark:text-sky-200",
 			icon: CalendarClockIcon,
 			statusLabel: labels.planned,
+			showStatusBadge: true,
 		};
 	}
 	if (entry.status === "PENDING") {
 		return {
-			toneClass: "border-amber-500/20 bg-amber-500/5",
 			iconClass: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
 			badgeClass: "bg-amber-500/15 text-amber-700 dark:text-amber-200",
 			icon: Clock3Icon,
 			statusLabel: labels.pendingApproval,
+			showStatusBadge: true,
 		};
 	}
 	return {
-		toneClass: "border-emerald-500/20 bg-emerald-500/5",
 		iconClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
 		badgeClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-200",
 		icon: CheckCircle2Icon,
 		statusLabel: labels.completed,
+		showStatusBadge: false,
 	};
 };
 
-const groupEntriesByDay = (
-	entries: WeekViewTimelineEntry[],
-	{ dateFormat, timeZone }: { dateFormat: DateFormat; timeZone: string },
-) =>
-	entries.reduce<Map<string, WeekViewTimelineEntry[]>>((map, entry) => {
-		const key = formatDate(entry.occurredAt, { timeZone, dateFormat });
-		const current = map.get(key) ?? [];
-		current.push(entry);
-		map.set(key, current);
-		return map;
-	}, new Map());
+type DayBucket = {
+	dayNumber: number;
+	occurredAt: string;
+	entries: WeekViewTimelineEntry[];
+};
+
+const groupEntriesByDay = (entries: WeekViewTimelineEntry[], { timeZone }: { timeZone: string }): DayBucket[] => {
+	const buckets = new Map<number, DayBucket>();
+	for (const entry of entries) {
+		const dayNumber = getTimeZoneDayNumber(new Date(entry.occurredAt), timeZone);
+		const existing = buckets.get(dayNumber);
+		if (existing) {
+			existing.entries.push(entry);
+			continue;
+		}
+		buckets.set(dayNumber, {
+			dayNumber,
+			occurredAt: entry.occurredAt,
+			entries: [entry],
+		});
+	}
+	return Array.from(buckets.values());
+};
+
+const formatRelativeDayLabel = ({
+	dayNumber,
+	dateLabel,
+	todayNumber,
+	t,
+}: {
+	dayNumber: number;
+	dateLabel: string;
+	todayNumber: number;
+	t: ReturnType<typeof useTranslation>["t"];
+}) => {
+	const diff = todayNumber - dayNumber;
+	if (diff === 0) return t("Today");
+	if (diff === 1) return t("Yesterday");
+	if (diff > 1 && diff <= 7) return t("{{count}} days ago", { count: diff });
+	if (diff === -1) return t("Tomorrow");
+	if (diff < -1 && diff >= -7) return t("In {{count}} days", { count: Math.abs(diff) });
+	return dateLabel;
+};
 
 const formatCadenceLabel = (
 	entry: Extract<WeekViewTimelineEntry, { type: "planned" }>,
@@ -118,8 +149,8 @@ const formatCadenceLabel = (
 };
 
 export const WeekViewTimeline = ({
-	dateFormat,
 	entries,
+	header,
 	householdId,
 	labels,
 	timeFormat,
@@ -151,7 +182,9 @@ export const WeekViewTimeline = ({
 			});
 		},
 	});
-	const groups = groupEntriesByDay(entries, { dateFormat, timeZone });
+	const groups = groupEntriesByDay(entries, { timeZone });
+	const todayNumber = getTimeZoneDayNumber(new Date(), timeZone);
+	const currentYear = formatDate(new Date(), { timeZone, dateFormat: "YMD" }).slice(0, 4);
 	const handleComplete = (assignedTaskId: string) => {
 		setCompletingAssignedTaskId(assignedTaskId);
 		completeMutation.mutate({ householdId, id: assignedTaskId });
@@ -159,28 +192,35 @@ export const WeekViewTimeline = ({
 
 	return (
 		<Card>
-			<CardHeader>
-				<CardTitle className="text-xl">{labels.title}</CardTitle>
-				<CardDescription>{labels.description}</CardDescription>
-			</CardHeader>
+			{header ? <CardHeader>{header}</CardHeader> : null}
 			<CardContent>
 				{entries.length === 0 ? (
 					<EmptyState title={labels.emptyTitle} description={labels.emptyDescription} />
 				) : (
 					<div className="space-y-6">
-						{Array.from(groups.entries()).map(([dayLabel, dayEntries]) => (
-							<DayGroup
-								key={dayLabel}
-								dayLabel={dayLabel}
-								entries={dayEntries}
-								canCompletePlannedEntries={canCompletePlannedEntries}
-								completingAssignedTaskId={completingAssignedTaskId}
-								onComplete={handleComplete}
-								labels={labels}
-								timeFormat={timeFormat}
-								timeZone={timeZone}
-							/>
-						))}
+						{groups.map((group) => {
+							const groupYear = formatDate(group.occurredAt, { timeZone, dateFormat: "YMD" }).slice(0, 4);
+							const includeYear = groupYear !== currentYear;
+							const friendlyDateLabel = formatReadableDate(group.occurredAt, { timeZone, includeYear });
+							return (
+								<DayGroup
+									key={group.dayNumber}
+									dayLabel={formatRelativeDayLabel({
+										dayNumber: group.dayNumber,
+										dateLabel: friendlyDateLabel,
+										todayNumber,
+										t,
+									})}
+									entries={group.entries}
+									canCompletePlannedEntries={canCompletePlannedEntries}
+									completingAssignedTaskId={completingAssignedTaskId}
+									onComplete={handleComplete}
+									labels={labels}
+									timeFormat={timeFormat}
+									timeZone={timeZone}
+								/>
+							);
+						})}
 					</div>
 				)}
 			</CardContent>
@@ -216,17 +256,14 @@ const DayGroup = ({
 	timeFormat,
 	timeZone,
 }: DayGroupProps) => (
-	<section className="space-y-3">
-		<div className="flex items-center gap-3">
-			<h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">{dayLabel}</h2>
-			<div className="h-px flex-1 bg-border" />
-		</div>
-		<ol className="space-y-3">
+	<section>
+		<h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">{dayLabel}</h2>
+		<ol className="mt-2 divide-y divide-border/50">
 			{entries.map((entry) => (
 				<li key={entry.id}>
 					<TimelineEntry
 						entry={entry}
-						canComplete={canCompletePlannedEntries && entry.type === "planned"}
+						canComplete={canCompletePlannedEntries && entry.type === "planned" && entry.canComplete}
 						completingAssignedTaskId={completingAssignedTaskId}
 						labels={labels}
 						onComplete={onComplete}
@@ -266,10 +303,19 @@ const TimelineEntry = ({
 	const bucketLabel = entry.bucket ? (bucketLabelMap[entry.bucket] ?? entry.bucket) : null;
 	const cadenceLabel = entry.type === "planned" ? formatCadenceLabel(entry, t, labels) : null;
 	const assignedTaskId = entry.type === "planned" ? entry.assignedTaskId : null;
-	const metaItems = [
+	const pointsLabel = `${entry.points.toLocaleString()} pts`;
+	const gutterLabel = timeLabel ?? cadenceLabel ?? "—";
+	const mobileMeta = [
 		{ key: "time", value: timeLabel },
 		{ key: "bucket", value: bucketLabel },
 		{ key: "cadence", value: cadenceLabel },
+		{ key: "points", value: pointsLabel },
+	].filter((item): item is { key: string; value: string } => Boolean(item.value));
+	const desktopMeta = [
+		// time lives in the gutter, cadence too if there is no time
+		{ key: "cadence", value: timeLabel ? cadenceLabel : null },
+		{ key: "bucket", value: bucketLabel },
+		{ key: "points", value: pointsLabel },
 	].filter((item): item is { key: string; value: string } => Boolean(item.value));
 
 	const showCompleteButton = canComplete && assignedTaskId !== null;
@@ -277,42 +323,51 @@ const TimelineEntry = ({
 	const isAnyCompletionPending = completingAssignedTaskId !== null;
 
 	return (
-		<div className={cn("rounded-2xl border p-4 shadow-sm", appearance.toneClass)}>
-			<div className="flex items-center gap-3">
-				<div className={cn("shrink-0 rounded-full p-2", appearance.iconClass)}>
-					<Icon className="h-4 w-4" />
-				</div>
-				<div className="min-w-0 flex-1 space-y-1.5">
-					<p className="truncate text-base font-semibold leading-tight">{entry.description}</p>
-					<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+		<div className="flex flex-wrap items-start gap-x-3 gap-y-2 px-2 py-3 transition-colors hover:bg-accent/40 lg:flex-nowrap lg:items-center lg:gap-4">
+			<span className="hidden w-16 shrink-0 text-sm tabular-nums text-muted-foreground lg:block">{gutterLabel}</span>
+			<div className={cn("shrink-0 rounded-full p-2", appearance.iconClass)}>
+				<Icon className="h-4 w-4" />
+			</div>
+			<div className="min-w-0 flex-1 space-y-1.5 lg:flex lg:flex-none lg:items-center lg:gap-3 lg:space-y-0">
+				<p className="truncate text-base font-semibold leading-tight lg:max-w-md">{entry.description}</p>
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground lg:hidden">
+					{appearance.showStatusBadge ? (
 						<Badge variant="secondary" className={cn("font-medium", appearance.badgeClass)}>
 							{appearance.statusLabel}
 						</Badge>
-						{metaItems.map((item, index) => (
-							<span key={`${entry.id}-${item.key}`} className="flex items-center gap-2">
-								{index === 0 ? null : <span aria-hidden className="size-1 rounded-full bg-muted-foreground/40" />}
-								<span>{item.value}</span>
-							</span>
-						))}
-					</div>
-				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					{showCompleteButton && assignedTaskId ? (
-						<Button
-							type="button"
-							size="sm"
-							disabled={isAnyCompletionPending}
-							onClick={() => onComplete(assignedTaskId)}
-						>
-							<CheckIcon aria-hidden className="h-4 w-4" />
-							<span>{isCompleting ? t("Completing...") : t("Complete")}</span>
-						</Button>
 					) : null}
-					<Badge variant="outline" className="bg-background/80">
-						{entry.points.toLocaleString()} pts
-					</Badge>
+					{mobileMeta.map((item) => (
+						<span key={`${entry.id}-mobile-${item.key}`}>{item.value}</span>
+					))}
+				</div>
+				<div className="hidden shrink-0 items-center gap-2 text-sm text-muted-foreground lg:flex">
+					{appearance.showStatusBadge ? (
+						<Badge variant="secondary" className={cn("font-medium", appearance.badgeClass)}>
+							{appearance.statusLabel}
+						</Badge>
+					) : null}
+					{desktopMeta.map((item, index) => (
+						<span key={`${entry.id}-desktop-${item.key}`} className="flex items-center gap-2">
+							{index === 0 && !appearance.showStatusBadge ? null : (
+								<span aria-hidden className="size-1 rounded-full bg-muted-foreground/40" />
+							)}
+							<span>{item.value}</span>
+						</span>
+					))}
 				</div>
 			</div>
+			{showCompleteButton && assignedTaskId ? (
+				<Button
+					type="button"
+					size="sm"
+					className="ml-[2.75rem] h-7 self-start px-2.5 text-xs lg:ml-auto"
+					disabled={isAnyCompletionPending}
+					onClick={() => onComplete(assignedTaskId)}
+				>
+					<CheckIcon aria-hidden className="h-4 w-4" />
+					<span>{isCompleting ? t("Completing...") : t("Complete")}</span>
+				</Button>
+			) : null}
 		</div>
 	);
 };

@@ -72,6 +72,7 @@ export type WeekViewPlannedEntry = {
 	cadenceIntervalMinutes: number | null;
 	cadenceTarget: number;
 	remainingCount: number;
+	canComplete: boolean;
 };
 
 export type WeekViewTimelineEntry = WeekViewCompletedEntry | WeekViewPlannedEntry;
@@ -97,6 +98,7 @@ type AssignedTaskRecord = {
 
 type BuildWeekViewTimelineInput = {
 	completedLogs: CompletedLogRecord[];
+	now?: Date;
 	range: WeekViewRange;
 	tasks: AssignedTaskRecord[];
 	timeZone: string;
@@ -120,7 +122,7 @@ const resolveBucket = (bucket: string | null | undefined) => {
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const getDefaultWeekViewRange = ({ now = new Date(), timeZone }: { now?: Date; timeZone: string }) => {
-	return getRangeForPreset({ preset: "thisWeek", now, timeZone });
+	return getRangeForPreset({ preset: "thisFortnight", now, timeZone });
 };
 
 const parseWeekViewRange = ({
@@ -199,7 +201,15 @@ const buildTaskLogMap = (completedLogs: CompletedLogRecord[]) => {
 	return logsByTaskId;
 };
 
-const buildOneOffPlannedEntry = ({ task, range }: { task: AssignedTaskRecord; range: WeekViewRange }) => {
+const buildOneOffPlannedEntry = ({
+	now,
+	task,
+	range,
+}: {
+	now: Date;
+	task: AssignedTaskRecord;
+	range: WeekViewRange;
+}) => {
 	if (!task.preset) {
 		return [];
 	}
@@ -223,17 +233,20 @@ const buildOneOffPlannedEntry = ({ task, range }: { task: AssignedTaskRecord; ra
 			cadenceIntervalMinutes: null,
 			cadenceTarget: 1,
 			remainingCount: 1,
+			canComplete: task.assignedAt <= now,
 		},
 	];
 };
 
 const buildRecurringPlannedEntries = ({
 	logs,
+	now,
 	range,
 	task,
 	timeZone,
 }: {
 	logs: CompletedLogRecord[];
+	now: Date;
 	range: WeekViewRange;
 	task: AssignedTaskRecord;
 	timeZone: string;
@@ -248,6 +261,7 @@ const buildRecurringPlannedEntries = ({
 	if (task.assignedAt >= range.end) {
 		return entries;
 	}
+	const currentPeriod = getAssignedTaskPeriodBounds(now, task.cadenceIntervalMinutes, timeZone);
 
 	let { periodStart } = getAssignedTaskPeriodBounds(range.start, task.cadenceIntervalMinutes, timeZone);
 
@@ -257,8 +271,10 @@ const buildRecurringPlannedEntries = ({
 			break;
 		}
 		const occurrenceAt = periodStart > task.assignedAt ? periodStart : task.assignedAt;
+		const displayAt = occurrenceAt < range.start ? range.start : occurrenceAt;
+		const overlapsRange = periodEnd > range.start && periodStart < range.end;
 
-		if (periodEnd > task.assignedAt && occurrenceAt >= range.start && occurrenceAt < range.end) {
+		if (periodEnd > task.assignedAt && overlapsRange && displayAt < range.end) {
 			const periodLogCount = logs.filter((log) => log.createdAt >= periodStart && log.createdAt < periodEnd).length;
 			const remainingCount = Math.max(target - periodLogCount, 0);
 
@@ -266,7 +282,7 @@ const buildRecurringPlannedEntries = ({
 				entries.push({
 					id: `${task.id}:${periodStart.toISOString()}`,
 					type: "planned",
-					occurredAt: occurrenceAt.toISOString(),
+					occurredAt: displayAt.toISOString(),
 					description: task.preset.label,
 					points: getBucketPoints(bucket),
 					bucket,
@@ -275,6 +291,11 @@ const buildRecurringPlannedEntries = ({
 					cadenceIntervalMinutes: task.cadenceIntervalMinutes,
 					cadenceTarget: target,
 					remainingCount,
+					canComplete:
+						now >= periodStart &&
+						now < periodEnd &&
+						periodStart.getTime() === currentPeriod.periodStart.getTime() &&
+						periodEnd.getTime() === currentPeriod.periodEnd.getTime(),
 				});
 			}
 		}
@@ -285,7 +306,13 @@ const buildRecurringPlannedEntries = ({
 	return entries;
 };
 
-const buildPlannedEntries = ({ completedLogs, range, tasks, timeZone }: BuildWeekViewTimelineInput) => {
+const buildPlannedEntries = ({
+	completedLogs,
+	now = new Date(),
+	range,
+	tasks,
+	timeZone,
+}: BuildWeekViewTimelineInput) => {
 	const logsByTaskId = buildTaskLogMap(completedLogs);
 
 	return tasks.flatMap((task) => {
@@ -295,16 +322,19 @@ const buildPlannedEntries = ({ completedLogs, range, tasks, timeZone }: BuildWee
 
 		const taskLogs = logsByTaskId.get(task.id) ?? [];
 
-		if (!task.isRecurring) {
-			return taskLogs.length > 0 ? [] : buildOneOffPlannedEntry({ task, range });
-		}
+		const entries = task.isRecurring
+			? buildRecurringPlannedEntries({
+					task,
+					logs: taskLogs,
+					now,
+					range,
+					timeZone,
+				})
+			: taskLogs.length > 0
+				? []
+				: buildOneOffPlannedEntry({ now, task, range });
 
-		return buildRecurringPlannedEntries({
-			task,
-			logs: taskLogs,
-			range,
-			timeZone,
-		});
+		return entries.filter((entry) => entry.canComplete);
 	});
 };
 
@@ -313,7 +343,7 @@ const compareTimelineEntries = (left: WeekViewTimelineEntry, right: WeekViewTime
 	const rightTime = new Date(right.occurredAt).getTime();
 
 	if (leftTime !== rightTime) {
-		return leftTime - rightTime;
+		return rightTime - leftTime;
 	}
 
 	if (left.type !== right.type) {
@@ -323,10 +353,17 @@ const compareTimelineEntries = (left: WeekViewTimelineEntry, right: WeekViewTime
 	return left.id.localeCompare(right.id);
 };
 
-const buildWeekViewTimeline = ({ completedLogs, range, tasks, timeZone }: BuildWeekViewTimelineInput) => {
+const buildWeekViewTimeline = ({
+	completedLogs,
+	now = new Date(),
+	range,
+	tasks,
+	timeZone,
+}: BuildWeekViewTimelineInput) => {
 	const completedEntries = buildCompletedEntries(completedLogs);
 	const plannedEntries = buildPlannedEntries({
 		completedLogs,
+		now,
 		range,
 		tasks,
 		timeZone,
