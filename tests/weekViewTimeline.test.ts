@@ -1,6 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 
-import { buildWeekViewTimeline, getDefaultWeekViewRange } from "@/lib/week-view/buildTimeline";
+import { buildWeekViewTimeline, getDefaultWeekViewRange, parseWeekViewRange } from "@/lib/week-view/buildTimeline";
 
 const atZoned = (
 	timeZone: string,
@@ -141,6 +141,51 @@ test("builds the default range from household-local day boundaries", () => {
 	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 8, 0, 0).toISOString());
 });
 
+test("parses custom from/to params against household-local day boundaries", () => {
+	const range = parseWeekViewRange({
+		from: "2024-01-10",
+		to: "2024-01-12",
+		timeZone: TIME_ZONE,
+	});
+
+	expect(range.labelKey).toBe("custom");
+	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 10, 0, 0).toISOString());
+	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 13, 0, 0).toISOString());
+});
+
+test("falls back to the default range when custom params are invalid", () => {
+	const now = atZoned(TIME_ZONE, 2024, 1, 7, 15, 45);
+	const range = parseWeekViewRange({
+		from: "2024-01-12",
+		to: "2024-01-10",
+		now,
+		timeZone: TIME_ZONE,
+	});
+
+	expect(range.labelKey).toBe("past7Days");
+	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0).toISOString());
+	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 8, 0, 0).toISOString());
+});
+
+test.each([
+	{ from: "2024-01-10", to: undefined },
+	{ from: undefined, to: "2024-01-12" },
+	{ from: "2024-13-40", to: "2024-01-12" },
+	{ from: "2024-01-10", to: "2024-13-40" },
+])("falls back to the default range when params are partial or malformed: %j", ({ from, to }) => {
+	const now = atZoned(TIME_ZONE, 2024, 1, 7, 15, 45);
+	const range = parseWeekViewRange({
+		from,
+		to,
+		now,
+		timeZone: TIME_ZONE,
+	});
+
+	expect(range.labelKey).toBe("past7Days");
+	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0).toISOString());
+	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 8, 0, 0).toISOString());
+});
+
 test("maps completed log status, points, and bucket onto timeline entries", () => {
 	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
 	const result = buildWeekViewTimeline({
@@ -262,6 +307,28 @@ test("emits a recurring planned entry per cadence period when targets are unmet"
 
 	expect(result.plannedCount).toBe(3);
 	expect(result.timeline.every((entry) => entry.type === "planned")).toBe(true);
+});
+
+test("covers long custom ranges without truncating recurring planned entries", () => {
+	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 2, 10, 0, 0));
+	const task = makeTask({
+		assignedAt: atZoned(TIME_ZONE, 2024, 1, 1, 0, 0),
+		cadenceIntervalMinutes: 1440,
+		isRecurring: true,
+	});
+
+	const result = buildWeekViewTimeline({
+		range,
+		timeZone: TIME_ZONE,
+		completedLogs: [],
+		tasks: [task],
+	});
+
+	expect(result.plannedCount).toBe(40);
+	expect(result.timeline.at(-1)).toMatchObject({
+		type: "planned",
+		occurredAt: atZoned(TIME_ZONE, 2024, 2, 9, 0, 0).toISOString(),
+	});
 });
 
 test("suppresses a recurring planned entry for a period whose target is already met", () => {
