@@ -101,7 +101,7 @@ test("uses assignedAt for the first recurring occurrence inside a partial cadenc
 	});
 });
 
-test("keeps a recurring planned entry visible when the cadence target is not yet met", () => {
+test("suppresses a recurring planned entry once a pending completion exists in that period", () => {
 	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 2, 0, 0), atZoned(TIME_ZONE, 2024, 1, 3, 0, 0));
 	const task = makeTask({
 		assignedAt: atZoned(TIME_ZONE, 2024, 1, 1, 8, 0),
@@ -112,18 +112,23 @@ test("keeps a recurring planned entry visible when the cadence target is not yet
 	const result = buildWeekViewTimeline({
 		range,
 		timeZone: TIME_ZONE,
-		completedLogs: [makeLog({ assignedTaskId: task.id, createdAt: atZoned(TIME_ZONE, 2024, 1, 2, 9, 0) })],
+		completedLogs: [
+			makeLog({
+				assignedTaskId: task.id,
+				createdAt: atZoned(TIME_ZONE, 2024, 1, 2, 9, 0),
+				status: "PENDING",
+			}),
+		],
 		tasks: [task],
 	});
 
 	expect(result.completedCount).toBe(1);
-	expect(result.plannedCount).toBe(1);
+	expect(result.pendingCount).toBe(1);
+	expect(result.plannedCount).toBe(0);
+	expect(result.timeline).toHaveLength(1);
 	expect(result.timeline[0]).toMatchObject({
-		type: "planned",
-		occurredAt: atZoned(TIME_ZONE, 2024, 1, 2, 0, 0).toISOString(),
-	});
-	expect(result.timeline[1]).toMatchObject({
 		type: "completed",
+		status: "PENDING",
 	});
 });
 

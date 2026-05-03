@@ -172,8 +172,8 @@ const buildRecurringPlannedEntries = ({
 			const occurrenceAt = periodStart > task.assignedAt ? periodStart : task.assignedAt;
 
 			if (occurrenceAt >= range.start && occurrenceAt < range.end) {
-				const matchedCount = logs.filter((log) => log.createdAt >= periodStart && log.createdAt < periodEnd).length;
-				if (matchedCount < target) {
+				const hasMatchingLog = logs.some((log) => log.createdAt >= periodStart && log.createdAt < periodEnd);
+				if (!hasMatchingLog) {
 					entries.push({
 						id: `${task.id}:${periodKey}`,
 						type: "planned",
@@ -185,7 +185,7 @@ const buildRecurringPlannedEntries = ({
 						isRecurring: true,
 						cadenceLabel: formatCadenceInterval(task.cadenceIntervalMinutes),
 						cadenceTarget: target,
-						remainingCount: target - matchedCount,
+						remainingCount: target,
 					});
 				}
 			}
@@ -212,11 +212,10 @@ const buildPlannedEntries = ({ completedLogs, range, tasks, timeZone }: BuildWee
 		}
 
 		const taskLogs = logsByTaskId.get(task.id) ?? [];
-		const completedCount = taskLogs.length;
-		const target = Math.max(task.cadenceTarget, 1);
 
 		if (!task.isRecurring) {
-			return completedCount >= target ? [] : buildOneOffPlannedEntry({ task, range });
+			const target = Math.max(task.cadenceTarget, 1);
+			return taskLogs.length >= target ? [] : buildOneOffPlannedEntry({ task, range });
 		}
 
 		return buildRecurringPlannedEntries({

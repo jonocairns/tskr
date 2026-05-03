@@ -1,9 +1,17 @@
-import { CalendarClockIcon, CheckCircle2Icon, Clock3Icon, type LucideIcon } from "lucide-react";
+"use client";
+
+import { CalendarClockIcon, CheckCircle2Icon, CheckIcon, Clock3Icon, type LucideIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { useToast } from "@/hooks/useToast";
 import { type DateFormat, formatDate, formatTime, type TimeFormat } from "@/lib/formatDate";
+import { useTranslation } from "@/lib/i18nClient";
 import { DURATION_BUCKETS } from "@/lib/points";
+import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
 import type { WeekViewTimelineEntry } from "@/lib/week-view/buildTimeline";
 
@@ -21,9 +29,11 @@ type Labels = {
 type Props = {
 	dateFormat: DateFormat;
 	entries: WeekViewTimelineEntry[];
+	householdId: string;
 	labels: Labels;
 	timeFormat: TimeFormat;
 	timeZone: string;
+	canCompletePlannedEntries?: boolean;
 };
 
 const bucketLabelMap = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]));
@@ -40,8 +50,8 @@ const getEntryAppearance = (entry: WeekViewTimelineEntry, labels: Labels): Entry
 	if (entry.type === "planned") {
 		return {
 			toneClass: "border-sky-500/20 bg-sky-500/5",
-			iconClass: "bg-sky-500/12 text-sky-700",
-			badgeClass: "bg-sky-500/12 text-sky-800",
+			iconClass: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+			badgeClass: "bg-sky-500/15 text-sky-700 dark:text-sky-200",
 			icon: CalendarClockIcon,
 			statusLabel: labels.planned,
 		};
@@ -49,16 +59,16 @@ const getEntryAppearance = (entry: WeekViewTimelineEntry, labels: Labels): Entry
 	if (entry.status === "PENDING") {
 		return {
 			toneClass: "border-amber-500/20 bg-amber-500/5",
-			iconClass: "bg-amber-500/12 text-amber-700",
-			badgeClass: "bg-amber-500/12 text-amber-800",
+			iconClass: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+			badgeClass: "bg-amber-500/15 text-amber-700 dark:text-amber-200",
 			icon: Clock3Icon,
 			statusLabel: labels.pendingApproval,
 		};
 	}
 	return {
 		toneClass: "border-emerald-500/20 bg-emerald-500/5",
-		iconClass: "bg-emerald-500/12 text-emerald-700",
-		badgeClass: "bg-emerald-500/12 text-emerald-800",
+		iconClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+		badgeClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-200",
 		icon: CheckCircle2Icon,
 		statusLabel: labels.completed,
 	};
@@ -76,8 +86,45 @@ const groupEntriesByDay = (
 		return map;
 	}, new Map());
 
-export const WeekViewTimeline = ({ dateFormat, entries, labels, timeFormat, timeZone }: Props) => {
+export const WeekViewTimeline = ({
+	dateFormat,
+	entries,
+	householdId,
+	labels,
+	timeFormat,
+	timeZone,
+	canCompletePlannedEntries = false,
+}: Props) => {
+	const router = useRouter();
+	const { toast } = useToast();
+	const { t } = useTranslation();
+	const [completingAssignedTaskId, setCompletingAssignedTaskId] = useState<string | null>(null);
+	const completeMutation = trpc.assignedTasks.complete.useMutation({
+		onSuccess: (result) => {
+			const isPendingApproval = result.entry.status === "PENDING";
+			toast({
+				title: isPendingApproval ? t("Submitted for approval") : t("Task completed"),
+				description: isPendingApproval
+					? t("Completion logged and waiting for approval.")
+					: t("Completion logged and points added."),
+			});
+			setCompletingAssignedTaskId(null);
+			router.refresh();
+		},
+		onError: (error) => {
+			setCompletingAssignedTaskId(null);
+			toast({
+				title: t("Unable to complete task"),
+				description: error.message ?? t("Please try again."),
+				variant: "destructive",
+			});
+		},
+	});
 	const groups = groupEntriesByDay(entries, { dateFormat, timeZone });
+	const handleComplete = (assignedTaskId: string) => {
+		setCompletingAssignedTaskId(assignedTaskId);
+		completeMutation.mutate({ householdId, id: assignedTaskId });
+	};
 
 	return (
 		<Card>
@@ -95,6 +142,9 @@ export const WeekViewTimeline = ({ dateFormat, entries, labels, timeFormat, time
 								key={dayLabel}
 								dayLabel={dayLabel}
 								entries={dayEntries}
+								canCompletePlannedEntries={canCompletePlannedEntries}
+								completingAssignedTaskId={completingAssignedTaskId}
+								onComplete={handleComplete}
 								labels={labels}
 								timeFormat={timeFormat}
 								timeZone={timeZone}
@@ -115,14 +165,26 @@ const EmptyState = ({ title, description }: { title: string; description: string
 );
 
 type DayGroupProps = {
+	canCompletePlannedEntries: boolean;
+	completingAssignedTaskId: string | null;
 	dayLabel: string;
 	entries: WeekViewTimelineEntry[];
 	labels: Labels;
+	onComplete: (assignedTaskId: string) => void;
 	timeFormat: TimeFormat;
 	timeZone: string;
 };
 
-const DayGroup = ({ dayLabel, entries, labels, timeFormat, timeZone }: DayGroupProps) => (
+const DayGroup = ({
+	canCompletePlannedEntries,
+	completingAssignedTaskId,
+	dayLabel,
+	entries,
+	labels,
+	onComplete,
+	timeFormat,
+	timeZone,
+}: DayGroupProps) => (
 	<section className="space-y-3">
 		<div className="flex items-center gap-3">
 			<h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">{dayLabel}</h2>
@@ -131,7 +193,15 @@ const DayGroup = ({ dayLabel, entries, labels, timeFormat, timeZone }: DayGroupP
 		<ol className="space-y-3">
 			{entries.map((entry) => (
 				<li key={entry.id}>
-					<TimelineEntry entry={entry} labels={labels} timeFormat={timeFormat} timeZone={timeZone} />
+					<TimelineEntry
+						entry={entry}
+						canComplete={canCompletePlannedEntries && entry.type === "planned"}
+						completingAssignedTaskId={completingAssignedTaskId}
+						labels={labels}
+						onComplete={onComplete}
+						timeFormat={timeFormat}
+						timeZone={timeZone}
+					/>
 				</li>
 			))}
 		</ol>
@@ -139,44 +209,71 @@ const DayGroup = ({ dayLabel, entries, labels, timeFormat, timeZone }: DayGroupP
 );
 
 type TimelineEntryProps = {
+	canComplete: boolean;
+	completingAssignedTaskId: string | null;
 	entry: WeekViewTimelineEntry;
 	labels: Labels;
+	onComplete: (assignedTaskId: string) => void;
 	timeFormat: TimeFormat;
 	timeZone: string;
 };
 
-const TimelineEntry = ({ entry, labels, timeFormat, timeZone }: TimelineEntryProps) => {
+const TimelineEntry = ({
+	canComplete,
+	completingAssignedTaskId,
+	entry,
+	labels,
+	onComplete,
+	timeFormat,
+	timeZone,
+}: TimelineEntryProps) => {
+	const { t } = useTranslation();
 	const appearance = getEntryAppearance(entry, labels);
 	const Icon = appearance.icon;
-	const timeLabel = formatTime(entry.occurredAt, timeFormat, timeZone);
+	const showTime = !(entry.type === "planned" && entry.isRecurring);
+	const timeLabel = showTime ? formatTime(entry.occurredAt, timeFormat, timeZone) : null;
 	const bucketLabel = entry.bucket ? (bucketLabelMap[entry.bucket] ?? entry.bucket) : null;
 	const cadenceLabel = entry.type === "planned" ? (entry.isRecurring ? entry.cadenceLabel : labels.oneOff) : null;
+	const assignedTaskId = entry.type === "planned" ? entry.assignedTaskId : null;
+	const metaItems = [
+		{ key: "time", value: timeLabel },
+		{ key: "bucket", value: bucketLabel },
+		{ key: "cadence", value: cadenceLabel },
+	].filter((item): item is { key: string; value: string } => Boolean(item.value));
+
+	const showCompleteButton = canComplete && assignedTaskId !== null;
+	const isCompleting = assignedTaskId !== null && completingAssignedTaskId === assignedTaskId;
 
 	return (
 		<div className={cn("rounded-2xl border p-4 shadow-sm", appearance.toneClass)}>
-			<div className="flex items-start gap-3">
-				<div className={cn("mt-0.5 rounded-full p-2", appearance.iconClass)}>
+			<div className="flex items-center gap-3">
+				<div className={cn("shrink-0 rounded-full p-2", appearance.iconClass)}>
 					<Icon className="h-4 w-4" />
 				</div>
-				<div className="min-w-0 flex-1 space-y-2">
-					<div className="flex flex-wrap items-start justify-between gap-2">
-						<div className="min-w-0">
-							<p className="text-base font-semibold leading-tight">{entry.description}</p>
-							<div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-								<span>{timeLabel}</span>
-								{bucketLabel ? <span>{bucketLabel}</span> : null}
-								{cadenceLabel ? <span>{cadenceLabel}</span> : null}
-							</div>
-						</div>
-						<Badge variant="outline" className="shrink-0 bg-background/80">
-							{entry.points.toLocaleString()} pts
-						</Badge>
-					</div>
-					<div className="flex flex-wrap gap-2">
-						<Badge variant="secondary" className={appearance.badgeClass}>
+				<div className="min-w-0 flex-1 space-y-1.5">
+					<p className="truncate text-base font-semibold leading-tight">{entry.description}</p>
+					<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+						<Badge variant="secondary" className={cn("font-medium", appearance.badgeClass)}>
 							{appearance.statusLabel}
 						</Badge>
+						{metaItems.map((item, index) => (
+							<span key={`${entry.id}-${item.key}`} className="flex items-center gap-2">
+								{index === 0 ? null : <span aria-hidden className="size-1 rounded-full bg-muted-foreground/40" />}
+								<span>{item.value}</span>
+							</span>
+						))}
 					</div>
+				</div>
+				<div className="flex shrink-0 items-center gap-2">
+					{showCompleteButton && assignedTaskId ? (
+						<Button type="button" size="sm" disabled={isCompleting} onClick={() => onComplete(assignedTaskId)}>
+							<CheckIcon aria-hidden className="h-4 w-4" />
+							<span>{isCompleting ? t("Completing...") : t("Complete")}</span>
+						</Button>
+					) : null}
+					<Badge variant="outline" className="bg-background/80">
+						{entry.points.toLocaleString()} pts
+					</Badge>
 				</div>
 			</div>
 		</div>
