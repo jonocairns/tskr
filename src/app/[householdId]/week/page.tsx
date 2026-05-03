@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = {
 	from?: string | string[];
 	to?: string | string[];
+	preset?: string | string[];
 	userId?: string | string[];
 };
 
@@ -68,6 +69,7 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 	const range = parseWeekViewRange({
 		from: getSingleSearchParamValue(resolvedSearchParams.from),
 		to: getSingleSearchParamValue(resolvedSearchParams.to),
+		preset: getSingleSearchParamValue(resolvedSearchParams.preset),
 		timeZone: settings.timeZone,
 	});
 	const data = await getWeekViewData({
@@ -76,8 +78,10 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 		range,
 		...settings,
 	});
-	const rangeTitle = data.range.labelKey === "past7Days" ? t("Past 7 days") : t("Custom range");
-	const summaryTitle = viewingSelf || !selectedMember ? rangeTitle : `${rangeTitle} · ${selectedMember.name}`;
+	const memberOptions = members.map((member) => ({
+		id: member.id,
+		label: member.id === userId && viewingSelf ? `${member.name} (${t("You")})` : member.label,
+	}));
 
 	return (
 		<PageShell size="lg">
@@ -91,33 +95,35 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 				household={{ id: householdId, role: membership.role }}
 			/>
 
-			<WeekViewRangeControls
-				householdId={householdId}
-				actingUserId={userId}
-				selectedUserId={selectedUserId}
-				members={members}
-				range={data.range}
-				timeZone={data.timeZone}
-				labels={{
-					title: t("View options"),
-					description: t("Pick a household member and household-local dates to update the timeline by URL."),
-					member: t("Member"),
-					from: t("From"),
-					to: t("To"),
-					apply: t("Apply range"),
-					reset: t("Reset to Past 7 days"),
-				}}
-			/>
-
 			<WeekViewSummary
-				range={data.range}
-				timeZone={data.timeZone}
-				dateFormat={data.dateFormat}
 				completedCount={data.completedCount}
 				pendingCount={data.pendingCount}
 				approvedPoints={data.approvedPoints}
 				plannedCount={data.plannedCount}
-				title={summaryTitle}
+				controls={
+					<WeekViewRangeControls
+						householdId={householdId}
+						actingUserId={userId}
+						selectedUserId={selectedUserId}
+						members={memberOptions}
+						range={data.range}
+						timeZone={data.timeZone}
+						dateFormat={data.dateFormat}
+						labels={{
+							member: t("Member"),
+							dateRange: t("Date range"),
+							from: t("From"),
+							to: t("To"),
+							apply: t("Apply"),
+							reset: t("Reset"),
+							presets: {
+								thisWeek: t("This week"),
+								thisFortnight: t("This fortnight"),
+								thisMonth: t("This month"),
+							},
+						}}
+					/>
+				}
 				labels={{
 					completed: t("Completed"),
 					pendingApproval: t("Pending approval"),
@@ -137,7 +143,7 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 					title: t("Timeline"),
 					description: t("Completed activity and planned task windows together."),
 					emptyTitle: t("No activity in this range yet."),
-					emptyDescription: t("When something gets logged or assigned here, it will show up in this timeline."),
+					emptyDescription: t("Upcoming assigned tasks and fresh completions will show up here."),
 					completed: t("Completed"),
 					pendingApproval: t("Pending approval"),
 					planned: t("Planned"),

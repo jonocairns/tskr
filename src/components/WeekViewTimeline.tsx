@@ -86,6 +86,37 @@ const groupEntriesByDay = (
 		return map;
 	}, new Map());
 
+const formatCadenceLabel = (
+	entry: Extract<WeekViewTimelineEntry, { type: "planned" }>,
+	t: ReturnType<typeof useTranslation>["t"],
+	labels: Labels,
+) => {
+	if (!entry.isRecurring || entry.cadenceIntervalMinutes === null) {
+		return labels.oneOff;
+	}
+
+	switch (entry.cadenceIntervalMinutes) {
+		case 1440:
+			return t("Daily");
+		case 10080:
+			return t("Weekly");
+		case 20160:
+			return t("Fortnightly");
+		case 43200:
+			return t("Monthly");
+		case 129600:
+			return t("Quarterly");
+		case 525600:
+			return t("Yearly");
+		default:
+			if (entry.cadenceIntervalMinutes % 60 === 0) {
+				return t("Every {{count}}h", { count: Math.round(entry.cadenceIntervalMinutes / 60) });
+			}
+
+			return t("Every {{count}}m", { count: entry.cadenceIntervalMinutes });
+	}
+};
+
 export const WeekViewTimeline = ({
 	dateFormat,
 	entries,
@@ -233,7 +264,7 @@ const TimelineEntry = ({
 	const showTime = !(entry.type === "planned" && entry.isRecurring);
 	const timeLabel = showTime ? formatTime(entry.occurredAt, timeFormat, timeZone) : null;
 	const bucketLabel = entry.bucket ? (bucketLabelMap[entry.bucket] ?? entry.bucket) : null;
-	const cadenceLabel = entry.type === "planned" ? (entry.isRecurring ? entry.cadenceLabel : labels.oneOff) : null;
+	const cadenceLabel = entry.type === "planned" ? formatCadenceLabel(entry, t, labels) : null;
 	const assignedTaskId = entry.type === "planned" ? entry.assignedTaskId : null;
 	const metaItems = [
 		{ key: "time", value: timeLabel },
@@ -243,6 +274,7 @@ const TimelineEntry = ({
 
 	const showCompleteButton = canComplete && assignedTaskId !== null;
 	const isCompleting = assignedTaskId !== null && completingAssignedTaskId === assignedTaskId;
+	const isAnyCompletionPending = completingAssignedTaskId !== null;
 
 	return (
 		<div className={cn("rounded-2xl border p-4 shadow-sm", appearance.toneClass)}>
@@ -266,7 +298,12 @@ const TimelineEntry = ({
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
 					{showCompleteButton && assignedTaskId ? (
-						<Button type="button" size="sm" disabled={isCompleting} onClick={() => onComplete(assignedTaskId)}>
+						<Button
+							type="button"
+							size="sm"
+							disabled={isAnyCompletionPending}
+							onClick={() => onComplete(assignedTaskId)}
+						>
 							<CheckIcon aria-hidden className="h-4 w-4" />
 							<span>{isCompleting ? t("Completing...") : t("Complete")}</span>
 						</Button>

@@ -1,12 +1,52 @@
 import { getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
-import { formatCadenceInterval } from "@/lib/assignedTasksCadence";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
-import { addDaysInTimeZone, getStartOfDayInTimeZone, parseDateInTimeZone } from "@/lib/timeZones";
+import {
+	addDaysInTimeZone,
+	addMonthsInTimeZone,
+	getStartOfMonthInTimeZone,
+	getStartOfWeekInTimeZone,
+	parseDateInTimeZone,
+} from "@/lib/timeZones";
+
+export const WEEK_VIEW_PRESETS = ["thisWeek", "thisFortnight", "thisMonth"] as const;
+
+export type WeekViewPreset = (typeof WEEK_VIEW_PRESETS)[number];
 
 export type WeekViewRange = {
 	start: Date;
 	end: Date;
-	labelKey: "custom" | "past7Days";
+	labelKey: WeekViewPreset | "custom";
+};
+
+const isWeekViewPreset = (value: string | null | undefined): value is WeekViewPreset => {
+	return !!value && (WEEK_VIEW_PRESETS as readonly string[]).includes(value);
+};
+
+const getRangeForPreset = ({
+	preset,
+	now,
+	timeZone,
+}: {
+	preset: WeekViewPreset;
+	now: Date;
+	timeZone: string;
+}): WeekViewRange => {
+	if (preset === "thisWeek") {
+		const start = getStartOfWeekInTimeZone(now, timeZone);
+		const end = addDaysInTimeZone(start, 7, timeZone);
+		return { start, end, labelKey: "thisWeek" };
+	}
+
+	if (preset === "thisFortnight") {
+		const startOfThisWeek = getStartOfWeekInTimeZone(now, timeZone);
+		const start = addDaysInTimeZone(startOfThisWeek, -7, timeZone);
+		const end = addDaysInTimeZone(startOfThisWeek, 7, timeZone);
+		return { start, end, labelKey: "thisFortnight" };
+	}
+
+	const start = getStartOfMonthInTimeZone(now, timeZone);
+	const end = getStartOfMonthInTimeZone(addMonthsInTimeZone(start, 1, timeZone), timeZone);
+	return { start, end, labelKey: "thisMonth" };
 };
 
 export type WeekViewCompletedEntry = {
@@ -29,7 +69,7 @@ export type WeekViewPlannedEntry = {
 	bucket: DurationKey;
 	assignedTaskId: string;
 	isRecurring: boolean;
-	cadenceLabel: string;
+	cadenceIntervalMinutes: number | null;
 	cadenceTarget: number;
 	remainingCount: number;
 };
@@ -64,6 +104,12 @@ type BuildWeekViewTimelineInput = {
 
 const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
+const WEEK_VIEW_COMPLETED_STATUSES = ["APPROVED", "PENDING"] as const;
+
+const isWeekViewCompletedStatus = (status: string): status is WeekViewCompletedEntry["status"] => {
+	return WEEK_VIEW_COMPLETED_STATUSES.includes(status as WeekViewCompletedEntry["status"]);
+};
+
 const resolveBucket = (bucket: string | null | undefined) => {
 	if (!bucket) {
 		return null;
@@ -74,28 +120,26 @@ const resolveBucket = (bucket: string | null | undefined) => {
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const getDefaultWeekViewRange = ({ now = new Date(), timeZone }: { now?: Date; timeZone: string }) => {
-	const todayStart = getStartOfDayInTimeZone(now, timeZone);
-	const end = addDaysInTimeZone(todayStart, 1, timeZone);
-	const start = addDaysInTimeZone(end, -7, timeZone);
-
-	return {
-		start,
-		end,
-		labelKey: "past7Days",
-	} satisfies WeekViewRange;
+	return getRangeForPreset({ preset: "thisWeek", now, timeZone });
 };
 
 const parseWeekViewRange = ({
 	from,
 	now = new Date(),
+	preset,
 	timeZone,
 	to,
 }: {
 	from?: string | null;
 	now?: Date;
+	preset?: string | null;
 	timeZone: string;
 	to?: string | null;
 }) => {
+	if (isWeekViewPreset(preset)) {
+		return getRangeForPreset({ preset, now, timeZone });
+	}
+
 	if (!from && !to) {
 		return getDefaultWeekViewRange({ now, timeZone });
 	}
@@ -118,6 +162,14 @@ const parseWeekViewRange = ({
 	} satisfies WeekViewRange;
 };
 
+const resolveCompletedStatus = (status: string) => {
+	if (isWeekViewCompletedStatus(status)) {
+		return status;
+	}
+
+	throw new Error(`Unexpected week-view completed log status: ${status}`);
+};
+
 const buildCompletedEntries = (completedLogs: CompletedLogRecord[]) => {
 	return completedLogs.map<WeekViewCompletedEntry>((log) => ({
 		id: log.id,
@@ -125,7 +177,7 @@ const buildCompletedEntries = (completedLogs: CompletedLogRecord[]) => {
 		occurredAt: log.createdAt.toISOString(),
 		description: log.description,
 		points: log.points,
-		status: log.status === "PENDING" ? "PENDING" : "APPROVED",
+		status: resolveCompletedStatus(log.status),
 		bucket: resolveBucket(log.duration),
 		assignedTaskId: log.assignedTaskId,
 	}));
@@ -157,7 +209,6 @@ const buildOneOffPlannedEntry = ({ task, range }: { task: AssignedTaskRecord; ra
 	}
 
 	const bucket = resolveBucket(task.preset.bucket) ?? "QUICK";
-	const target = Math.max(task.cadenceTarget, 1);
 
 	return [
 		{
@@ -169,9 +220,9 @@ const buildOneOffPlannedEntry = ({ task, range }: { task: AssignedTaskRecord; ra
 			bucket,
 			assignedTaskId: task.id,
 			isRecurring: false,
-			cadenceLabel: "One-off",
-			cadenceTarget: target,
-			remainingCount: target,
+			cadenceIntervalMinutes: null,
+			cadenceTarget: 1,
+			remainingCount: 1,
 		},
 	];
 };
@@ -208,8 +259,10 @@ const buildRecurringPlannedEntries = ({
 		const occurrenceAt = periodStart > task.assignedAt ? periodStart : task.assignedAt;
 
 		if (periodEnd > task.assignedAt && occurrenceAt >= range.start && occurrenceAt < range.end) {
-			const hasMatchingLog = logs.some((log) => log.createdAt >= periodStart && log.createdAt < periodEnd);
-			if (!hasMatchingLog) {
+			const periodLogCount = logs.filter((log) => log.createdAt >= periodStart && log.createdAt < periodEnd).length;
+			const remainingCount = Math.max(target - periodLogCount, 0);
+
+			if (remainingCount > 0) {
 				entries.push({
 					id: `${task.id}:${periodStart.toISOString()}`,
 					type: "planned",
@@ -219,9 +272,9 @@ const buildRecurringPlannedEntries = ({
 					bucket,
 					assignedTaskId: task.id,
 					isRecurring: true,
-					cadenceLabel: formatCadenceInterval(task.cadenceIntervalMinutes),
+					cadenceIntervalMinutes: task.cadenceIntervalMinutes,
 					cadenceTarget: target,
-					remainingCount: target,
+					remainingCount,
 				});
 			}
 		}
@@ -243,8 +296,7 @@ const buildPlannedEntries = ({ completedLogs, range, tasks, timeZone }: BuildWee
 		const taskLogs = logsByTaskId.get(task.id) ?? [];
 
 		if (!task.isRecurring) {
-			const target = Math.max(task.cadenceTarget, 1);
-			return taskLogs.length >= target ? [] : buildOneOffPlannedEntry({ task, range });
+			return taskLogs.length > 0 ? [] : buildOneOffPlannedEntry({ task, range });
 		}
 
 		return buildRecurringPlannedEntries({
