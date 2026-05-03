@@ -1,12 +1,12 @@
 import { getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
 import { formatCadenceInterval } from "@/lib/assignedTasksCadence";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
-import { addDaysInTimeZone, getStartOfDayInTimeZone } from "@/lib/timeZones";
+import { addDaysInTimeZone, getStartOfDayInTimeZone, parseDateInTimeZone } from "@/lib/timeZones";
 
 export type WeekViewRange = {
 	start: Date;
 	end: Date;
-	labelKey: "past7Days";
+	labelKey: "custom" | "past7Days";
 };
 
 export type WeekViewCompletedEntry = {
@@ -71,6 +71,8 @@ const resolveBucket = (bucket: string | null | undefined) => {
 	return isDurationKey(bucket) ? bucket : "QUICK";
 };
 
+const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 const getDefaultWeekViewRange = ({ now = new Date(), timeZone }: { now?: Date; timeZone: string }) => {
 	const todayStart = getStartOfDayInTimeZone(now, timeZone);
 	const end = addDaysInTimeZone(todayStart, 1, timeZone);
@@ -80,6 +82,39 @@ const getDefaultWeekViewRange = ({ now = new Date(), timeZone }: { now?: Date; t
 		start,
 		end,
 		labelKey: "past7Days",
+	} satisfies WeekViewRange;
+};
+
+const parseWeekViewRange = ({
+	from,
+	now = new Date(),
+	timeZone,
+	to,
+}: {
+	from?: string | null;
+	now?: Date;
+	timeZone: string;
+	to?: string | null;
+}) => {
+	if (!from && !to) {
+		return getDefaultWeekViewRange({ now, timeZone });
+	}
+
+	if (!from || !to || !DATE_PARAM_PATTERN.test(from) || !DATE_PARAM_PATTERN.test(to)) {
+		return getDefaultWeekViewRange({ now, timeZone });
+	}
+
+	const start = parseDateInTimeZone(from, timeZone);
+	const inclusiveEnd = parseDateInTimeZone(to, timeZone);
+
+	if (!start || !inclusiveEnd || inclusiveEnd < start) {
+		return getDefaultWeekViewRange({ now, timeZone });
+	}
+
+	return {
+		start,
+		end: addDaysInTimeZone(inclusiveEnd, 1, timeZone),
+		labelKey: "custom",
 	} satisfies WeekViewRange;
 };
 
@@ -159,45 +194,39 @@ const buildRecurringPlannedEntries = ({
 	const bucket = resolveBucket(task.preset.bucket) ?? "QUICK";
 	const target = Math.max(task.cadenceTarget, 1);
 	const entries: WeekViewPlannedEntry[] = [];
-	const seenPeriods = new Set<string>();
-	let cursor = range.start;
-	let iterations = 0;
+	if (task.assignedAt >= range.end) {
+		return entries;
+	}
 
-	while (cursor < range.end && iterations < 20_000) {
-		const { periodStart, periodEnd } = getAssignedTaskPeriodBounds(cursor, task.cadenceIntervalMinutes, timeZone);
-		const periodKey = periodStart.toISOString();
+	let { periodStart } = getAssignedTaskPeriodBounds(range.start, task.cadenceIntervalMinutes, timeZone);
 
-		if (!seenPeriods.has(periodKey) && periodEnd > task.assignedAt) {
-			seenPeriods.add(periodKey);
-			const occurrenceAt = periodStart > task.assignedAt ? periodStart : task.assignedAt;
+	while (periodStart < range.end) {
+		const { periodEnd } = getAssignedTaskPeriodBounds(periodStart, task.cadenceIntervalMinutes, timeZone);
+		if (periodEnd.getTime() <= periodStart.getTime()) {
+			break;
+		}
+		const occurrenceAt = periodStart > task.assignedAt ? periodStart : task.assignedAt;
 
-			if (occurrenceAt >= range.start && occurrenceAt < range.end) {
-				const hasMatchingLog = logs.some((log) => log.createdAt >= periodStart && log.createdAt < periodEnd);
-				if (!hasMatchingLog) {
-					entries.push({
-						id: `${task.id}:${periodKey}`,
-						type: "planned",
-						occurredAt: occurrenceAt.toISOString(),
-						description: task.preset.label,
-						points: getBucketPoints(bucket),
-						bucket,
-						assignedTaskId: task.id,
-						isRecurring: true,
-						cadenceLabel: formatCadenceInterval(task.cadenceIntervalMinutes),
-						cadenceTarget: target,
-						remainingCount: target,
-					});
-				}
+		if (periodEnd > task.assignedAt && occurrenceAt >= range.start && occurrenceAt < range.end) {
+			const hasMatchingLog = logs.some((log) => log.createdAt >= periodStart && log.createdAt < periodEnd);
+			if (!hasMatchingLog) {
+				entries.push({
+					id: `${task.id}:${periodStart.toISOString()}`,
+					type: "planned",
+					occurredAt: occurrenceAt.toISOString(),
+					description: task.preset.label,
+					points: getBucketPoints(bucket),
+					bucket,
+					assignedTaskId: task.id,
+					isRecurring: true,
+					cadenceLabel: formatCadenceInterval(task.cadenceIntervalMinutes),
+					cadenceTarget: target,
+					remainingCount: target,
+				});
 			}
 		}
 
-		if (periodEnd.getTime() <= cursor.getTime()) {
-			cursor = new Date(cursor.getTime() + 60_000);
-		} else {
-			cursor = periodEnd;
-		}
-
-		iterations += 1;
+		periodStart = periodEnd;
 	}
 
 	return entries;
@@ -265,4 +294,4 @@ const buildWeekViewTimeline = ({ completedLogs, range, tasks, timeZone }: BuildW
 	};
 };
 
-export { buildWeekViewTimeline, getDefaultWeekViewRange };
+export { buildWeekViewTimeline, getDefaultWeekViewRange, parseWeekViewRange };

@@ -146,6 +146,33 @@ export const getStartOfDayInTimeZone = (date: Date, timeZone: string) => {
 	return toDate(start);
 };
 
+export const parseDateInTimeZone = (value: string, timeZone: string) => {
+	try {
+		const date = Temporal.PlainDate.from(value);
+		const zonedDateTime = Temporal.ZonedDateTime.from({
+			timeZone: resolveTimeZone(timeZone),
+			year: date.year,
+			month: date.month,
+			day: date.day,
+			hour: 0,
+			minute: 0,
+			second: 0,
+			millisecond: 0,
+		});
+		return toDate(zonedDateTime);
+	} catch {
+		return null;
+	}
+};
+
+export const formatDateInTimeZoneForInput = (date: Date, timeZone: string) => {
+	const zonedDateTime = toZonedDateTime(date, timeZone);
+	const year = String(zonedDateTime.year);
+	const month = String(zonedDateTime.month).padStart(2, "0");
+	const day = String(zonedDateTime.day).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+};
+
 export const getMinutesSinceStartOfDayInTimeZone = (date: Date, timeZone: string) => {
 	const zonedDateTime = toZonedDateTime(date, timeZone);
 	return Math.floor(

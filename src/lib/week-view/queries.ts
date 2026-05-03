@@ -2,20 +2,12 @@ import "server-only";
 
 import { LogStatus } from "@prisma/client";
 
-import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from "@/lib/formatDate";
+import { type DateFormat, DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT, type TimeFormat } from "@/lib/formatDate";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
-import { buildWeekViewTimeline, getDefaultWeekViewRange } from "@/lib/week-view/buildTimeline";
+import { buildWeekViewTimeline, type WeekViewRange } from "@/lib/week-view/buildTimeline";
 
-export const getWeekViewData = async ({
-	householdId,
-	now = new Date(),
-	userId,
-}: {
-	householdId: string;
-	now?: Date;
-	userId: string;
-}) => {
+export const getWeekViewHouseholdSettings = async (householdId: string) => {
 	const household = await prisma.household.findUnique({
 		where: { id: householdId },
 		select: {
@@ -25,9 +17,32 @@ export const getWeekViewData = async ({
 		},
 	});
 
-	const timeZone = household?.timeZone ?? DEFAULT_TIME_ZONE;
-	const range = getDefaultWeekViewRange({ now, timeZone });
+	return {
+		timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,
+		dateFormat: household?.dateFormat ?? DEFAULT_DATE_FORMAT,
+		timeFormat: household?.timeFormat ?? DEFAULT_TIME_FORMAT,
+	} satisfies {
+		dateFormat: DateFormat;
+		timeFormat: TimeFormat;
+		timeZone: string;
+	};
+};
 
+export const getWeekViewData = async ({
+	householdId,
+	range,
+	userId,
+	dateFormat,
+	timeFormat,
+	timeZone,
+}: {
+	householdId: string;
+	range: WeekViewRange;
+	userId: string;
+	dateFormat: DateFormat;
+	timeFormat: TimeFormat;
+	timeZone: string;
+}) => {
 	const [completedLogs, tasks] = await Promise.all([
 		prisma.pointLog.findMany({
 			where: {
@@ -79,8 +94,8 @@ export const getWeekViewData = async ({
 	return {
 		range,
 		timeZone,
-		dateFormat: household?.dateFormat ?? DEFAULT_DATE_FORMAT,
-		timeFormat: household?.timeFormat ?? DEFAULT_TIME_FORMAT,
+		dateFormat,
+		timeFormat,
 		...buildWeekViewTimeline({
 			completedLogs,
 			range,
