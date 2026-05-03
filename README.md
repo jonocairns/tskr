@@ -35,7 +35,8 @@ CI runs `pnpm i18n:check` to ensure locale files are up to date and dynamic tran
 
 Translation workflow:
 - Run `pnpm prep` before opening a PR. This is the primary local quality gate.
-- `prep` includes i18n sync, lint fixes, TypeScript compile, and tests.
+- `prep` includes i18n sync, lint fixes, TypeScript compile, a production build, and tests.
+- `check` includes i18n sync, lint, TypeScript compile, a production build, and tests.
 - Run `pnpm i18n:sync` when you only want to refresh locale files while working.
 - CI runs `pnpm i18n:check`, which fails if locale files would change.
 
