@@ -17,7 +17,7 @@ export const WeekViewMemberSelector = ({ disabled, members, onChange, selectedUs
 		<Select value={selectedUserId} onValueChange={onChange} disabled={disabled}>
 			<SelectTrigger
 				aria-label={srLabel}
-				className="h-auto w-auto gap-2 border-none bg-transparent p-0 text-xl font-semibold shadow-none hover:text-foreground/80 focus:ring-0 focus-visible:ring-0 [&>svg:last-child]:hidden"
+				className="h-auto w-auto cursor-pointer gap-2 border-none bg-transparent p-0 text-xl font-semibold shadow-none hover:text-foreground/80 focus:ring-0 focus-visible:ring-0 [&>svg:last-child]:hidden"
 			>
 				<SelectValue />
 				<ChevronDown className="size-4 text-muted-foreground" aria-hidden />

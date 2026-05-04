@@ -28,7 +28,6 @@ type Props = {
 		from: string;
 		to: string;
 		apply: string;
-		reset: string;
 		presets: Record<WeekViewPreset, string>;
 	};
 };
@@ -143,8 +142,6 @@ export const WeekViewRangeControls = ({
 		{ timeZone, dateFormat },
 	)}`;
 
-	const showReset = range.labelKey !== "thisFortnight";
-
 	const openPicker = (input: HTMLInputElement | null) => {
 		if (!input) {
 			return;
@@ -182,7 +179,7 @@ export const WeekViewRangeControls = ({
 								onClick={() => onPresetChange(option)}
 								disabled={isPending}
 								className={cn(
-									"rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+									"cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
 									isActive
 										? "border-transparent bg-primary text-primary-foreground"
 										: "border-border bg-transparent text-muted-foreground hover:border-foreground/30 hover:text-foreground",
@@ -192,23 +189,13 @@ export const WeekViewRangeControls = ({
 							</button>
 						);
 					})}
-					{showReset ? (
-						<button
-							type="button"
-							onClick={() => onPresetChange("thisFortnight")}
-							disabled={isPending}
-							className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50"
-						>
-							{labels.reset}
-						</button>
-					) : null}
 					<Popover open={isPopoverOpen} onOpenChange={onCustomOpen}>
 						<PopoverTrigger asChild>
 							<button
 								type="button"
 								aria-label={labels.dateRange}
 								disabled={isPending}
-								className="inline-flex shrink-0 items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 lg:ml-1"
+								className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 lg:ml-1"
 							>
 								<CalendarIcon className="size-4" aria-hidden />
 								<span>{rangeLabel}</span>
@@ -237,7 +224,7 @@ export const WeekViewRangeControls = ({
 										<button
 											type="button"
 											aria-label={labels.from}
-											className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+											className="absolute inset-y-0 right-0 flex w-10 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
 											onClick={() => openPicker(fromInputRef.current)}
 										>
 											<CalendarIcon className="size-4" aria-hidden />
@@ -259,7 +246,7 @@ export const WeekViewRangeControls = ({
 										<button
 											type="button"
 											aria-label={labels.to}
-											className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+											className="absolute inset-y-0 right-0 flex w-10 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
 											onClick={() => openPicker(toInputRef.current)}
 										>
 											<CalendarIcon className="size-4" aria-hidden />

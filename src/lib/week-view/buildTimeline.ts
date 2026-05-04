@@ -1,12 +1,6 @@
 import { getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
-import {
-	addDaysInTimeZone,
-	addMonthsInTimeZone,
-	getStartOfMonthInTimeZone,
-	getStartOfWeekInTimeZone,
-	parseDateInTimeZone,
-} from "@/lib/timeZones";
+import { addDaysInTimeZone, addMonthsInTimeZone, getStartOfDayInTimeZone, parseDateInTimeZone } from "@/lib/timeZones";
 
 export const WEEK_VIEW_PRESETS = ["thisWeek", "thisFortnight", "thisMonth"] as const;
 
@@ -31,21 +25,19 @@ const getRangeForPreset = ({
 	now: Date;
 	timeZone: string;
 }): WeekViewRange => {
+	const end = addDaysInTimeZone(getStartOfDayInTimeZone(now, timeZone), 1, timeZone);
+
 	if (preset === "thisWeek") {
-		const start = getStartOfWeekInTimeZone(now, timeZone);
-		const end = addDaysInTimeZone(start, 7, timeZone);
+		const start = addDaysInTimeZone(end, -7, timeZone);
 		return { start, end, labelKey: "thisWeek" };
 	}
 
 	if (preset === "thisFortnight") {
-		const startOfThisWeek = getStartOfWeekInTimeZone(now, timeZone);
-		const start = addDaysInTimeZone(startOfThisWeek, -7, timeZone);
-		const end = addDaysInTimeZone(startOfThisWeek, 7, timeZone);
+		const start = addDaysInTimeZone(end, -14, timeZone);
 		return { start, end, labelKey: "thisFortnight" };
 	}
 
-	const start = getStartOfMonthInTimeZone(now, timeZone);
-	const end = getStartOfMonthInTimeZone(addMonthsInTimeZone(start, 1, timeZone), timeZone);
+	const start = addMonthsInTimeZone(end, -1, timeZone);
 	return { start, end, labelKey: "thisMonth" };
 };
 

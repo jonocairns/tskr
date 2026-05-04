@@ -110,11 +110,10 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 							from: t("From"),
 							to: t("To"),
 							apply: t("Apply"),
-							reset: t("Reset"),
 							presets: {
-								thisWeek: t("This week"),
-								thisFortnight: t("This fortnight"),
-								thisMonth: t("This month"),
+								thisWeek: t("Week"),
+								thisFortnight: t("Fortnight"),
+								thisMonth: t("Month"),
 							},
 						}}
 					/>

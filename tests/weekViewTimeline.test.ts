@@ -223,12 +223,47 @@ test("builds the default range from household-local day boundaries", () => {
 	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 8, 0, 0).toISOString());
 });
 
+test("builds preset ranges as trailing windows that end at the next local midnight", () => {
+	const now = atZoned(TIME_ZONE, 2024, 1, 10, 15, 45);
+
+	const thisWeek = parseWeekViewRange({
+		now,
+		preset: "thisWeek",
+		timeZone: TIME_ZONE,
+	});
+	const thisFortnight = parseWeekViewRange({
+		now,
+		preset: "thisFortnight",
+		timeZone: TIME_ZONE,
+	});
+
+	expect(thisWeek.labelKey).toBe("thisWeek");
+	expect(thisWeek.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 4, 0, 0).toISOString());
+	expect(thisWeek.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 11, 0, 0).toISOString());
+	expect(thisFortnight.labelKey).toBe("thisFortnight");
+	expect(thisFortnight.start.toISOString()).toBe(atZoned(TIME_ZONE, 2023, 12, 28, 0, 0).toISOString());
+	expect(thisFortnight.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 11, 0, 0).toISOString());
+});
+
 test("builds the default range from household-local day boundaries across DST changes", () => {
 	const now = atZoned(TIME_ZONE, 2024, 3, 10, 15, 45);
 	const range = getDefaultWeekViewRange({ now, timeZone: TIME_ZONE });
 
 	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 2, 26, 0, 0).toISOString());
 	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 3, 11, 0, 0).toISOString());
+});
+
+test("builds the month preset as a trailing month instead of clipping to the current calendar month", () => {
+	const now = atZoned(TIME_ZONE, 2024, 5, 4, 9, 0);
+	const range = parseWeekViewRange({
+		now,
+		preset: "thisMonth",
+		timeZone: TIME_ZONE,
+	});
+
+	expect(range.labelKey).toBe("thisMonth");
+	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 4, 5, 0, 0).toISOString());
+	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 5, 5, 0, 0).toISOString());
 });
 
 test("parses custom from/to params against household-local day boundaries", () => {
