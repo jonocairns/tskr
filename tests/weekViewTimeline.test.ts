@@ -406,7 +406,6 @@ test("emits a one-off planned entry with preset metadata when assignedAt is in r
 test("suppresses one-off planned entries after any pending or approved completion", () => {
 	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
 	const task = makeTask({
-		cadenceTarget: 4,
 		assignedAt: atZoned(TIME_ZONE, 2024, 1, 4, 9, 0),
 	});
 
