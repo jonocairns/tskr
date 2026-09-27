@@ -90,39 +90,53 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Releases
 
-Releases are tag-driven. The release script creates and optionally pushes a semver tag.
+Releases use [Release Please](https://github.com/googleapis/release-please-action).
+After a push to `main` passes i18n, lint, TypeScript compilation, tests, the
+production build, and a container startup check, the workflow creates or updates a release PR with the version
+bump and changelog. Merge that PR when the changes are ready to ship. The merged
+commit must pass the same checks before the workflow creates the `x.y.z` tag and
+GitHub Release, then publishes the release image to GHCR for amd64 and arm64.
+`latest` advances after the image is published. The release notes include the
+immutable image digest for deployments.
 
-Check what is not released yet:
+Use Conventional Commit titles for squash merges:
 
-```bash
-pnpm release:pending
-```
+| Prefix | Version effect |
+| --- | --- |
+| `fix:` or `perf:` | Patch |
+| `feat:` | Minor |
+| `!` or a `BREAKING CHANGE:` footer | Major |
+| `docs:`, `test:`, `ci:`, `build:`, `style:`, `refactor:`, `deps:`, ordinary `chore:` | No release by themselves |
 
-Create a release tag from `main`:
+User-visible dependency or container fixes should use `fix(deps):` or
+`fix(container):` so they ship. Tags keep the existing format without a `v`
+prefix. Release Please now manages `package.json` and
+`.release-please-manifest.json` together, starting from the existing `1.2.0` tag.
+Do not manually bump versions, cut tags, or publish images.
 
-```bash
-pnpm release patch --push
-# or minor / major / --version x.y.z
-```
+Repository setup:
 
-Preview the release flow without changing git state:
+1. Install the release bot GitHub App on this repository with **Contents**,
+   **Issues**, and **Pull requests** read/write permissions. Add repository
+   Actions environment secrets `RELEASE_BOT_APP_ID` and `RELEASE_BOT_PRIVATE_KEY`
+   in the `release` environment, as in
+   `obsidian-sync-mcp`. The App token lets the release PR trigger CI automatically.
+2. Restrict the `release` environment's deployment branches to `main`.
+3. Require the `build-and-lint` CI job in branch protection for `main`.
 
-```bash
-pnpm release patch --dry-run
-```
-
-Notes:
-- Tag format is `x.y.z` (no `v` prefix).
-- `release` must run from `main` and verifies `HEAD` matches `origin/main` before tagging.
-- Deployment is triggered by pushing a semver tag (`*.*.*`).
-- `package.json` version is intentionally fixed at `1.0.0`; release versions come from git tags.
+If publication fails after the GitHub Release is created, rerun the failed CI
+workflow for that merged release commit. It verifies the tag points to the exact
+tested commit, reuses an existing multi-architecture image if one was already
+published, and repairs the release notes. Retrying an older release does not
+move `latest` back. Publishing is part of the same workflow, so tags created
+with `GITHUB_TOKEN` do not need to trigger another workflow.
 
 ## Docker
 
 Pull the image:
 
 ```bash
-docker pull ghcr.io/<owner>/tskr:latest
+docker pull ghcr.io/jonocairns/tskr:latest
 ```
 
 Run the container (persists the SQLite db and generated secrets under `/data`):
@@ -132,8 +146,13 @@ docker run --rm \
   -p 3000:3000 \
   -v tskr-data:/data \
   -e NEXTAUTH_URL="http://localhost:3000" \
-  ghcr.io/<owner>/tskr:latest
+  ghcr.io/jonocairns/tskr:latest
 ```
+
+For a repeatable deployment, use the `ghcr.io/jonocairns/tskr:x.y.z@sha256:…`
+reference from the GitHub Release notes. Publishing an image does not restart
+an existing container; pull the chosen release and recreate your container with
+the same `/data` volume.
 
 Build and run locally instead:
 

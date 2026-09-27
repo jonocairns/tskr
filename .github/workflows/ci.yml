@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-and-lint:
     runs-on: ubuntu-latest
@@ -44,7 +48,137 @@ jobs:
         run: pnpm i18n:check
       - name: Lint
         run: pnpm lint
+      - name: Compile
+        run: pnpm compile
       - name: Test
         run: pnpm test
       - name: Build
         run: pnpm build
+      - uses: docker/setup-buildx-action@v3
+      - name: Build container for startup check
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: tskr-ci:local
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Check container startup and health
+        run: bash scripts/ci/docker-smoke.sh tskr-ci:local
+
+  release-please:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-lint
+    runs-on: ubuntu-latest
+    environment: release
+    concurrency:
+      group: release-please
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      release_context: ${{ steps.context.outputs.release-context }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.12.0"
+      - id: context
+        name: Determine release context for this successful commit
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/release-container.cjs context
+      # An App token lets release PRs trigger CI. The default GITHUB_TOKEN
+      # creates PRs whose events do not automatically start other workflows.
+      - id: app-token
+        if: steps.context.outputs.update-pr == 'true' && steps.context.outputs.release-context != 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+      - name: Create or update release PR
+        if: steps.context.outputs.update-pr == 'true' && steps.context.outputs.release-context != 'true'
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          skip-github-release: true
+      - name: Create tag and GitHub Release
+        if: steps.context.outputs.create-release == 'true'
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          skip-github-pull-request: true
+
+  publish-docker:
+    if: needs.release-please.outputs.release_context == 'true'
+    needs: release-please
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-docker
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.12.0"
+      - id: release
+        name: Verify released version and commit
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/release-container.cjs verify
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: publication
+        name: Reuse an existing release image on retries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/release-container.cjs publication
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ steps.release.outputs.tag_name }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.release.outputs.tag_name }}
+      - id: build
+        name: Publish release image
+        if: steps.publication.outputs.publish == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      # Promote only while this release is still the latest, so a retry of an
+      # older release cannot roll back the floating tag.
+      - name: Promote latest and record immutable image in release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest || steps.publication.outputs.digest }}
+        run: node scripts/ci/release-container.cjs document
