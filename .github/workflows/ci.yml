@@ -9,7 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Every main commit needs its own run for release detection. PR revisions
+  # still share a group so a newer revision can cancel obsolete CI.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -73,6 +75,7 @@ jobs:
     environment: release
     concurrency:
       group: release-please
+      queue: max
       cancel-in-progress: false
     permissions:
       contents: write
@@ -122,7 +125,9 @@ jobs:
     needs: release-please
     runs-on: ubuntu-latest
     concurrency:
+      # Queue all release publications and serialize the latest check/write.
       group: publish-docker
+      queue: max
       cancel-in-progress: false
     permissions:
       contents: write
