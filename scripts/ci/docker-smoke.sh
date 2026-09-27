@@ -7,7 +7,6 @@ trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
 
 # Use an isolated container filesystem for its database; never mount appdata.
 docker run --detach --name "$container" \
-    --env HOSTNAME=0.0.0.0 \
     --env NEXTAUTH_SECRET=ci-placeholder-secret \
     --env SUPER_ADMIN_EMAIL=smoke@example.invalid \
     --health-start-period=0s --health-interval=2s --health-timeout=3s \

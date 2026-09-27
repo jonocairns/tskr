@@ -32,6 +32,7 @@ RUN corepack enable \
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 ENV DATABASE_URL="file:/data/dev.db"
 ENV NEXTAUTH_URL="http://localhost:3000"
 
