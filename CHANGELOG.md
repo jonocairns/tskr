@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/jonocairns/tskr/compare/1.2.1...1.2.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* **settings:** avoid theme select hydration mismatch ([#133](https://github.com/jonocairns/tskr/issues/133)) ([a3eab63](https://github.com/jonocairns/tskr/commit/a3eab63436e5b66a7ad8ec7ebd7b733f25166f99))
+
 ## [1.2.1](https://github.com/jonocairns/tskr/compare/1.2.0...1.2.1) (2026-09-27)
 
 
