@@ -34,6 +34,7 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 	const { t } = useTranslation();
 	const router = useRouter();
 	const [language, setLanguage] = useState(normalizeLanguage(user.language ?? DEFAULT_LANGUAGE));
+	const [isMounted, setIsMounted] = useState(false);
 	const languageLabelLocale = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language ?? DEFAULT_LANGUAGE);
 	const getDisplayLanguage = (value: string) => {
 		return getLanguageLabel(value, {
@@ -82,6 +83,10 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 	};
 
 	useEffect(() => {
+		setIsMounted(true);
+	}, []);
+
+	useEffect(() => {
 		if (!googleEnabled) {
 			return;
 		}
@@ -108,7 +113,8 @@ export const SettingsContent = ({ user, googleEnabled, householdId }: Props) => 
 							<CardTitle>{t("Appearance")}</CardTitle>
 							<CardDescription>{t("Customize how the app looks on your device.")}</CardDescription>
 						</div>
-						<Select value={theme} onValueChange={setTheme}>
+						{/* next-themes only knows the theme on the client; match the server render until mounted */}
+						<Select value={isMounted ? theme : ""} onValueChange={setTheme}>
 							<SelectTrigger className="w-[130px]">
 								<SelectValue placeholder={t("Theme")} />
 							</SelectTrigger>
