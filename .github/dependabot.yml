@@ -13,10 +13,14 @@ updates:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
     groups:
+      # Majors fall outside the groups so each lands as its own PR and one
+      # breaking release cannot block every minor/patch update.
       prod-deps:
         dependency-type: "production"
+        update-types: ["minor", "patch"]
       dev-deps:
         dependency-type: "development"
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "docker"
     directory: "/"

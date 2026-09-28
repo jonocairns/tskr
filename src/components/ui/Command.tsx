@@ -104,11 +104,11 @@ CommandShortcut.displayName = "CommandShortcut";
 
 export {
 	Command,
-	CommandInput,
-	CommandList,
 	CommandEmpty,
 	CommandGroup,
+	CommandInput,
 	CommandItem,
+	CommandList,
 	CommandSeparator,
 	CommandShortcut,
 };
