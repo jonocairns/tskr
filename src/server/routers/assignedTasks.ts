@@ -168,7 +168,7 @@ export const assignedTasksRouter = router({
 			},
 		});
 
-		if (!task || !task.preset) {
+		if (!task?.preset) {
 			throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
 		}
 
