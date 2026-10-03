@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/jonocairns/tskr/compare/1.2.2...1.2.3) (2026-10-03)
+
+
+### Bug Fixes
+
+* **container:** restore dedicated liveness health check ([#135](https://github.com/jonocairns/tskr/issues/135)) ([dbc605c](https://github.com/jonocairns/tskr/commit/dbc605c418d34389bf7f55b50ffbaf676ff8d169))
+
 ## [1.2.2](https://github.com/jonocairns/tskr/compare/1.2.1...1.2.2) (2026-09-28)
 
 
