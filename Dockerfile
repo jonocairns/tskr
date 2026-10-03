@@ -32,6 +32,7 @@ RUN corepack enable \
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
+# Next.js standalone reads HOSTNAME; Docker otherwise supplies the container ID.
 ENV HOSTNAME=0.0.0.0
 ENV DATABASE_URL="file:/data/dev.db"
 ENV NEXTAUTH_URL="http://localhost:3000"
@@ -58,7 +59,7 @@ USER nextjs
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://127.0.0.1:3000/api/trpc/health.check || exit 1
+  CMD curl -fsS http://127.0.0.1:3000/api/health || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "server.js"]

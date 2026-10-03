@@ -163,6 +163,9 @@ docker run --rm -p 3000:3000 -v tskr-data:/data --env-file .env tskr
 ```
 
 Notes:
+- The image binds to `0.0.0.0` and checks `/api/health` on loopback. This public
+  liveness route returns `200` with `{"status":"ok"}` without auth or database access.
+  Leave `HOSTNAME` unset in the deployment so the image's bind address is used.
 - `DATABASE_URL` is optional; the entrypoint defaults to `file:/data/dev.db`.
 - Migrations run on container start when Prisma migrations are present.
 - Set `NEXTAUTH_SECRET` for stable sessions. If unset, the entrypoint generates one and
