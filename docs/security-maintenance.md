@@ -50,14 +50,33 @@ binary packages; they do not establish that the application exposes the
 affected feature. They remain in the full CI report for review rather than
 being placed on an ignore list.
 
-Local registry scans cover the base, not the complete application image.
-Docker Desktop's engine was unavailable in this workspace, so the updated
-image build, database migration/bootstrap, default bind address, and health
-check still need CI verification. CI runs the existing startup smoke check,
-uploads `container-vulnerabilities.json` with all severities and unfixed
-findings, and fails on fixable high/critical image vulnerabilities. It also
-runs `pnpm audit --audit-level=moderate` over production and development
-dependencies, leaving the unfixed low finding visible.
+After Docker Desktop became available, a local `linux/amd64` application image
+was built with a refreshed base stage. The existing startup smoke check passed:
+all 17 database migrations, admin bootstrap, default bind address, Docker
+health check, and localhost health probe worked. The runner used Node 24.22.2
+as uid 1001, with npm, npx, pnpm, Yarn, and Corepack absent.
+
+Trivy scanned an export of the complete application image. It found no
+JavaScript vulnerabilities, no critical findings, and no fixable findings at
+any severity. The image still has 47 high OS package/advisory matches across
+10 unique advisories without vendor fixes; installing curl adds two unique
+high advisories to the base-image findings above. The fixable high/critical
+gate passed. This validates the local amd64 image; arm64 execution was not
+tested locally.
+
+Interactive browser E2E checks against a second container with a fresh,
+isolated database passed: credentials login, required first-login password
+reset, household creation, task logging with points/history updates,
+persistence after a full reload, task undo with balance reversal, sign-out,
+and redirection of a signed-out visitor away from a protected household page.
+Week view, assignments, settings, and household management also loaded without
+console errors or HTTP failures. These were interactive checks, not a committed
+automated browser test suite. Both disposable test containers were removed.
+
+CI runs the startup smoke check, uploads `container-vulnerabilities.json` with
+all severities and unfixed findings, and fails on fixable high/critical image
+vulnerabilities. It also runs `pnpm audit --audit-level=moderate` over production
+and development dependencies, leaving the unfixed low finding visible.
 
 ## Rechecking
 
