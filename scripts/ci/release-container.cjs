@@ -1,5 +1,5 @@
 const { execFileSync, spawnSync } = require("node:child_process");
-const { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
@@ -116,6 +116,36 @@ const main = () => {
 			const digest = process.env.IMAGE_DIGEST;
 			if (!/^sha256:[0-9a-f]{64}$/.test(digest || "")) {
 				throw new Error("IMAGE_DIGEST must be a valid SHA-256 image digest");
+			}
+			const imageRef = `${image}@${digest}`;
+			const scanDirectory = process.env.RELEASE_SCAN_DIR || mkdtempSync(join(tmpdir(), "tskr-release-scan-"));
+			mkdirSync(scanDirectory, { recursive: true });
+			// Scan the exact registry content, including images reused on retries.
+			// A host-default scan would leave the other published architecture unchecked.
+			for (const architecture of ["amd64", "arm64"]) {
+				const args = ["image", "--image-src", "remote", "--platform", `linux/${architecture}`, "--scanners", "vuln"];
+				console.log(`Scanning ${imageRef} for linux/${architecture}`);
+				execFileSync(
+					"trivy",
+					[...args, "--format", "json", "--output", join(scanDirectory, `${architecture}.json`), imageRef],
+					{ stdio: "inherit" },
+				);
+				execFileSync(
+					"trivy",
+					[
+						...args,
+						"--skip-db-update",
+						"--ignore-unfixed",
+						"--severity",
+						"HIGH,CRITICAL",
+						"--exit-code",
+						"1",
+						"--table-mode",
+						"detailed",
+						imageRef,
+					],
+					{ stdio: "inherit" },
+				);
 			}
 			// Recheck latest immediately before promotion, including on retries.
 			const latest = JSON.parse(run("gh", ["api", `repos/${repository}/releases/latest`])).tag_name;

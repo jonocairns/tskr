@@ -78,6 +78,18 @@ all severities and unfixed findings, and fails on fixable high/critical image
 vulnerabilities. It also runs `pnpm audit --audit-level=moderate` over production
 and development dependencies, leaving the unfixed low finding visible.
 
+The release publication build refreshes OS packages again, so passing the
+local CI image scan is insufficient to validate the released image. Before
+promoting `latest` or updating release notes, the release command scans the
+exact registry digest explicitly for `linux/amd64` and `linux/arm64`. This also
+runs when a retry reuses an existing image. Fixable high/critical findings or
+scanner errors stop promotion. Full reports, including unfixed findings, are
+retained in a `release-vulnerabilities-<attempt>` artifact even when a gate
+fails. Report artifact names include the run attempt so reruns retain earlier
+reports and avoid upload conflicts.
+The version-tagged image is already in the registry at this stage; the gate
+controls its promotion to `latest` and inclusion in release notes.
+
 ## Rechecking
 
 Run these after an update:

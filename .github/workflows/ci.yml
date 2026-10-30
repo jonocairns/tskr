@@ -84,7 +84,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: container-vulnerabilities
+          name: container-vulnerabilities-${{ github.run_attempt }}
           path: container-vulnerabilities.json
           if-no-files-found: ignore
       - name: Reject fixable high and critical container vulnerabilities
@@ -205,10 +205,24 @@ jobs:
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Install release vulnerability scanner
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.76.1
+          cache: true
       # Promote only while this release is still the latest, so a retry of an
-      # older release cannot roll back the floating tag.
-      - name: Promote latest and record immutable image in release notes
+      # older release cannot roll back the floating tag. Both platforms in the
+      # exact registry digest must pass scanning first, including on retries.
+      - name: Scan release platforms, promote latest, and update release notes
         env:
           GH_TOKEN: ${{ github.token }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest || steps.publication.outputs.digest }}
+          RELEASE_SCAN_DIR: ${{ runner.temp }}/release-vulnerabilities
         run: node scripts/ci/release-container.cjs document
+      - name: Save complete release vulnerability reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-vulnerabilities-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-vulnerabilities/*.json
+          if-no-files-found: ignore

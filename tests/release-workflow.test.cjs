@@ -22,18 +22,24 @@ const validRelease = {
 	release: { tagName: "1.3.0", isDraft: false, isPrerelease: false },
 };
 
-test("documenting an older release repairs notes without rolling back latest", () => {
+test("release promotion scans both registry platforms and fails closed before changing latest or release notes", () => {
 	const directory = mkdtempSync(join(tmpdir(), "tskr-release-test-"));
 	const script = resolve("scripts/ci/release-container.cjs");
 	try {
 		writeFileSync(join(directory, "package.json"), JSON.stringify({ version: "1.3.0" }));
 		const stub = `#!/usr/bin/env node
-const { appendFileSync, readFileSync } = require('node:fs');
+const { appendFileSync, readFileSync, writeFileSync } = require('node:fs');
 const { basename } = require('node:path');
 const args = process.argv.slice(2);
 const command = basename(process.argv[1]);
 appendFileSync(process.env.CALLS_FILE, JSON.stringify({ command, args }) + '\\n');
-if (command === 'gh' && args[0] === 'api') {
+if (command === 'trivy') {
+  const outputIndex = args.indexOf('--output');
+  if (outputIndex !== -1) writeFileSync(args[outputIndex + 1], '{}');
+  if (args.includes('--exit-code') && args[args.indexOf('--platform') + 1] === process.env.FAIL_PLATFORM) {
+    process.exit(Number(process.env.SCAN_EXIT));
+  }
+} else if (command === 'gh' && args[0] === 'api') {
   process.stdout.write(JSON.stringify({ tag_name: process.env.LATEST_VERSION }));
 } else if (command === 'gh' && args[1] === 'view') {
   process.stdout.write(JSON.stringify({ body: '## Features\\n\\nExisting changelog' }));
@@ -41,10 +47,16 @@ if (command === 'gh' && args[0] === 'api') {
   appendFileSync(process.env.CALLS_FILE, JSON.stringify({ notes: readFileSync(args.at(-1), 'utf8') }) + '\\n');
 }
 `;
-		for (const command of ["gh", "docker"]) {
+		for (const command of ["gh", "docker", "trivy"]) {
 			writeFileSync(join(directory, command), stub, { mode: 0o755 });
 		}
-		for (const latestVersion of ["1.3.0", "1.4.0"]) {
+		for (const [latestVersion, failPlatform, scanExit] of [
+			["1.3.0", "", "0"],
+			["1.4.0", "", "0"],
+			["1.3.0", "linux/amd64", "1"],
+			["1.3.0", "linux/arm64", "1"],
+			["1.3.0", "linux/arm64", "2"],
+		]) {
 			const callsFile = join(directory, "calls");
 			writeFileSync(callsFile, "");
 			const result = spawnSync(process.execPath, [script, "document"], {
@@ -57,11 +69,45 @@ if (command === 'gh' && args[0] === 'api') {
 					GITHUB_OUTPUT: join(directory, "output"),
 					IMAGE_DIGEST: digest,
 					LATEST_VERSION: latestVersion,
+					FAIL_PLATFORM: failPlatform,
+					SCAN_EXIT: scanExit,
+					RELEASE_SCAN_DIR: join(directory, "scans"),
 					CALLS_FILE: callsFile,
 				},
 			});
-			assert.equal(result.status, 0, result.stderr);
+			assert.equal(result.status, failPlatform ? 1 : 0, result.stderr);
 			const calls = readFileSync(callsFile, "utf8").trim().split("\n").map(JSON.parse);
+			const scans = calls.filter((call) => call.command === "trivy");
+			const platforms = failPlatform === "linux/amd64" ? ["linux/amd64"] : ["linux/amd64", "linux/arm64"];
+			assert.deepEqual(
+				scans
+					.filter((call) => call.args.includes("--exit-code"))
+					.map((call) => call.args[call.args.indexOf("--platform") + 1]),
+				platforms,
+			);
+			assert.deepEqual(
+				scans
+					.filter((call) => call.args.includes("--output"))
+					.map((call) => call.args[call.args.indexOf("--platform") + 1]),
+				platforms,
+			);
+			for (const scan of scans) {
+				assert.deepEqual(scan.args.slice(0, 4), ["image", "--image-src", "remote", "--platform"]);
+				assert.equal(scan.args.at(-1), `ghcr.io/jonocairns/tskr@${digest}`);
+				if (scan.args.includes("--exit-code")) {
+					assert.equal(scan.args[scan.args.indexOf("--exit-code") + 1], "1");
+					assert.ok(scan.args.includes("--ignore-unfixed"));
+					assert.equal(scan.args[scan.args.indexOf("--severity") + 1], "HIGH,CRITICAL");
+				} else {
+					assert.ok(!scan.args.includes("--ignore-unfixed"));
+					assert.equal(readFileSync(scan.args[scan.args.indexOf("--output") + 1], "utf8"), "{}");
+				}
+			}
+			if (failPlatform) {
+				assert.ok(calls.every((call) => call.command === "trivy"));
+				continue;
+			}
+			assert.equal(calls[scans.length].command, "gh");
 			const promotions = calls.filter((call) => call.command === "docker");
 			assert.equal(promotions.length, latestVersion === "1.3.0" ? 1 : 0);
 			if (promotions.length) {
