@@ -96,7 +96,7 @@ production build, and a container startup check, the workflow creates or updates
 bump and changelog. Merge that PR when the changes are ready to ship. The merged
 commit must pass the same checks before the workflow creates the `x.y.z` tag and
 GitHub Release, then publishes the release image to GHCR for amd64 and arm64.
-`latest` advances after the image is published. The release notes include the
+`latest` advances after the published image passes security checks. The release notes include the
 immutable image digest for deployments.
 
 Use Conventional Commit titles for squash merges:
@@ -130,6 +130,24 @@ tested commit, reuses an existing multi-architecture image if one was already
 published, and repairs the release notes. Retrying an older release does not
 move `latest` back. Publishing is part of the same workflow, so tags created
 with `GITHUB_TOKEN` do not need to trigger another workflow.
+
+## Security checks
+
+CI reports `pnpm audit` findings without blocking PRs on dependency advisories.
+Routine PR builds reuse the Docker cache and run the startup smoke check.
+Release builds refresh OS packages, then scan the exact registry digest for
+both amd64 and arm64 before updating `latest` or release notes, including on
+retries. Fixable high/critical findings or scanner errors stop promotion;
+unfixed findings stay visible in the full scan artifacts.
+
+Optional local checks (image checks need Docker and Trivy):
+
+```bash
+pnpm audit
+docker buildx build --load --no-cache-filter base -t tskr-security:local .
+bash scripts/ci/docker-smoke.sh tskr-security:local
+trivy image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 tskr-security:local
+```
 
 ## Docker
 

@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       # pnpm cannot exclude advisories without a fix. Keep this informational;
-      # Trivy gates fixable high/critical findings in the actual runtime images.
+      # Release scans gate fixable high/critical findings in runtime images.
       - name: Audit dependencies (informational)
         continue-on-error: true
         run: pnpm audit
@@ -68,30 +68,10 @@ jobs:
           context: .
           load: true
           tags: tskr-ci:local
-          no-cache-filters: base
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Check container startup and health
         run: bash scripts/ci/docker-smoke.sh tskr-ci:local
-      - name: Scan container vulnerabilities
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          version: v0.76.1
-          image-ref: tskr-ci:local
-          scanners: vuln
-          format: json
-          output: container-vulnerabilities.json
-      - name: Save complete container vulnerability report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: container-vulnerabilities-${{ github.run_attempt }}
-          path: container-vulnerabilities.json
-          if-no-files-found: ignore
-      - name: Reject fixable high and critical container vulnerabilities
-        run: >-
-          trivy image --cache-dir .cache/trivy --scanners vuln --skip-db-update --ignore-unfixed
-          --severity HIGH,CRITICAL --exit-code 1 tskr-ci:local
 
   release-please:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
