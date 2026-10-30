@@ -1,7 +1,8 @@
-FROM node:24.12.0-slim AS base
+FROM node:24.22.2-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update \
+  && apt-get upgrade -y --no-install-recommends \
   && apt-get install -y --no-install-recommends openssl ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
@@ -37,7 +38,11 @@ ENV HOSTNAME=0.0.0.0
 ENV DATABASE_URL="file:/data/dev.db"
 ENV NEXTAUTH_URL="http://localhost:3000"
 
-RUN groupadd -g 1001 nextjs \
+# Startup invokes Node and Prisma directly; package managers are build tools.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+    /usr/local/bin/pnpm /usr/local/bin/pnpx /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+  && groupadd -g 1001 nextjs \
   && useradd -m -u 1001 -g 1001 nextjs \
   && mkdir -p /data \
   && chown nextjs:nextjs /data

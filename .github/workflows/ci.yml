@@ -30,12 +30,16 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "24.12.0"
+          node-version: "24.22.2"
           cache: "pnpm"
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      # Includes build/test tooling; the unfixed low-severity scanner advisory
+      # remains visible without blocking fixes to the production application.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=moderate
       - name: Cache Next.js build
         uses: actions/cache@v4
         with:
@@ -63,10 +67,30 @@ jobs:
           context: .
           load: true
           tags: tskr-ci:local
+          no-cache-filters: base
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Check container startup and health
         run: bash scripts/ci/docker-smoke.sh tskr-ci:local
+      - name: Scan container vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.1
+          image-ref: tskr-ci:local
+          scanners: vuln
+          format: json
+          output: container-vulnerabilities.json
+      - name: Save complete container vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-vulnerabilities
+          path: container-vulnerabilities.json
+          if-no-files-found: ignore
+      - name: Reject fixable high and critical container vulnerabilities
+        run: >-
+          trivy image --cache-dir .cache/trivy --scanners vuln --skip-db-update --ignore-unfixed
+          --severity HIGH,CRITICAL --exit-code 1 tskr-ci:local
 
   release-please:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -90,7 +114,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: "24.12.0"
+          node-version: "24.22.2"
       - id: context
         name: Determine release context for this successful commit
         env:
@@ -140,7 +164,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: "24.12.0"
+          node-version: "24.22.2"
       - id: release
         name: Verify released version and commit
         env:
@@ -176,6 +200,7 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
+          no-cache-filters: base
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
