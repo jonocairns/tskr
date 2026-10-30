@@ -75,8 +75,11 @@ automated browser test suite. Both disposable test containers were removed.
 
 CI runs the startup smoke check, uploads `container-vulnerabilities.json` with
 all severities and unfixed findings, and fails on fixable high/critical image
-vulnerabilities. It also runs `pnpm audit --audit-level=moderate` over production
-and development dependencies, leaving the unfixed low finding visible.
+vulnerabilities. It also runs `pnpm audit` over production and development
+dependencies as an informational step. pnpm cannot exclude advisories without
+a published fix, so this report must not block CI or releases. Actionable
+runtime findings are gated by the image scans instead; unfixed and
+development-only advisories remain visible without an advisory ignore list.
 
 The release publication build refreshes OS packages again, so passing the
 local CI image scan is insufficient to validate the released image. Before
@@ -99,7 +102,7 @@ pnpm install --frozen-lockfile
 pnpm prisma generate
 pnpm check
 pnpm audit --prod
-pnpm audit --audit-level=moderate
+pnpm audit
 docker buildx build --load --no-cache-filter base -t tskr-security:local .
 bash scripts/ci/docker-smoke.sh tskr-security:local
 trivy image --scanners vuln tskr-security:local
