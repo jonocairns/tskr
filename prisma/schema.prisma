@@ -17,6 +17,18 @@ enum ApprovalOverride {
   SKIP
 }
 
+enum RewardClaimPeriod {
+  DAY
+  WEEK
+  MONTH
+  ROLLING
+}
+
+enum RewardClaimScope {
+  HOUSEHOLD
+  MEMBER
+}
+
 enum DateFormat {
   DMY
   MDY
@@ -75,6 +87,7 @@ model User {
   assignedTasks     AssignedTask[] @relation("AssignedTo")
   createdAssignedTasks AssignedTask[] @relation("AssignedBy")
   pushSubscriptions PushSubscription[]
+  rewardClaimLimits RewardClaimLimit[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }
@@ -93,6 +106,7 @@ model Household {
   dateFormat        DateFormat        @default(DMY)
   timeFormat        TimeFormat        @default(H24)
   rewardThreshold   Int               @default(50)
+  rewardClaimLimits RewardClaimLimit[]
   progressBarColor  String?
   createdById       String
   createdBy         User              @relation("HouseholdCreator", fields: [createdById], references: [id], onDelete: Cascade)
@@ -107,6 +121,22 @@ model Household {
   updatedAt         DateTime          @updatedAt
 
   @@index([createdById])
+}
+
+model RewardClaimLimit {
+  id            String            @id @default(cuid())
+  householdId   String
+  household     Household         @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  maxClaims     Int
+  scope         RewardClaimScope @default(HOUSEHOLD)
+  userId        String?
+  user          User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period        RewardClaimPeriod
+  windowMinutes Int?
+  sortOrder     Int
+
+  @@index([householdId, sortOrder])
+  @@index([userId])
 }
 
 model HouseholdMember {
@@ -239,6 +269,7 @@ model PointLog {
   @@index([householdId, revertedAt, status])
   @@index([userId, householdId, revertedAt, status])
   @@index([assignedTaskId, status, revertedAt])
+  @@index([householdId, kind, status, revertedAt, createdAt])
 }
 
 model PushSubscription {

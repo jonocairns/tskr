@@ -12,8 +12,24 @@ More screenshots: [Assignments](screenshots/assignments.png), [Household](screen
 
 - Assign tasks and log completions with an approval flow.
 - Track points, streaks, and reward progress on a shared dashboard.
+- Combine household and member reward caps across calendar or rolling periods.
 - Keep an audit trail and leaderboard to stay aligned.
 - Organize by household with role-based access.
+
+## Reward claim limits
+
+Household managers can add limits under household settings. Each rule sets a maximum
+number of rewards, a period, and a target: the shared household allowance, each member
+separately, or one named member. All applicable rules must allow a claim; member rules
+add restrictions rather than overriding other limits. For example, combine 10 rewards
+per calendar month across the household with 2 rewards in any 48 hours per member.
+
+Calendar days, Monday-start weeks, and months follow the household time zone. Rolling
+windows measure elapsed time, configurable in minutes, hours, days, or weeks up to
+365 days. Existing approved claims count when changing limits; reverted claims free
+up allowance. Points continue to accumulate and carry over. With no rules, claims
+remain unlimited. Up to 20 rules can be combined, and the dashboard shows the remaining
+allowance and when it next updates. Only household managers can change these rules.
 
 ## Tech stack
 

@@ -3,8 +3,10 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { publishDashboardUpdate } from "@/lib/events";
 import { DATE_FORMATS, TIME_FORMATS } from "@/lib/formatDate";
 import { prisma } from "@/lib/prisma";
+import { rewardClaimRulesSchema } from "@/lib/rewardClaimSettings";
 import { getTimeZoneOptions, isValidTimeZone } from "@/lib/timeZones";
 import { dictatorProcedure, householdProcedure, router } from "@/server/trpc";
 
@@ -17,6 +19,7 @@ const updateSchema = z
 		householdId: z.string().min(1),
 		name: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 		rewardThreshold: z.number().int().min(1, "Threshold must be at least 1").max(10000, "Threshold is too high"),
+		rewardClaimLimits: rewardClaimRulesSchema,
 		timeZone: z.string().trim().min(1).refine(isValidTimeZone, "Invalid time zone"),
 		dateFormat: z.enum(DATE_FORMATS),
 		timeFormat: z.enum(TIME_FORMATS),
@@ -46,6 +49,7 @@ export const householdCoreRouter = router({
 				timeFormat: true,
 				createdById: true,
 				rewardThreshold: true,
+				rewardClaimLimits: { orderBy: { sortOrder: "asc" } },
 				progressBarColor: true,
 			},
 		});
@@ -64,6 +68,7 @@ export const householdCoreRouter = router({
 		const hasTimeZoneUpdate = input.timeZone !== undefined && input.timeZone.trim().length > 0;
 		const hasDateFormatUpdate = input.dateFormat !== undefined;
 		const hasTimeFormatUpdate = input.timeFormat !== undefined;
+		const hasClaimLimitUpdate = input.rewardClaimLimits !== undefined;
 		const hasColorUpdate = input.progressBarColor !== undefined;
 
 		if (
@@ -72,9 +77,18 @@ export const householdCoreRouter = router({
 			!hasTimeZoneUpdate &&
 			!hasDateFormatUpdate &&
 			!hasTimeFormatUpdate &&
+			!hasClaimLimitUpdate &&
 			!hasColorUpdate
 		) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "No updates provided" });
+		}
+
+		if (input.rewardClaimLimits) {
+			const userIds = [...new Set(input.rewardClaimLimits.flatMap((rule) => (rule.userId ? [rule.userId] : [])))];
+			const memberCount = await prisma.householdMember.count({ where: { householdId, userId: { in: userIds } } });
+			if (memberCount !== userIds.length) {
+				throw new TRPCError({ code: "BAD_REQUEST", message: "Reward limits must target current household members" });
+			}
 		}
 
 		const household = await prisma.household.update({
@@ -83,6 +97,14 @@ export const householdCoreRouter = router({
 				...(hasNameUpdate && input.name ? { name: input.name.trim() } : {}),
 				...(hasThresholdUpdate && input.rewardThreshold !== undefined
 					? { rewardThreshold: input.rewardThreshold }
+					: {}),
+				...(input.rewardClaimLimits
+					? {
+							rewardClaimLimits: {
+								deleteMany: {},
+								create: input.rewardClaimLimits.map((rule, sortOrder) => ({ ...rule, sortOrder })),
+							},
+						}
 					: {}),
 				...(hasTimeZoneUpdate && input.timeZone ? { timeZone: input.timeZone.trim() } : {}),
 				...(hasDateFormatUpdate && input.dateFormat ? { dateFormat: input.dateFormat } : {}),
@@ -96,10 +118,12 @@ export const householdCoreRouter = router({
 				dateFormat: true,
 				timeFormat: true,
 				rewardThreshold: true,
+				rewardClaimLimits: { orderBy: { sortOrder: "asc" } },
 				progressBarColor: true,
 			},
 		});
 
+		publishDashboardUpdate(householdId);
 		return { household };
 	}),
 
