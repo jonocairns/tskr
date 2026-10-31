@@ -58,8 +58,8 @@ export default async function HouseholdPage({ params }: Props) {
 
 			<Card>
 				<CardHeader>
-					<div className="flex items-start justify-between gap-4">
-						<div className="space-y-1.5">
+					<div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
+						<div className="min-w-0 flex-1 space-y-1.5">
 							<CardTitle className="text-xl">{t("Notifications")}</CardTitle>
 							<CardDescription>{t("Manage push notifications and task reminders for your household.")}</CardDescription>
 						</div>

@@ -331,11 +331,11 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 	};
 
 	const controls = (
-		<div className="flex items-center gap-3">
+		<div className="flex flex-wrap items-center gap-3">
 			<Button type="button" variant="outline" size="sm" onClick={handleTest} disabled={isTesting || !isSubscribed}>
 				{isTesting ? t("Sending...") : t("Send test")}
 			</Button>
-			<div className="flex items-center gap-2">
+			<div className="flex shrink-0 items-center gap-2">
 				<Switch
 					id="push-notifications-toggle"
 					checked={isSubscribed}
@@ -351,10 +351,10 @@ export const PushNotifications = ({ householdId, variant = "card" }: Props) => {
 
 	if (variant === "section") {
 		return (
-			<>
+			<div className="min-w-0 space-y-2 sm:max-w-xs">
 				{helperTextElement}
 				{controls}
-			</>
+			</div>
 		);
 	}
 
