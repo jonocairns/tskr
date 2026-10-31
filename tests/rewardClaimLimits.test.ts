@@ -321,3 +321,29 @@ test("the settings router rejects targets outside the household without replacin
 	).rejects.toMatchObject({ code: "BAD_REQUEST" });
 	expect((await settings()).rewardClaimLimits).toMatchObject([{ period: "WEEK", scope: "HOUSEHOLD" }]);
 });
+
+test("a manager's limits-only save preserves another manager's changes to unrelated settings", async () => {
+	await mockPrisma.householdMember.update({
+		where: { householdId_userId: { householdId: "home", userId: "bob" } },
+		data: { role: "DICTATOR" },
+	});
+	const alice = householdCoreRouter.createCaller(callerContext("alice"));
+	const bob = householdCoreRouter.createCaller(callerContext("bob"));
+	await alice.getCurrent({ householdId: "home" });
+	await bob.updateCurrent({
+		householdId: "home",
+		name: "New household name",
+		rewardThreshold: 100,
+		progressBarColor: "#123456",
+	});
+	await alice.updateCurrent({
+		householdId: "home",
+		rewardClaimLimits: [{ maxClaims: 2, period: "WEEK", scope: "HOUSEHOLD", userId: null, windowMinutes: null }],
+	});
+	expect((await alice.getCurrent({ householdId: "home" })).household).toMatchObject({
+		name: "New household name",
+		rewardThreshold: 100,
+		progressBarColor: "#123456",
+		rewardClaimLimits: [{ maxClaims: 2 }],
+	});
+});

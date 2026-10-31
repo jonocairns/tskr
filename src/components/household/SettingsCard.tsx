@@ -84,6 +84,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 
 	const isDirty = name.trim() !== initialName.trim();
 	const parsedThreshold = Number(threshold);
+	const isThresholdDirty = Math.floor(parsedThreshold) !== initialThreshold;
 	const thresholdValid = Number.isFinite(parsedThreshold) && parsedThreshold >= 1;
 	const progressBarColorValid = !useCustomProgressBarColor || isValidProgressBarColor(progressBarColor);
 	const currentProgressBarColor = useCustomProgressBarColor ? progressBarColor : null;
@@ -97,7 +98,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	const isFormDirty =
 		isClaimSettingsDirty ||
 		isDirty ||
-		Math.floor(parsedThreshold) !== initialThreshold ||
+		isThresholdDirty ||
 		isProgressBarColorDirty ||
 		isTimeZoneDirty ||
 		isDateFormatDirty ||
@@ -107,7 +108,14 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	const loadedHouseholdId = useRef<string | null>(null);
 
 	const { mutate: updateHousehold, isPending } = trpc.households.updateCurrent.useMutation({
-		onSuccess: (result) => {
+		onSuccess: async (result) => {
+			await utils.households.getCurrent.cancel({ householdId });
+			utils.households.getCurrent.setData({ householdId }, (cached) =>
+				cached ? { ...cached, household: { ...cached.household, ...result.household } } : cached,
+			);
+			lastLoadedSettings.current = utils.households.getCurrent.getData({ householdId });
+			loadedHouseholdId.current = householdId;
+
 			const updatedName = result.household.name;
 			const updatedThreshold = result.household.rewardThreshold;
 			const updatedTimeZone = result.household.timeZone ?? DEFAULT_TIME_ZONE;
@@ -148,9 +156,13 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	});
 
 	useEffect(() => {
-		if (data?.household.id === householdId && data !== lastLoadedSettings.current) {
+		if (
+			data?.household.id === householdId &&
+			data !== lastLoadedSettings.current &&
+			data === utils.households.getCurrent.getData({ householdId })
+		) {
+			if ((isFormDirty || isPending) && loadedHouseholdId.current === householdId) return;
 			lastLoadedSettings.current = data;
-			if (isFormDirty && loadedHouseholdId.current === householdId) return;
 			loadedHouseholdId.current = householdId;
 			const fetchedName = data.household.name;
 			const fetchedThreshold = data.household.rewardThreshold;
@@ -179,7 +191,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			setInitialProgressBarColor(fetchedProgressBarColor);
 			setUseCustomProgressBarColor(Boolean(fetchedProgressBarColor));
 		}
-	}, [data, householdId, isFormDirty]);
+	}, [data, householdId, isFormDirty, isPending, utils]);
 
 	useEffect(() => {
 		if (error) {
@@ -202,13 +214,13 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 
 		updateHousehold({
 			householdId,
-			name: name.trim(),
-			rewardThreshold: Math.floor(parsedThreshold),
+			name: isDirty ? name.trim() : undefined,
+			rewardThreshold: isThresholdDirty ? Math.floor(parsedThreshold) : undefined,
 			rewardClaimLimits: isClaimSettingsDirty ? rewardClaimRulesSchema.parse(claimRules) : undefined,
 			timeZone: isTimeZoneDirty ? timeZone.trim() : undefined,
 			dateFormat: isDateFormatDirty ? dateFormat : undefined,
 			timeFormat: isTimeFormatDirty ? timeFormat : undefined,
-			progressBarColor: currentProgressBarColor,
+			progressBarColor: isProgressBarColorDirty ? currentProgressBarColor : undefined,
 		});
 	};
 
