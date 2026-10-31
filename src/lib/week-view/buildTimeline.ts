@@ -1,4 +1,4 @@
-import { getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
+import { type AssignedTaskLog, getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 import { addDaysInTimeZone, addMonthsInTimeZone, getStartOfDayInTimeZone, parseDateInTimeZone } from "@/lib/timeZones";
 
@@ -86,6 +86,7 @@ type AssignedTaskRecord = {
 	cadenceIntervalMinutes: number;
 	isRecurring: boolean;
 	preset: { id: string; label: string; bucket: string } | null;
+	logs?: AssignedTaskLog[];
 };
 
 type BuildWeekViewTimelineInput = {
@@ -237,7 +238,7 @@ const buildRecurringPlannedEntries = ({
 	task,
 	timeZone,
 }: {
-	logs: CompletedLogRecord[];
+	logs: AssignedTaskLog[];
 	now: Date;
 	range: WeekViewRange;
 	task: AssignedTaskRecord;
@@ -312,7 +313,8 @@ const buildPlannedEntries = ({
 			return [];
 		}
 
-		const taskLogs = logsByTaskId.get(task.id) ?? [];
+		// Eligibility needs the full cadence, even when history is displayed over a narrower range.
+		const taskLogs = task.logs ?? logsByTaskId.get(task.id) ?? [];
 
 		const entries = task.isRecurring
 			? buildRecurringPlannedEntries({
