@@ -131,6 +131,25 @@ published, and repairs the release notes. Retrying an older release does not
 move `latest` back. Publishing is part of the same workflow, so tags created
 with `GITHUB_TOKEN` do not need to trigger another workflow.
 
+## Security checks
+
+CI reports `pnpm audit` findings without blocking PRs on dependency advisories.
+Routine PR builds reuse the Docker cache and run the startup smoke check.
+Release builds refresh OS packages and report vulnerabilities in the exact
+published digest for both amd64 and arm64, including on retries. Image scans
+and report uploads are informational too: findings or scanner failures do not
+block releases. Use the full reports to assess actual exposure and prioritize
+updates, rather than treating package presence as proof of an exploitable issue.
+
+Optional local checks (image checks need Docker and Trivy):
+
+```bash
+pnpm audit
+docker buildx build --load --no-cache-filter base -t tskr-security:local .
+bash scripts/ci/docker-smoke.sh tskr-security:local
+trivy image --scanners vuln tskr-security:local
+```
+
 ## Docker
 
 Pull the image:

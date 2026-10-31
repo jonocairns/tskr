@@ -30,12 +30,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "24.12.0"
+          node-version: "24.22.2"
           cache: "pnpm"
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      # pnpm cannot exclude advisories without a fix. Keep this informational;
+      # Release image scans are informational too; assess actual exposure.
+      - name: Audit dependencies (informational)
+        continue-on-error: true
+        run: pnpm audit
       - name: Cache Next.js build
         uses: actions/cache@v4
         with:
@@ -90,7 +95,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: "24.12.0"
+          node-version: "24.22.2"
       - id: context
         name: Determine release context for this successful commit
         env:
@@ -140,7 +145,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: "24.12.0"
+          node-version: "24.22.2"
       - id: release
         name: Verify released version and commit
         env:
@@ -176,6 +181,7 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
+          no-cache-filters: base
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
@@ -187,3 +193,39 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest || steps.publication.outputs.digest }}
         run: node scripts/ci/release-container.cjs document
+      # Report the exact published content on both architectures. Neither
+      # findings nor scanner failures should hold up publication or retries.
+      - name: Scan release amd64 (informational)
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/amd64
+          TRIVY_IMAGE_SRC: remote
+        with:
+          version: v0.76.1
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest || steps.publication.outputs.digest }}
+          scanners: vuln
+          exit-code: "0"
+          format: json
+          output: release-vulnerabilities-amd64.json
+      - name: Scan release arm64 (informational)
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/arm64
+          TRIVY_IMAGE_SRC: remote
+        with:
+          version: v0.76.1
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest || steps.publication.outputs.digest }}
+          scanners: vuln
+          exit-code: "0"
+          format: json
+          output: release-vulnerabilities-arm64.json
+      - name: Save complete release vulnerability reports
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-vulnerabilities-${{ github.run_attempt }}
+          path: release-vulnerabilities-*.json
+          if-no-files-found: ignore
