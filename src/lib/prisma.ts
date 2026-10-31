@@ -68,8 +68,8 @@ const hasHouseholdDashboardFields = (client: ReturnType<typeof createPrismaClien
 	if (!Array.isArray(fields)) {
 		return false;
 	}
-	return ["rewardThreshold", "progressBarColor", "dateFormat", "timeFormat"].every((requiredField) =>
-		fields.some((field) => field.name === requiredField),
+	return ["rewardThreshold", "rewardClaimLimits", "progressBarColor", "dateFormat", "timeFormat"].every(
+		(requiredField) => fields.some((field) => field.name === requiredField),
 	);
 };
 

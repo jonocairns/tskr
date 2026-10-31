@@ -6,6 +6,7 @@ import { DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT } from "@/lib/formatDate";
 import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
 import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
+import { getRewardClaimAllowance } from "@/lib/rewardClaimLimits";
 import { DEFAULT_TIME_ZONE, getTimeZoneDayNumber } from "@/lib/timeZones";
 
 const HISTORY_LIMIT = 10;
@@ -67,7 +68,14 @@ export async function getDashboardData(userId: string, householdId: string) {
 		}),
 		prisma.household.findUnique({
 			where: { id: householdId },
-			select: { rewardThreshold: true, progressBarColor: true, timeZone: true, dateFormat: true, timeFormat: true },
+			select: {
+				rewardThreshold: true,
+				rewardClaimLimits: { orderBy: { sortOrder: "asc" } },
+				progressBarColor: true,
+				timeZone: true,
+				dateFormat: true,
+				timeFormat: true,
+			},
 		}),
 		prisma.user.findMany({
 			where: { memberships: { some: { householdId } } },
@@ -201,6 +209,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		lastActivity,
 		firstActivity,
 		rewardThreshold: household?.rewardThreshold ?? 50,
+		rewardClaimAllowance: household ? await getRewardClaimAllowance(prisma, household, householdId, userId) : null,
 		progressBarColor: household?.progressBarColor ?? null,
 		timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,
 		dateFormat: household?.dateFormat ?? DEFAULT_DATE_FORMAT,
