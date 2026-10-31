@@ -44,6 +44,7 @@ export default async function DashboardPage({ params }: Props) {
 		weeklyTaskCount,
 		weeklyPoints,
 		rewardThreshold,
+		rewardClaimAllowance,
 		progressBarColor,
 		timeZone,
 		dateFormat,
@@ -81,6 +82,7 @@ export default async function DashboardPage({ params }: Props) {
 			<PointsSummary
 				points={myPoints}
 				threshold={rewardThreshold}
+				rewardClaimAllowance={rewardClaimAllowance}
 				progressBarColor={progressBarColor}
 				tasksLastWeek={weeklyTaskCount}
 				pointsLastWeek={weeklyPoints}
@@ -88,6 +90,7 @@ export default async function DashboardPage({ params }: Props) {
 				currentStreak={currentStreak}
 				timeZone={timeZone}
 				dateFormat={dateFormat}
+				timeFormat={timeFormat}
 				householdId={householdId}
 			/>
 

@@ -2,16 +2,17 @@
 
 import { GiftIcon, TrophyIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/useToast";
-import { type DateFormat, formatDate } from "@/lib/formatDate";
+import { type DateFormat, formatDate, formatDateTime, type TimeFormat } from "@/lib/formatDate";
 import { useTranslation } from "@/lib/i18nClient";
 import { getPointsSummaryMetrics } from "@/lib/pointsSummary";
+import type { getRewardClaimAllowance } from "@/lib/rewardClaimLimits";
 import { getTimeZoneDayNumber, resolveTimeZone } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
 
@@ -19,6 +20,7 @@ type Props = {
 	householdId: string;
 	points: number;
 	threshold: number;
+	rewardClaimAllowance: Awaited<ReturnType<typeof getRewardClaimAllowance>>;
 	progressBarColor?: string | null;
 	tasksLastWeek: number;
 	pointsLastWeek: number;
@@ -26,12 +28,14 @@ type Props = {
 	currentStreak: number;
 	timeZone: string;
 	dateFormat: DateFormat;
+	timeFormat: TimeFormat;
 };
 
 export const PointsSummary = ({
 	householdId,
 	points,
 	threshold,
+	rewardClaimAllowance,
 	progressBarColor,
 	tasksLastWeek,
 	pointsLastWeek,
@@ -39,15 +43,28 @@ export const PointsSummary = ({
 	currentStreak,
 	timeZone,
 	dateFormat,
+	timeFormat,
 }: Props) => {
 	const [isPending, startTransition] = useTransition();
-	const [isSubmitting, setSubmitting] = useState(false);
 	const router = useRouter();
 	const { toast } = useToast();
-	const { t } = useTranslation();
+	const { t, i18n } = useTranslation();
 
-	const { progress, pointsToGo, rewardsAvailable, nextRewardProgress, nextRewardPointsToGo, canClaim, showCarryover } =
-		getPointsSummaryMetrics({ points, threshold });
+	const {
+		progress,
+		pointsToGo,
+		rewardsAvailable,
+		nextRewardProgress,
+		nextRewardPointsToGo,
+		canClaim: hasEnoughPoints,
+		showCarryover,
+	} = getPointsSummaryMetrics({ points, threshold });
+	const limitReached = rewardClaimAllowance?.remaining === 0;
+	const canClaim = hasEnoughPoints && !limitReached;
+	const claimableRewards = Math.max(
+		0,
+		Math.min(rewardsAvailable, rewardClaimAllowance?.remaining ?? Number.POSITIVE_INFINITY),
+	);
 	const progressIndicatorStyle = progressBarColor ? { backgroundColor: progressBarColor } : undefined;
 	const overlayBaseColor = progressBarColor ?? "hsl(var(--primary))";
 	const overlapIndicatorStyle = {
@@ -55,14 +72,23 @@ export const PointsSummary = ({
 		backgroundImage:
 			"repeating-linear-gradient(135deg, rgba(0,0,0,0.25) 0, rgba(0,0,0,0.25) 6px, rgba(0,0,0,0) 6px, rgba(0,0,0,0) 12px)",
 	};
-	const progressLabel = canClaim
+	const progressLabel = hasEnoughPoints
 		? t("{{progress}}% toward another reward", { progress: nextRewardProgress })
 		: t("{{progress}}% toward next reward", { progress });
 	const resolvedTimeZone = resolveTimeZone(timeZone);
 	const rewardsReadyLabel =
-		rewardsAvailable === 1
-			? t("{{count}} reward ready", { count: rewardsAvailable })
-			: t("{{count}} rewards ready", { count: rewardsAvailable });
+		claimableRewards === 1
+			? t("{{count}} reward ready", { count: claimableRewards })
+			: t("{{count}} rewards ready", { count: claimableRewards });
+
+	useEffect(() => {
+		if (!rewardClaimAllowance?.changesAt) return;
+		const timer = setTimeout(
+			() => router.refresh(),
+			Math.min(2_147_483_647, Math.max(0, Date.parse(rewardClaimAllowance.changesAt) - Date.now()) + 100),
+		);
+		return () => clearTimeout(timer);
+	}, [rewardClaimAllowance, router]);
 
 	const claimMutation = trpc.claim.claimReward.useMutation({
 		onSuccess: () => {
@@ -70,27 +96,27 @@ export const PointsSummary = ({
 				title: t("Reward claimed"),
 				description: t("We deducted {{points}} points. Nice work!", { points: threshold.toLocaleString() }),
 			});
-			router.refresh();
+			startTransition(() => router.refresh());
 		},
 		onError: (error) => {
 			toast({
-				title: t("Not quite there"),
+				title:
+					error.data?.appErrorCode === "REWARD_CLAIM_LIMIT_REACHED" ? t("Claim limit reached") : t("Not quite there"),
 				description:
-					error.message ??
+					(error.data?.appErrorCode === "REWARD_CLAIM_LIMIT_REACHED"
+						? t("Your reward allowance has been used for this period.")
+						: error.message) ??
 					t("You need {{points}} more points to claim a reward.", {
 						points: (threshold - points).toLocaleString(),
 					}),
 				variant: "destructive",
 			});
+			startTransition(() => router.refresh());
 		},
 	});
 
 	const handleClaim = () => {
-		setSubmitting(true);
-		startTransition(async () => {
-			await claimMutation.mutateAsync({ householdId });
-			setSubmitting(false);
-		});
+		claimMutation.mutate({ householdId });
 	};
 
 	return (
@@ -117,7 +143,9 @@ export const PointsSummary = ({
 				<div className="space-y-2">
 					<div className="flex items-center justify-between text-sm text-muted-foreground">
 						<span>{progressLabel}</span>
-						{canClaim ? (
+						{limitReached ? (
+							<span>{t("Claim limit reached")}</span>
+						) : canClaim ? (
 							<span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
 								{t("Reward ready")}
 							</span>
@@ -151,6 +179,40 @@ export const PointsSummary = ({
 						</div>
 					) : null}
 				</div>
+				{rewardClaimAllowance && (
+					<div className="space-y-2 text-sm text-muted-foreground" role="status">
+						{limitReached && <p>{t("Your points are saved. You can claim again when all limits have allowance.")}</p>}
+						{rewardClaimAllowance.rules.map((rule) => (
+							<div key={rule.id}>
+								<p>
+									{t("{{target}}: {{remaining}} of {{limit}} claims left ({{period}})", {
+										target: rule.scope === "HOUSEHOLD" ? t("Household") : t("You"),
+										remaining: rule.remaining,
+										limit: rule.maxClaims,
+										period:
+											rule.period === "DAY"
+												? t("Calendar day")
+												: rule.period === "WEEK"
+													? t("Calendar week")
+													: rule.period === "MONTH"
+														? t("Calendar month")
+														: t("Rolling {{duration}}", {
+																duration: formatRollingWindow(rule.windowMinutes ?? 0, i18n.resolvedLanguage),
+															}),
+									})}
+								</p>
+								{rule.changesAt && (
+									<p className="text-xs">
+										{t("Allowance updates {{date}} ({{timeZone}})", {
+											date: formatDateTime(rule.changesAt, { timeZone: resolvedTimeZone, dateFormat, timeFormat }),
+											timeZone: resolvedTimeZone,
+										})}
+									</p>
+								)}
+							</div>
+						))}
+					</div>
+				)}
 				<div className="grid grid-cols-2 gap-4 rounded-lg border bg-card/70 p-4 sm:grid-cols-2">
 					<Stat label={t("Tasks (7 days)")} value={tasksLastWeek.toLocaleString()} />
 					<Stat
@@ -170,8 +232,21 @@ export const PointsSummary = ({
 						<GiftIcon className="h-4 w-4 text-primary" />
 						{t("Rewards instantly remove {{points}} pts.", { points: threshold.toLocaleString() })}
 					</div>
-					<Button size="lg" disabled={!canClaim || isPending || isSubmitting} onClick={handleClaim}>
-						{canClaim ? t("Claim reward") : t("Keep earning")}
+					<Button
+						size="lg"
+						aria-busy={isPending || claimMutation.isPending}
+						disabled={!canClaim || isPending || claimMutation.isPending}
+						onClick={handleClaim}
+					>
+						{claimMutation.isPending
+							? t("Claiming...")
+							: isPending
+								? t("Updating...")
+								: limitReached
+									? t("Claim limit reached")
+									: canClaim
+										? t("Claim reward")
+										: t("Keep earning")}
 					</Button>
 				</div>
 			</CardContent>
@@ -179,14 +254,14 @@ export const PointsSummary = ({
 	);
 };
 
-function Stat({ label, value, muted }: { label: string; value: string | number; muted?: boolean }) {
+const Stat = ({ label, value, muted }: { label: string; value: string | number; muted?: boolean }) => {
 	return (
 		<div className="space-y-1">
 			<p className="text-sm text-muted-foreground">{label}</p>
 			<p className={`text-xl font-semibold ${muted ? "text-muted-foreground" : ""}`}>{value}</p>
 		</div>
 	);
-}
+};
 
 const formatLastTaskAt = (
 	lastTaskAt: string | null,
@@ -224,4 +299,16 @@ const formatStreak = (currentStreak: number, t: (key: string, options?: Record<s
 		return t("{{days}} day", { days: currentStreak });
 	}
 	return t("{{days}} days", { days: currentStreak });
+};
+
+const formatRollingWindow = (minutes: number, language = "en") => {
+	const [unit, divisor] =
+		minutes % 10080 === 0
+			? (["week", 10080] as const)
+			: minutes % 1440 === 0
+				? (["day", 1440] as const)
+				: minutes % 60 === 0
+					? (["hour", 60] as const)
+					: (["minute", 1] as const);
+	return new Intl.NumberFormat(language, { style: "unit", unit, unitDisplay: "long" }).format(minutes / divisor);
 };

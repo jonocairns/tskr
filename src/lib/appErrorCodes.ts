@@ -1,5 +1,6 @@
 export const appErrorCodes = [
 	"INVALID_INPUT",
+	"REWARD_CLAIM_LIMIT_REACHED",
 	"UNAUTHORIZED",
 	"FORBIDDEN",
 	"NOT_FOUND",

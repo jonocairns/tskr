@@ -2,8 +2,12 @@
 
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	RewardClaimLimitsEditor,
+	type RewardClaimRuleDraft,
+	toRewardClaimRuleDraft,
+} from "@/components/household/RewardClaimLimitsEditor";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/Command";
@@ -15,6 +19,7 @@ import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
 import { type DateFormat, DEFAULT_DATE_FORMAT, DEFAULT_TIME_FORMAT, type TimeFormat } from "@/lib/formatDate";
 import { useTranslation } from "@/lib/i18nClient";
+import { rewardClaimRulesSchema } from "@/lib/rewardClaimSettings";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -35,6 +40,8 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	const [initialName, setInitialName] = useState("");
 	const [threshold, setThreshold] = useState("50");
 	const [initialThreshold, setInitialThreshold] = useState(50);
+	const [claimRules, setClaimRules] = useState<RewardClaimRuleDraft[]>([]);
+	const [initialClaimRules, setInitialClaimRules] = useState<RewardClaimRuleDraft[]>([]);
 	const [timeZone, setTimeZone] = useState(DEFAULT_TIME_ZONE);
 	const [initialTimeZone, setInitialTimeZone] = useState(DEFAULT_TIME_ZONE);
 	const [dateFormat, setDateFormat] = useState<DateFormat>(DEFAULT_DATE_FORMAT);
@@ -75,6 +82,30 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 
 	const utils = trpc.useUtils();
 
+	const isDirty = name.trim() !== initialName.trim();
+	const parsedThreshold = Number(threshold);
+	const thresholdValid = Number.isFinite(parsedThreshold) && parsedThreshold >= 1;
+	const progressBarColorValid = !useCustomProgressBarColor || isValidProgressBarColor(progressBarColor);
+	const currentProgressBarColor = useCustomProgressBarColor ? progressBarColor : null;
+	const isProgressBarColorDirty = currentProgressBarColor !== initialProgressBarColor;
+	const isTimeZoneDirty = timeZone !== initialTimeZone;
+	const isDateFormatDirty = dateFormat !== initialDateFormat;
+	const isTimeFormatDirty = timeFormat !== initialTimeFormat;
+	const claimLimitsValid = rewardClaimRulesSchema.safeParse(claimRules).success;
+	const isClaimSettingsDirty = JSON.stringify(claimRules) !== JSON.stringify(initialClaimRules);
+	const canSave = claimLimitsValid && name.trim().length >= 2 && thresholdValid && progressBarColorValid;
+	const isFormDirty =
+		isClaimSettingsDirty ||
+		isDirty ||
+		Math.floor(parsedThreshold) !== initialThreshold ||
+		isProgressBarColorDirty ||
+		isTimeZoneDirty ||
+		isDateFormatDirty ||
+		isTimeFormatDirty;
+
+	const lastLoadedSettings = useRef<typeof data>(undefined);
+	const loadedHouseholdId = useRef<string | null>(null);
+
 	const { mutate: updateHousehold, isPending } = trpc.households.updateCurrent.useMutation({
 		onSuccess: (result) => {
 			const updatedName = result.household.name;
@@ -84,6 +115,9 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			const updatedTimeFormat = result.household.timeFormat ?? DEFAULT_TIME_FORMAT;
 			const updatedProgressBarColor = result.household.progressBarColor;
 
+			const rules = rewardClaimRulesSchema.parse(result.household.rewardClaimLimits).map(toRewardClaimRuleDraft);
+			setClaimRules(rules);
+			setInitialClaimRules(rules);
 			setName(updatedName);
 			setInitialName(updatedName);
 			setThreshold(String(updatedThreshold));
@@ -114,7 +148,10 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	});
 
 	useEffect(() => {
-		if (data?.household) {
+		if (data?.household.id === householdId && data !== lastLoadedSettings.current) {
+			lastLoadedSettings.current = data;
+			if (isFormDirty && loadedHouseholdId.current === householdId) return;
+			loadedHouseholdId.current = householdId;
 			const fetchedName = data.household.name;
 			const fetchedThreshold = data.household.rewardThreshold;
 			const fetchedTimeZone = data.household.timeZone ?? DEFAULT_TIME_ZONE;
@@ -125,6 +162,9 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 					? data.household.progressBarColor
 					: null;
 
+			const rules = rewardClaimRulesSchema.parse(data.household.rewardClaimLimits).map(toRewardClaimRuleDraft);
+			setClaimRules(rules);
+			setInitialClaimRules(rules);
 			setName(fetchedName);
 			setInitialName(fetchedName);
 			setThreshold(String(fetchedThreshold));
@@ -139,7 +179,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			setInitialProgressBarColor(fetchedProgressBarColor);
 			setUseCustomProgressBarColor(Boolean(fetchedProgressBarColor));
 		}
-	}, [data]);
+	}, [data, householdId, isFormDirty]);
 
 	useEffect(() => {
 		if (error) {
@@ -155,24 +195,6 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 		return null;
 	}
 
-	const isDirty = name.trim() !== initialName.trim();
-	const parsedThreshold = Number(threshold);
-	const thresholdValid = Number.isFinite(parsedThreshold) && parsedThreshold >= 1;
-	const progressBarColorValid = !useCustomProgressBarColor || isValidProgressBarColor(progressBarColor);
-	const currentProgressBarColor = useCustomProgressBarColor ? progressBarColor : null;
-	const isProgressBarColorDirty = currentProgressBarColor !== initialProgressBarColor;
-	const isTimeZoneDirty = timeZone !== initialTimeZone;
-	const isDateFormatDirty = dateFormat !== initialDateFormat;
-	const isTimeFormatDirty = timeFormat !== initialTimeFormat;
-	const canSave = name.trim().length >= 2 && thresholdValid && progressBarColorValid;
-	const isFormDirty =
-		isDirty ||
-		Math.floor(parsedThreshold) !== initialThreshold ||
-		isProgressBarColorDirty ||
-		isTimeZoneDirty ||
-		isDateFormatDirty ||
-		isTimeFormatDirty;
-
 	const handleSave = () => {
 		if (!canSave || !isFormDirty) {
 			return;
@@ -182,6 +204,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			householdId,
 			name: name.trim(),
 			rewardThreshold: Math.floor(parsedThreshold),
+			rewardClaimLimits: isClaimSettingsDirty ? rewardClaimRulesSchema.parse(claimRules) : undefined,
 			timeZone: isTimeZoneDirty ? timeZone.trim() : undefined,
 			dateFormat: isDateFormatDirty ? dateFormat : undefined,
 			timeFormat: isTimeFormatDirty ? timeFormat : undefined,
@@ -225,6 +248,14 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 						<p className="text-xs text-muted-foreground">{t("Points needed to claim a reward")}</p>
 					</div>
 				</div>
+
+				<RewardClaimLimitsEditor
+					key={`${householdId}:${initialClaimRules.map((rule) => rule.key).join(",")}`}
+					householdId={householdId}
+					rules={claimRules}
+					onChange={setClaimRules}
+					disabled={isLoading || isPending}
+				/>
 
 				<div className="space-y-2">
 					<div className="flex items-center gap-3">
