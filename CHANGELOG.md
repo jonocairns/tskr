@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4](https://github.com/jonocairns/tskr/compare/1.2.3...1.2.4) (2026-10-31)
+
+
+### Bug Fixes
+
+* **deps:** patch vulnerable dependencies and Docker runtime ([#151](https://github.com/jonocairns/tskr/issues/151)) ([67bd1ae](https://github.com/jonocairns/tskr/commit/67bd1aed4486f2598e3510cd02a123137b658159))
+
 ## [1.2.3](https://github.com/jonocairns/tskr/compare/1.2.2...1.2.3) (2026-10-03)
 
 
