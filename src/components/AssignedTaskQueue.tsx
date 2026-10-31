@@ -11,6 +11,8 @@ import { Progress } from "@/components/ui/Progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
 import { formatCadenceInterval } from "@/lib/assignedTasksCadence";
+import { type DateFormat, formatDateTime, type TimeFormat } from "@/lib/formatDate";
+import { useTranslation } from "@/lib/i18nClient";
 import { DURATION_BUCKETS, type DurationKey } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
@@ -25,6 +27,9 @@ export type AssignedTaskEntry = {
 	cadenceIntervalMinutes: number;
 	isRecurring: boolean;
 	progress: number;
+	completedLastCycle: boolean;
+	lastCompletedAt: string | null;
+	nextResetAt: string | null;
 };
 
 const BUCKET_LABELS = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]));
@@ -32,11 +37,15 @@ const BUCKET_LABELS = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucke
 type Props = {
 	householdId: string;
 	entries: AssignedTaskEntry[];
+	timeZone: string;
+	dateFormat: DateFormat;
+	timeFormat: TimeFormat;
 };
 
-export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
+export const AssignedTaskQueue = ({ householdId, entries, timeZone, dateFormat, timeFormat }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
+	const { t } = useTranslation();
 	const [isMobile, setIsMobile] = useState(false);
 
 	useEffect(() => {
@@ -104,9 +113,28 @@ export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 										<TableCell>
 											<div className="flex flex-col gap-1">
 												<span className="font-semibold">{entry.label}</span>
+												{entry.completedLastCycle ? (
+													<Badge variant="secondary" className="w-fit">
+														{t("Completed last cycle")}
+													</Badge>
+												) : null}
 												<span className="text-xs text-muted-foreground">
 													{entry.points} pts - {BUCKET_LABELS[entry.bucket] ?? entry.bucket}
 												</span>
+												{entry.lastCompletedAt ? (
+													<span className="text-xs text-muted-foreground">
+														{t("Last completed {{date}}", {
+															date: formatDateTime(entry.lastCompletedAt, { timeZone, dateFormat, timeFormat }),
+														})}
+													</span>
+												) : null}
+												{entry.nextResetAt ? (
+													<span className="text-xs text-muted-foreground">
+														{t("Resets {{date}}", {
+															date: formatDateTime(entry.nextResetAt, { timeZone, dateFormat, timeFormat }),
+														})}
+													</span>
+												) : null}
 											</div>
 										</TableCell>
 										<TableCell className="text-right text-sm text-muted-foreground sm:hidden">
@@ -132,7 +160,13 @@ export const AssignedTaskQueue = ({ householdId, entries }: Props) => {
 											</div>
 										</TableCell>
 										<TableCell className="text-right">
-											<Button type="button" size="sm" disabled={isPending} onClick={() => handleComplete(entry.id)}>
+											<Button
+												type="button"
+												size="sm"
+												disabled={isPending}
+												aria-label={t("Complete {{task}}", { task: entry.label })}
+												onClick={() => handleComplete(entry.id)}
+											>
 												<CheckIcon className="h-4 w-4 sm:mr-2" />
 												<span className="hidden sm:inline">Complete</span>
 											</Button>

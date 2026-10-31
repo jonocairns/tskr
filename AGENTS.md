@@ -2,6 +2,8 @@ Capture new durable conventions, invariants, and recurring pitfalls here when th
 
 - Use implicit return types instead of explicit annotations
 - Prefer `const` arrow functions over `function` declarations
+- Assignment capacity counts non-reverted `PENDING` and `APPROVED` logs. Complete, resubmit, and recurrence/status edits must validate and write in one transaction; SQLite's deferred transactions need a write lock before reading capacity. Resubmission retains the original `createdAt` cadence window.
+- Assignment cadence uses household calendar boundaries, not time since completion. Display ranges must not truncate the completion history used for eligibility; "Completed last cycle" means the immediately preceding calendar cycle met its target.
 - After making changes, run `pnpm check` (i18n + lint + compile + build + test)
 - If Jest warns about a haste naming collision with `.next/standalone/package.json`, it is caused by an existing build artifact; the tests still run, but the warning can be removed by cleaning `.next/standalone`
 - Keep `HOSTNAME=0.0.0.0` in the Docker image: Next.js standalone uses Docker's container hostname otherwise, leaving the loopback health check unreachable. Startup smoke tests should exercise the image's default bind address.

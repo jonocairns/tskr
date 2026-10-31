@@ -16,6 +16,22 @@ More screenshots: [Assignments](screenshots/assignments.png), [Household](screen
 - Keep an audit trail and leaderboard to stay aligned.
 - Organize by household with role-based access.
 
+## Assignment cycles
+
+Recurring assignments use the household's calendar: daily tasks reset at local
+midnight, weekly on Monday, fortnightly on alternating Mondays, monthly on the
+first, quarterly at the start of each quarter, and yearly on January 1. Completing
+a task just before a boundary counts toward the cycle that is ending. The next
+cycle starts fresh, while the completion stays in History. The assignment queue
+shows "Completed last cycle" when the preceding cycle's target was met, plus the
+last completion and next reset dates.
+
+Pending submissions count toward assignment progress while awaiting approval;
+points are added after approval. Rejected or reverted submissions do not count.
+Use the assignment's Complete action to record its progress: logging the same
+preset separately does not complete the assignment. Changing recurrence preserves
+existing completion history.
+
 ## Reward claim limits
 
 Household managers can add limits under household settings. Each rule sets a maximum

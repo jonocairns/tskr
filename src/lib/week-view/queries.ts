@@ -29,6 +29,7 @@ export const getWeekViewHouseholdSettings = async (householdId: string) => {
 };
 
 export const getWeekViewData = async ({
+	now = new Date(),
 	householdId,
 	range,
 	userId,
@@ -36,6 +37,7 @@ export const getWeekViewData = async ({
 	timeFormat,
 	timeZone,
 }: {
+	now?: Date;
 	householdId: string;
 	range: WeekViewRange;
 	userId: string;
@@ -79,6 +81,10 @@ export const getWeekViewData = async ({
 				cadenceTarget: true,
 				cadenceIntervalMinutes: true,
 				isRecurring: true,
+				logs: {
+					where: { revertedAt: null, status: { in: [LogStatus.PENDING, LogStatus.APPROVED] } },
+					select: { createdAt: true },
+				},
 				preset: {
 					select: {
 						id: true,
@@ -97,6 +103,7 @@ export const getWeekViewData = async ({
 		dateFormat,
 		timeFormat,
 		...buildWeekViewTimeline({
+			now,
 			completedLogs,
 			range,
 			tasks,

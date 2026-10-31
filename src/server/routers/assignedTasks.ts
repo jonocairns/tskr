@@ -1,13 +1,12 @@
 import "server-only";
 
-import type { LogStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { computeAssignedTaskState } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
+import { ensureAssignedTaskCapacity, getAssignedTaskStatus, lockAssignedTask } from "@/server/assignedTaskState";
 import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
 const createAssignedTaskSchema = z.object({
@@ -93,36 +92,29 @@ export const assignedTasksRouter = router({
 
 	update: approverProcedure(updateAssignedTaskSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
-		const { id, ...updates } = input;
+		const { id } = input;
 
-		const task = await prisma.assignedTask.findFirst({
-			where: { id, householdId },
-			select: {
-				id: true,
-				cadenceIntervalMinutes: true,
-			},
-		});
+		return prisma.$transaction(async (tx) => {
+			await lockAssignedTask(tx, id, householdId);
+			const task = await tx.assignedTask.findFirst({ where: { id, householdId } });
+			if (!task) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
+			}
 
-		if (!task) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
-		}
-
-		try {
-			const cadenceIntervalMinutes = updates.cadenceIntervalMinutes ?? task.cadenceIntervalMinutes;
-			const assignedTask = await prisma.assignedTask.update({
+			const isRecurring = input.isRecurring ?? task.isRecurring;
+			const cadenceTarget = isRecurring ? (input.cadenceTarget ?? task.cadenceTarget) : 1;
+			const status = await getAssignedTaskStatus(tx, { ...task, isRecurring, cadenceTarget }, householdId);
+			const assignedTask = await tx.assignedTask.update({
 				where: { id },
 				data: {
-					isRecurring: updates.isRecurring,
-					cadenceTarget: updates.isRecurring === false ? 1 : updates.cadenceTarget,
-					cadenceIntervalMinutes,
+					isRecurring,
+					cadenceTarget,
+					cadenceIntervalMinutes: input.cadenceIntervalMinutes ?? task.cadenceIntervalMinutes,
+					status,
 				},
 			});
-
 			return { assignedTask };
-		} catch (error) {
-			console.error("[assignedTasks:update]", error);
-			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to update assigned task" });
-		}
+		});
 	}),
 
 	delete: approverProcedure(deleteAssignedTaskSchema).mutation(async ({ ctx, input }) => {
@@ -152,92 +144,49 @@ export const assignedTasksRouter = router({
 		const userId = ctx.session.user.id;
 		const { id } = input;
 
-		const task = await prisma.assignedTask.findFirst({
-			where: { id, householdId },
-			select: {
-				id: true,
-				assignedToId: true,
-				cadenceTarget: true,
-				cadenceIntervalMinutes: true,
-				isRecurring: true,
-				status: true,
-				household: { select: { timeZone: true } },
-				preset: {
-					select: { id: true, label: true, bucket: true, approvalOverride: true },
+		return prisma.$transaction(async (tx) => {
+			await lockAssignedTask(tx, id, householdId);
+			const task = await tx.assignedTask.findFirst({
+				where: { id, householdId },
+				include: {
+					household: { select: { timeZone: true } },
+					preset: { select: { id: true, label: true, bucket: true, approvalOverride: true } },
 				},
-			},
-		});
+			});
+			if (!task?.preset) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
+			}
+			if (task.assignedToId !== userId) {
+				throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
+			}
+			if (task.status !== "ACTIVE") {
+				throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });
+			}
 
-		if (!task?.preset) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
-		}
+			const membership = await tx.householdMember.findUnique({
+				where: { householdId_userId: { householdId, userId } },
+				select: { requiresApprovalDefault: true },
+			});
+			if (!membership) {
+				throw new TRPCError({ code: "FORBIDDEN", message: "Household membership not found" });
+			}
 
-		if (task.assignedToId !== userId) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
-		}
-
-		if (task.status !== "ACTIVE") {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });
-		}
-
-		const logs = await prisma.pointLog.findMany({
-			where: {
-				assignedTaskId: task.id,
+			// Use the same instant for the eligibility check and the saved completion,
+			// even if the request crosses a household-local cadence boundary.
+			const completedAt = new Date();
+			await ensureAssignedTaskCapacity({
+				tx,
+				task,
 				householdId,
-				revertedAt: null,
-				status: { in: ["PENDING" as LogStatus, "APPROVED" as LogStatus] },
-			},
-			select: { createdAt: true },
-			orderBy: { createdAt: "asc" },
-		});
+				at: completedAt,
+				timeZone: task.household.timeZone ?? DEFAULT_TIME_ZONE,
+			});
 
-		const state = computeAssignedTaskState({
-			task: {
-				cadenceTarget: task.cadenceTarget,
-				cadenceIntervalMinutes: task.cadenceIntervalMinutes,
-				isRecurring: task.isRecurring,
-			},
-			logs,
-			now: new Date(),
-			timeZone: task.household?.timeZone ?? DEFAULT_TIME_ZONE,
-		});
-
-		if (!state.isActive) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Task already completed for this cadence" });
-		}
-
-		const membership = await prisma.householdMember.findUnique({
-			where: {
-				householdId_userId: {
-					householdId,
-					userId,
-				},
-			},
-			select: {
-				requiresApprovalDefault: true,
-			},
-		});
-
-		if (!membership) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "Household membership not found" });
-		}
-
-		const resolveRequiresApproval = (override?: string | null) => {
-			if (override === "REQUIRE") {
-				return true;
-			}
-			if (override === "SKIP") {
-				return false;
-			}
-			return membership.requiresApprovalDefault;
-		};
-
-		const bucket = isDurationKey(task.preset.bucket) ? task.preset.bucket : "QUICK";
-		const requiresApproval = resolveRequiresApproval(task.preset.approvalOverride);
-		const status = requiresApproval ? "PENDING" : "APPROVED";
-
-		try {
-			const entry = await prisma.pointLog.create({
+			const bucket = isDurationKey(task.preset.bucket) ? task.preset.bucket : "QUICK";
+			const override = task.preset.approvalOverride;
+			const requiresApproval = override === "REQUIRE" || (override !== "SKIP" && membership.requiresApprovalDefault);
+			const status = requiresApproval ? "PENDING" : "APPROVED";
+			const entry = await tx.pointLog.create({
 				data: {
 					householdId,
 					userId,
@@ -248,30 +197,16 @@ export const assignedTasksRouter = router({
 					presetId: task.preset.id,
 					status,
 					assignedTaskId: task.id,
+					createdAt: completedAt,
 				},
 			});
-
 			if (!task.isRecurring && status === "APPROVED") {
-				const approvedCount = await prisma.pointLog.count({
-					where: {
-						assignedTaskId: task.id,
-						householdId,
-						revertedAt: null,
-						status: "APPROVED" as LogStatus,
-					},
+				await tx.assignedTask.update({
+					where: { id: task.id },
+					data: { status: await getAssignedTaskStatus(tx, task, householdId) },
 				});
-				if (approvedCount >= task.cadenceTarget) {
-					await prisma.assignedTask.update({
-						where: { id: task.id },
-						data: { status: "COMPLETED" },
-					});
-				}
 			}
-
 			return { entry };
-		} catch (error) {
-			console.error("[assignedTasks:complete]", error);
-			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to complete task" });
-		}
+		});
 	}),
 });

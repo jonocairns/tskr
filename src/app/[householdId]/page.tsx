@@ -94,7 +94,15 @@ export default async function DashboardPage({ params }: Props) {
 				householdId={householdId}
 			/>
 
-			{assignedTasks.length > 0 ? <AssignedTaskQueue entries={assignedTasks} householdId={householdId} /> : null}
+			{assignedTasks.length > 0 ? (
+				<AssignedTaskQueue
+					entries={assignedTasks}
+					householdId={householdId}
+					timeZone={timeZone}
+					dateFormat={dateFormat}
+					timeFormat={timeFormat}
+				/>
+			) : null}
 
 			<TaskActions
 				householdId={householdId}

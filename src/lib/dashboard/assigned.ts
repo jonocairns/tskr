@@ -1,5 +1,5 @@
 import type { AssignedTaskEntry } from "@/components/AssignedTaskQueue";
-import { computeAssignedTaskState } from "@/lib/assignedTasks";
+import { computeAssignedTaskState, getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 
 type AssignedTaskRecord = {
@@ -21,11 +21,7 @@ type BuildAssignedTaskEntriesInput = {
 	timeZone: string;
 };
 
-export const buildAssignedTaskEntries = ({
-	tasks,
-	now = new Date(),
-	timeZone,
-}: BuildAssignedTaskEntriesInput): AssignedTaskEntry[] => {
+export const buildAssignedTaskEntries = ({ tasks, now = new Date(), timeZone }: BuildAssignedTaskEntriesInput) => {
 	return tasks.flatMap((task) => {
 		if (task.status !== "ACTIVE" || !task.preset) {
 			return [];
@@ -48,6 +44,23 @@ export const buildAssignedTaskEntries = ({
 		}
 
 		const progress = Math.min(state.progress, task.cadenceTarget);
+		let completedLastCycle = false;
+		if (task.isRecurring) {
+			const { periodStart } = getAssignedTaskPeriodBounds(now, task.cadenceIntervalMinutes, timeZone);
+			const previous = getAssignedTaskPeriodBounds(
+				new Date(periodStart.getTime() - 1),
+				task.cadenceIntervalMinutes,
+				timeZone,
+			);
+			const previousCount = task.logs.filter(
+				(log) => log.createdAt >= previous.periodStart && log.createdAt < previous.periodEnd,
+			).length;
+			completedLastCycle = previousCount >= Math.max(task.cadenceTarget, 1);
+		}
+		const lastCompletedAt = task.logs.reduce<Date | null>(
+			(latest, log) => (log.createdAt <= now && (!latest || log.createdAt > latest) ? log.createdAt : latest),
+			null,
+		);
 
 		return [
 			{
@@ -61,7 +74,10 @@ export const buildAssignedTaskEntries = ({
 				cadenceIntervalMinutes: task.cadenceIntervalMinutes,
 				isRecurring: task.isRecurring,
 				progress,
+				completedLastCycle,
+				lastCompletedAt: lastCompletedAt?.toISOString() ?? null,
+				nextResetAt: state.nextResetAt?.toISOString() ?? null,
 			},
-		];
+		] satisfies AssignedTaskEntry[];
 	});
 };

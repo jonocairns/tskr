@@ -10,6 +10,8 @@ import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/
 import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
+import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
+import { ensureAssignedTaskCapacity, getAssignedTaskStatus } from "@/server/assignedTaskState";
 import { householdProcedure, protectedProcedure, router } from "@/server/trpc";
 
 const presetSchema = z
@@ -218,178 +220,126 @@ export const logsRouter = router({
 	updateStatus: protectedProcedure.input(updateLogSchema).mutation(async ({ ctx, input }) => {
 		const userId = ctx.session.user.id;
 
-		const log = await prisma.pointLog.findFirst({
-			where: {
-				id: input.id,
-				household: { members: { some: { userId } } },
-			},
-			select: {
-				id: true,
-				userId: true,
-				householdId: true,
-				revertedAt: true,
-				status: true,
-				kind: true,
-				assignedTaskId: true,
-				household: {
-					select: {
-						members: {
-							where: { userId },
-							select: { role: true },
-						},
-					},
+		return prisma.$transaction(async (tx) => {
+			// Acquire SQLite's write lock before reading the log or its assignment.
+			// Approval, reversion, and resubmission must see each other's committed state.
+			await tx.$executeRaw`UPDATE "PointLog" SET "status" = "status" WHERE "id" = ${input.id}`;
+			const log = await tx.pointLog.findFirst({
+				where: { id: input.id, household: { members: { some: { userId } } } },
+				select: {
+					id: true,
+					userId: true,
+					householdId: true,
+					revertedAt: true,
+					status: true,
+					kind: true,
+					assignedTaskId: true,
+					createdAt: true,
+					household: { select: { members: { where: { userId }, select: { role: true } } } },
 				},
-			},
-		});
-
-		if (!log) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Log not found" });
-		}
-
-		const membership = log.household.members[0];
-		if (!membership) {
-			throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
-		}
-
-		if (input.action !== "revert" && log.kind === "REWARD") {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Rewards cannot be approved" });
-		}
-
-		if (input.action === "revert") {
-			if (log.userId !== userId && membership.role === "DOER") {
+			});
+			if (!log) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Log not found" });
+			}
+			const membership = log.household.members[0];
+			if (!membership) {
+				throw new TRPCError({ code: "FORBIDDEN", message: "You are not a member of this household" });
+			}
+			if (input.action !== "revert" && log.kind === "REWARD") {
+				throw new TRPCError({ code: "BAD_REQUEST", message: "Rewards cannot be approved" });
+			}
+			if (input.action === "revert" && log.userId !== userId && membership.role === "DOER") {
 				throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
 			}
 			if (log.revertedAt) {
-				throw new TRPCError({ code: "BAD_REQUEST", message: "Already reverted" });
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: input.action === "revert" ? "Already reverted" : "Log already reverted",
+				});
 			}
 
-			await prisma.$transaction(async (tx) => {
+			if (input.action === "revert") {
 				await tx.pointLog.update({
 					where: { id: input.id },
-					data: {
-						revertedAt: new Date(),
-						revertedById: userId,
-					},
+					data: { revertedAt: new Date(), revertedById: userId },
 				});
-
+			} else if (input.action === "approve" || input.action === "reject") {
+				if (membership.role === "DOER") {
+					throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
+				}
+				if (input.action === "approve" && log.userId === userId) {
+					throw new TRPCError({ code: "FORBIDDEN", message: "You cannot approve your own tasks" });
+				}
+				if (log.status !== "PENDING") {
+					throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending logs can be updated" });
+				}
+				await tx.pointLog.update({
+					where: { id: input.id },
+					data:
+						input.action === "approve"
+							? {
+									status: "APPROVED",
+									approvedById: userId,
+									approvedAt: new Date(),
+									rejectedById: null,
+									rejectedAt: null,
+								}
+							: {
+									status: "REJECTED",
+									rejectedById: userId,
+									rejectedAt: new Date(),
+									approvedById: null,
+									approvedAt: null,
+								},
+				});
+			} else if (input.action === "resubmit") {
+				if (log.status !== "REJECTED") {
+					throw new TRPCError({ code: "BAD_REQUEST", message: "Only rejected logs can be resubmitted" });
+				}
+				if (log.userId !== userId) {
+					throw new TRPCError({ code: "FORBIDDEN", message: "Only the log owner can resubmit" });
+				}
 				if (log.assignedTaskId) {
 					const task = await tx.assignedTask.findFirst({
 						where: { id: log.assignedTaskId, householdId: log.householdId },
-						select: { id: true, status: true, isRecurring: true, cadenceTarget: true },
+						include: { household: { select: { timeZone: true } } },
 					});
-
-					if (task && !task.isRecurring && task.status === "COMPLETED") {
-						const approvedCount = await tx.pointLog.count({
-							where: {
-								assignedTaskId: task.id,
-								householdId: log.householdId,
-								revertedAt: null,
-								status: "APPROVED",
-							},
-						});
-
-						if (approvedCount < task.cadenceTarget) {
-							await tx.assignedTask.update({
-								where: { id: task.id },
-								data: { status: "ACTIVE" },
-							});
-						}
+					if (task?.status !== "ACTIVE") {
+						throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });
 					}
+					await ensureAssignedTaskCapacity({
+						tx,
+						task,
+						householdId: log.householdId,
+						// Resubmitting preserves the original completion's cadence window.
+						at: log.createdAt,
+						timeZone: task.household.timeZone ?? DEFAULT_TIME_ZONE,
+					});
 				}
-			});
-
-			return { ok: true };
-		}
-
-		if (log.revertedAt) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Log already reverted" });
-		}
-
-		if (input.action === "approve" || input.action === "reject") {
-			if (membership.role === "DOER") {
-				throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
-			}
-			if (input.action === "approve" && log.userId === userId) {
-				throw new TRPCError({ code: "FORBIDDEN", message: "You cannot approve your own tasks" });
-			}
-			if (log.status !== "PENDING") {
-				throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending logs can be updated" });
-			}
-
-			await prisma.pointLog.update({
-				where: { id: input.id },
-				data:
-					input.action === "approve"
-						? {
-								status: "APPROVED",
-								approvedById: userId,
-								approvedAt: new Date(),
-								rejectedById: null,
-								rejectedAt: null,
-							}
-						: {
-								status: "REJECTED",
-								rejectedById: userId,
-								rejectedAt: new Date(),
-								approvedById: null,
-								approvedAt: null,
-							},
-			});
-
-			if (input.action === "approve" && log.assignedTaskId) {
-				const task = await prisma.assignedTask.findFirst({
-					where: { id: log.assignedTaskId, householdId: log.householdId },
-					select: {
-						id: true,
-						status: true,
-						isRecurring: true,
-						cadenceTarget: true,
+				await tx.pointLog.update({
+					where: { id: input.id },
+					data: {
+						status: "PENDING",
+						rejectedById: null,
+						rejectedAt: null,
+						approvedById: null,
+						approvedAt: null,
 					},
 				});
-				if (task && !task.isRecurring && task.status === "ACTIVE") {
-					const approvedCount = await prisma.pointLog.count({
-						where: {
-							assignedTaskId: task.id,
-							householdId: log.householdId,
-							revertedAt: null,
-							status: "APPROVED",
-						},
-					});
-					if (approvedCount >= task.cadenceTarget) {
-						await prisma.assignedTask.update({
-							where: { id: task.id },
-							data: { status: "COMPLETED" },
-						});
+			}
+
+			if (log.assignedTaskId) {
+				const task = await tx.assignedTask.findFirst({
+					where: { id: log.assignedTaskId, householdId: log.householdId },
+				});
+				if (task) {
+					const status = await getAssignedTaskStatus(tx, task, log.householdId);
+					if (status !== task.status) {
+						await tx.assignedTask.update({ where: { id: task.id }, data: { status } });
 					}
 				}
 			}
-
 			return { ok: true };
-		}
-
-		if (input.action === "resubmit") {
-			if (log.status !== "REJECTED") {
-				throw new TRPCError({ code: "BAD_REQUEST", message: "Only rejected logs can be resubmitted" });
-			}
-
-			if (log.userId !== userId) {
-				throw new TRPCError({ code: "FORBIDDEN", message: "Only the log owner can resubmit" });
-			}
-
-			await prisma.pointLog.update({
-				where: { id: input.id },
-				data: {
-					status: "PENDING",
-					rejectedById: null,
-					rejectedAt: null,
-					approvedById: null,
-					approvedAt: null,
-				},
-			});
-
-			return { ok: true };
-		}
-
-		throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported action" });
+		});
 	}),
 });
