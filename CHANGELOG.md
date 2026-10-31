@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/jonocairns/tskr/compare/1.2.4...1.3.0) (2026-10-31)
+
+
+### Features
+
+* add configurable household and member reward claim limits ([#155](https://github.com/jonocairns/tskr/issues/155)) ([cd83423](https://github.com/jonocairns/tskr/commit/cd83423a63440875edd96868b58cbeefb43b0e8f))
+
+
+### Bug Fixes
+
+* **assignments:** enforce completion limits and acknowledge previous cycles ([#156](https://github.com/jonocairns/tskr/issues/156)) ([471f8e1](https://github.com/jonocairns/tskr/commit/471f8e1c3738ca3b3fd3018dc7f1004d172b6081))
+* prevent mobile notification controls overflow ([#158](https://github.com/jonocairns/tskr/issues/158)) ([d60014e](https://github.com/jonocairns/tskr/commit/d60014e234e69a1c032813ab80a991b43a33e4e0))
+
 ## [1.2.4](https://github.com/jonocairns/tskr/compare/1.2.3...1.2.4) (2026-10-31)
 
 
