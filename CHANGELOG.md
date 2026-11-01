@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/jonocairns/tskr/compare/1.3.0...1.4.0) (2026-11-01)
+
+
+### Features
+
+* roll over unused monthly reward claims ([#159](https://github.com/jonocairns/tskr/issues/159)) ([65d6c26](https://github.com/jonocairns/tskr/commit/65d6c26fcbe935f47e12729a97f3988ae2098b85))
+
 ## [1.3.0](https://github.com/jonocairns/tskr/compare/1.2.4...1.3.0) (2026-10-31)
 
 
