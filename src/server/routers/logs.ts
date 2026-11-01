@@ -10,6 +10,7 @@ import { DURATION_KEYS, type DurationKey, findPreset, getBucketPoints } from "@/
 import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
+import { releaseRewardAllocations } from "@/lib/rewardMonthlyAllowances";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { ensureAssignedTaskCapacity, getAssignedTaskStatus } from "@/server/assignedTaskState";
 import { householdProcedure, protectedProcedure, router } from "@/server/trpc";
@@ -259,9 +260,11 @@ export const logsRouter = router({
 			}
 
 			if (input.action === "revert") {
+				const now = new Date();
+				if (log.kind === "REWARD") await releaseRewardAllocations(tx as Prisma.TransactionClient, log, now);
 				await tx.pointLog.update({
 					where: { id: input.id },
-					data: { revertedAt: new Date(), revertedById: userId },
+					data: { revertedAt: now, revertedById: userId },
 				});
 			} else if (input.action === "approve" || input.action === "reject") {
 				if (membership.role === "DOER") {

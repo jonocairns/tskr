@@ -1,23 +1,12 @@
 import { Temporal } from "@js-temporal/polyfill";
-import type { Prisma } from "@prisma/client";
-
+import type { Prisma, PrismaClient, RewardClaimLimit } from "@prisma/client";
 import type { RewardClaimRule } from "@/lib/rewardClaimSettings";
+import { advanceMonthlyAccount } from "@/lib/rewardMonthlyAllowances";
 import { resolveTimeZone } from "@/lib/timeZones";
 
 export type RewardClaimSettings = {
-	rewardClaimLimits: Array<RewardClaimRule & { id: string }>;
+	rewardClaimLimits: RewardClaimLimit[];
 	timeZone: string;
-};
-
-export type RewardClaimReader = {
-	pointLog: {
-		findMany: (args: {
-			where: Prisma.PointLogWhereInput;
-			select: { createdAt: true };
-			orderBy: { createdAt: "desc" };
-			take: number;
-		}) => Promise<Array<{ createdAt: Date }>>;
-	};
 };
 
 export const getRewardClaimWindow = (
@@ -38,11 +27,30 @@ export const getRewardClaimWindow = (
 };
 
 export const getRewardClaimAllowance = async (
-	client: RewardClaimReader,
+	client: Prisma.TransactionClient,
 	settings: RewardClaimSettings,
 	householdId: string,
 	userId: string,
 	now = new Date(),
+) => {
+	if ("$transaction" in client) {
+		return (client as PrismaClient).$transaction(async (tx) => {
+			const fresh = await tx.household.findUniqueOrThrow({
+				where: { id: householdId },
+				include: { rewardClaimLimits: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } } },
+			});
+			return readRewardClaimAllowance(tx as Prisma.TransactionClient, fresh, householdId, userId, now);
+		});
+	}
+	return readRewardClaimAllowance(client, settings, householdId, userId, now);
+};
+
+const readRewardClaimAllowance = async (
+	client: Prisma.TransactionClient,
+	settings: RewardClaimSettings,
+	householdId: string,
+	userId: string,
+	now: Date,
 ) => {
 	const applicableRules = settings.rewardClaimLimits.filter(
 		(rule) => rule.scope === "HOUSEHOLD" || rule.userId === null || rule.userId === userId,
@@ -51,6 +59,10 @@ export const getRewardClaimAllowance = async (
 
 	const rules = await Promise.all(
 		applicableRules.map(async (rule) => {
+			if (rule.period === "MONTH") {
+				const monthly = await advanceMonthlyAccount(client, rule, settings.timeZone, userId, now);
+				return { ...rule, ...monthly, remaining: monthly.thisMonth + monthly.carried };
+			}
 			const window = rule.period === "ROLLING" ? null : getRewardClaimWindow(now, rule.period, settings.timeZone);
 			const durationMs = (rule.windowMinutes ?? 0) * 60000;
 			const claims = await client.pointLog.findMany({
@@ -73,6 +85,9 @@ export const getRewardClaimAllowance = async (
 			const changesAt = window?.end ?? (lastClaim ? new Date(lastClaim.createdAt.getTime() + durationMs) : null);
 			return {
 				...rule,
+				thisMonth: null,
+				carried: null,
+				available: [],
 				remaining: Math.max(0, rule.maxClaims - claims.length),
 				changesAt: changesAt?.toISOString() ?? null,
 			};

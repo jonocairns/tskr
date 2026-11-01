@@ -18,8 +18,11 @@ import { type Prisma, PrismaClient } from "@prisma/client";
 import { claimReward } from "@/lib/claimReward";
 import { getRewardClaimAllowance, getRewardClaimWindow } from "@/lib/rewardClaimLimits";
 import { type RewardClaimRule, rewardClaimRulesSchema } from "@/lib/rewardClaimSettings";
+import { releaseRewardAllocations } from "@/lib/rewardMonthlyAllowances";
+import { saveRewardClaimSettings } from "@/lib/saveRewardClaimSettings";
 import { claimRouter } from "@/server/routers/claim";
 import { householdCoreRouter } from "@/server/routers/households/core";
+import { logsRouter } from "@/server/routers/logs";
 
 const directory = mkdtempSync(join(tmpdir(), "tskr-rewards-"));
 const databaseUrl = `file:${join(directory, "test.db")}`;
@@ -29,7 +32,7 @@ const settings = (data: Prisma.HouseholdUpdateInput = {}) =>
 	mockPrisma.household.update({
 		where: { id: "home" },
 		data,
-		include: { rewardClaimLimits: { orderBy: { sortOrder: "asc" } } },
+		include: { rewardClaimLimits: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } } },
 	});
 const limits = (rules: Array<Partial<RewardClaimRule>>) =>
 	settings({
@@ -296,7 +299,11 @@ test("managers can save and remove combined limits through the actual settings r
 	await expect(claimant.claimReward({ householdId: "home" })).rejects.toMatchObject({
 		cause: { appErrorCode: "REWARD_CLAIM_LIMIT_REACHED" },
 	});
-	await caller.updateCurrent({ householdId: "home", rewardClaimLimits: [] });
+	await caller.updateCurrent({
+		householdId: "home",
+		rewardClaimLimits: [],
+		rewardClaimRevision: saved.household.rewardClaimRevision,
+	});
 	await expect(claimant.claimReward({ householdId: "home" })).resolves.toMatchObject({ remaining: 450 });
 });
 
@@ -316,6 +323,7 @@ test("the settings router rejects targets outside the household without replacin
 	await expect(
 		caller.updateCurrent({
 			householdId: "home",
+			rewardClaimRevision: 0,
 			rewardClaimLimits: [{ maxClaims: 1, period: "DAY", windowMinutes: null, scope: "MEMBER", userId: "outsider" }],
 		}),
 	).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -346,4 +354,411 @@ test("a manager's limits-only save preserves another manager's changes to unrela
 		progressBarColor: "#123456",
 		rewardClaimLimits: [{ maxClaims: 2 }],
 	});
+});
+
+describe("monthly allowance accounting", () => {
+	const at = (value: string) => new Date(value);
+	const jan = at("2027-01-10T00:00:00Z");
+	const feb = at("2027-02-10T00:00:00Z");
+	const mar = at("2027-03-10T00:00:00Z");
+	const apr = at("2027-04-10T00:00:00Z");
+	const balance = async (now: Date, userId = "alice") =>
+		getRewardClaimAllowance(mockPrisma, await settings(), "home", userId, now);
+	const spend = (now: Date, userId = "alice") => mockPrisma.$transaction((tx) => claimReward(tx, userId, "home", now));
+	const edit = async (rules: RewardClaimRule[], now: Date) => {
+		const household = await settings();
+		await mockPrisma.$transaction((tx) =>
+			saveRewardClaimSettings(tx, "home", rules, household.rewardClaimRevision, undefined, now),
+		);
+		return settings();
+	};
+	const monthly = (overrides: Partial<RewardClaimRule> = {}) => ({
+		maxClaims: 2,
+		period: "MONTH" as const,
+		windowMinutes: null,
+		scope: "HOUSEHOLD" as const,
+		userId: null,
+		rolloverEnabled: true,
+		...overrides,
+	});
+	const undo = (log: { id: string; householdId: string; userId: string }, now: Date) =>
+		mockPrisma.$transaction(async (tx) => {
+			await releaseRewardAllocations(tx, log, now);
+			await tx.pointLog.update({ where: { id: log.id }, data: { revertedAt: now, revertedById: "alice" } });
+		});
+
+	beforeEach(async () => {
+		await mockPrisma.householdMember.updateMany({ data: { joinedAt: at("2026-01-01T00:00:00Z") } });
+	});
+
+	test("unused units accumulate to a quantity cap, survive skipped months, and retain their grant month", async () => {
+		await edit([monthly()], jan);
+		expect(await balance(jan)).toMatchObject({ remaining: 2, rules: [{ thisMonth: 2, carried: 0 }] });
+		expect(await balance(feb)).toMatchObject({ remaining: 4, rules: [{ thisMonth: 2, carried: 2 }] });
+		expect(await balance(at("2027-08-10T00:00:00Z"))).toMatchObject({
+			remaining: 4,
+			rules: [{ thisMonth: 2, carried: 2 }],
+		});
+		const grants = await mockPrisma.rewardMonthlyGrant.findMany({ orderBy: { month: "asc" } });
+		expect(grants).toHaveLength(8);
+		expect(grants[0]).toMatchObject({ month: "2027-01", amount: 2, forfeited: 0, expiresAt: null });
+		expect(grants[1]).toMatchObject({ month: "2027-02", amount: 2, forfeited: 2 });
+		// A new client/restart reuses the same durable grants.
+		const restarted = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: databaseUrl }) });
+		try {
+			expect(
+				await getRewardClaimAllowance(restarted, await settings(), "home", "alice", at("2027-08-11T00:00:00Z")),
+			).toMatchObject({ remaining: 4 });
+		} finally {
+			await restarted.$disconnect();
+		}
+		expect(await mockPrisma.rewardMonthlyGrant.count()).toBe(8);
+	});
+
+	test("spends oldest valid grants first and restores the original grant on a later reversal", async () => {
+		await edit([monthly()], jan);
+		const first = await spend(feb);
+		const second = await spend(feb);
+		const third = await spend(feb);
+		const allocations = await mockPrisma.rewardClaimAllocation.findMany({
+			include: { grant: true },
+			orderBy: { logId: "asc" },
+		});
+		expect(allocations.filter((allocation) => allocation.grant.month === "2027-01")).toHaveLength(2);
+		expect(allocations.find((allocation) => allocation.logId === third.entry.id)?.grant.month).toBe("2027-02");
+		expect(await balance(mar)).toMatchObject({ remaining: 3 });
+		await undo(first.entry, mar);
+		expect(await balance(mar)).toMatchObject({ remaining: 4, rules: [{ thisMonth: 2, carried: 2 }] });
+		await undo(first.entry, mar); // Retried releases do not duplicate credit.
+		expect(await balance(mar)).toMatchObject({ remaining: 4 });
+		await undo(second.entry, mar);
+		expect(await balance(mar)).toMatchObject({ remaining: 5 });
+	});
+
+	test("late reversals cannot bank forfeited unused claims or revive an expired grant", async () => {
+		await edit([monthly({ rolloverEnabled: false })], jan);
+		const claim = await spend(jan);
+		await undo(claim.entry, feb); // Advance while the claim is still spent.
+		expect(await balance(feb)).toMatchObject({ remaining: 2, rules: [{ carried: 0 }] });
+		const rules = (await settings()).rewardClaimLimits;
+		await edit(
+			rules.map((rule) => ({ ...rule, rolloverEnabled: true })),
+			feb,
+		);
+		expect(await balance(feb)).toMatchObject({ remaining: 2 });
+		expect(await balance(mar)).toMatchObject({ remaining: 4 });
+		await spend(mar);
+		const latest = await spend(mar);
+		// February is spent, March's unspent 2 can now be banked; January stays expired.
+		expect(await balance(apr)).toMatchObject({ remaining: 4 });
+		await undo(latest.entry, apr);
+		expect(await balance(apr)).toMatchObject({ remaining: 5 });
+		const janGrant = await mockPrisma.rewardMonthlyGrant.findFirstOrThrow({ where: { month: "2027-01" } });
+		expect(janGrant.expiresAt).not.toBeNull();
+	});
+
+	test("initial enabling counts current usage, over-limit usage and historical reversals without a fresh grant", async () => {
+		await limits([{ maxClaims: 2, period: "MONTH" }]);
+		const logs = await Promise.all([
+			reward({ createdAt: jan }),
+			reward({ createdAt: jan }),
+			reward({ createdAt: jan }),
+		]);
+		const household = await settings();
+		await edit(
+			household.rewardClaimLimits.map((rule) => ({ ...rule, rolloverEnabled: true })),
+			jan,
+		);
+		expect(await balance(jan)).toMatchObject({ remaining: 0 });
+		await undo(logs[0], jan);
+		expect(await balance(jan)).toMatchObject({ remaining: 0 });
+		await undo(logs[1], jan);
+		expect(await balance(jan)).toMatchObject({ remaining: 1 });
+		await undo(logs[1], jan);
+		expect(await balance(jan)).toMatchObject({ remaining: 1 });
+		const oldLog = await reward({ createdAt: at("2026-12-01T00:00:00Z") });
+		await undo(oldLog, jan);
+		expect(await balance(jan)).toMatchObject({ remaining: 1 });
+		expect(await mockPrisma.rewardMonthlyGrant.count()).toBe(1);
+		expect(await mockPrisma.rewardClaimAllocation.count({ where: { logId: oldLog.id } })).toBe(0);
+	});
+
+	test("lower limits are prospective, preserve a bank above the new cap and do not accumulate more", async () => {
+		let household = await edit([monthly({ maxClaims: 4 })], jan);
+		await balance(feb);
+		household = await edit(
+			household.rewardClaimLimits.map((rule) => ({ ...rule, maxClaims: 1 })),
+			feb,
+		);
+		expect(await balance(feb)).toMatchObject({ remaining: 8, rules: [{ maxClaims: 4, thisMonth: 4, carried: 4 }] });
+		expect(await balance(mar)).toMatchObject({ remaining: 5, rules: [{ maxClaims: 1, thisMonth: 1, carried: 4 }] });
+		expect(await balance(at("2027-09-10T00:00:00Z"))).toMatchObject({ remaining: 5 });
+		expect(household.rewardClaimLimits[0].maxClaims).toBe(1);
+	});
+
+	test("a reversal restores spent units without resurrecting unused units forfeited by a lower carry cap", async () => {
+		const household = await edit([monthly({ maxClaims: 4 })], jan);
+		const log = (await spend(jan)).entry;
+		await edit(
+			household.rewardClaimLimits.map((rule) => ({ ...rule, maxClaims: 1 })),
+			jan,
+		);
+		expect(await balance(feb)).toMatchObject({ remaining: 2, rules: [{ thisMonth: 1, carried: 1 }] });
+		await undo(log, feb);
+		expect(await balance(feb)).toMatchObject({ remaining: 3, rules: [{ thisMonth: 1, carried: 2 }] });
+		expect(await mockPrisma.rewardMonthlyGrant.findFirstOrThrow({ where: { month: "2027-01" } })).toMatchObject({
+			amount: 4,
+			forfeited: 2,
+		});
+		expect(await balance(mar)).toMatchObject({ remaining: 3 });
+	});
+
+	test("disabling and reenabling are prospective and preserve saved claims without banking disabled months", async () => {
+		let household = await edit([monthly()], jan);
+		await balance(feb);
+		household = await edit(
+			household.rewardClaimLimits.map((rule) => ({ ...rule, rolloverEnabled: false })),
+			feb,
+		);
+		expect(await balance(mar)).toMatchObject({ remaining: 4, rules: [{ carried: 2 }] });
+		household = await edit(
+			household.rewardClaimLimits.map((rule) => ({ ...rule, rolloverEnabled: true })),
+			mar,
+		);
+		await spend(mar); // Uses saved January allowance; March is still non-carrying.
+		expect(await balance(apr)).toMatchObject({ remaining: 3, rules: [{ thisMonth: 2, carried: 1 }] });
+		expect(await balance(at("2027-05-10T00:00:00Z"))).toMatchObject({ remaining: 4, rules: [{ carried: 2 }] });
+	});
+
+	test("repeated pending edits use the latest future policy and keep the active grant unchanged", async () => {
+		let household = await edit([monthly()], jan);
+		household = await edit(
+			household.rewardClaimLimits.map((rule) => ({ ...rule, maxClaims: 5 })),
+			jan,
+		);
+		await edit(
+			household.rewardClaimLimits.map((rule) => ({ ...rule, maxClaims: 3 })),
+			jan,
+		);
+		expect(await balance(jan)).toMatchObject({ remaining: 2 });
+		expect(await balance(feb)).toMatchObject({ remaining: 5, rules: [{ maxClaims: 3, carried: 2 }] });
+		expect(await mockPrisma.rewardMonthlyPolicy.count()).toBe(3);
+	});
+
+	test("month boundaries use household time including Auckland's UTC offset", async () => {
+		await edit([monthly()], jan);
+		expect(await balance(at("2027-01-31T10:59:59.999Z"))).toMatchObject({
+			remaining: 2,
+			changesAt: "2027-01-31T11:00:00.000Z",
+		});
+		expect(await balance(at("2027-01-31T11:00:00.000Z"))).toMatchObject({
+			remaining: 4,
+			rules: [{ thisMonth: 2, carried: 2 }],
+		});
+	});
+
+	test("shared, each-member and named-member balances all apply without transferring units", async () => {
+		await edit(
+			[
+				monthly({ maxClaims: 5 }),
+				monthly({ scope: "MEMBER" }),
+				monthly({ scope: "MEMBER", userId: "alice", maxClaims: 1 }),
+			],
+			jan,
+		);
+		await spend(feb);
+		await spend(feb);
+		await expect(spend(feb)).rejects.toMatchObject({ cause: { appErrorCode: "REWARD_CLAIM_LIMIT_REACHED" } });
+		expect(await balance(feb, "bob")).toMatchObject({ remaining: 4, rules: [{ remaining: 8 }, { remaining: 4 }] });
+		await spend(feb, "bob");
+		expect(await mockPrisma.rewardClaimAllocation.count()).toBe(8);
+		expect(await balance(feb)).toMatchObject({ remaining: 0 });
+	});
+
+	test("individual grants start at joining and never accrue across a membership gap", async () => {
+		await edit([monthly({ scope: "MEMBER" })], jan);
+		await mockPrisma.householdMember.delete({ where: { householdId_userId: { householdId: "home", userId: "bob" } } });
+		await mockPrisma.householdMember.create({ data: { householdId: "home", userId: "bob", joinedAt: mar } });
+		expect(await balance(mar, "bob")).toMatchObject({ remaining: 2, rules: [{ carried: 0 }] });
+		expect(await balance(at("2027-07-10T00:00:00Z"), "bob")).toMatchObject({ remaining: 4 });
+		const member = await mockPrisma.householdMember.findUniqueOrThrow({
+			where: { householdId_userId: { householdId: "home", userId: "bob" } },
+		});
+		const account = await mockPrisma.rewardAllowanceAccount.findFirstOrThrow({
+			where: { ownerKey: member.id },
+			include: { grants: true },
+		});
+		expect(account.grants.map((grant) => grant.month).sort()).toEqual([
+			"2027-03",
+			"2027-04",
+			"2027-05",
+			"2027-06",
+			"2027-07",
+		]);
+	});
+
+	test("target changes create a fresh identity and retain the old account without transferring its bank", async () => {
+		let household = await edit([monthly({ scope: "MEMBER", userId: "alice" })], jan);
+		const oldId = household.rewardClaimLimits[0].id;
+		await balance(feb);
+		household = await edit(
+			household.rewardClaimLimits.map((rule) => ({ ...rule, userId: "bob" })),
+			feb,
+		);
+		expect(household.rewardClaimLimits[0].id).not.toBe(oldId);
+		expect(await balance(feb, "bob")).toMatchObject({ remaining: 2 });
+		expect(await mockPrisma.rewardClaimLimit.findUnique({ where: { id: oldId } })).toMatchObject({ archivedAt: feb });
+		expect(await mockPrisma.rewardAllowanceAccount.count()).toBe(2);
+	});
+
+	test("concurrent monthly claims cannot overdraw shared grants or deduct extra points", async () => {
+		await edit([monthly({ maxClaims: 1 })], jan);
+		const results = await Promise.allSettled([spend(jan), spend(jan, "bob"), spend(jan)]);
+		expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+		expect(await mockPrisma.rewardClaimAllocation.count()).toBe(1);
+		expect((await mockPrisma.pointLog.aggregate({ _sum: { points: true } }))._sum.points).toBe(950);
+	});
+
+	test("timezone changes preserve the active month's boundary for existing and newly joined members", async () => {
+		const household = await edit([monthly({ scope: "MEMBER" })], jan);
+		await mockPrisma.$transaction(async (tx) => {
+			await saveRewardClaimSettings(tx, "home", undefined, household.rewardClaimRevision, "UTC", jan);
+			await tx.household.update({ where: { id: "home" }, data: { timeZone: "UTC" } });
+		});
+		expect(await balance(jan)).toMatchObject({ changesAt: "2027-01-31T11:00:00.000Z" });
+		const joinedAt = at("2027-01-31T12:00:00Z");
+		await mockPrisma.householdMember.delete({ where: { householdId_userId: { householdId: "home", userId: "bob" } } });
+		await mockPrisma.householdMember.create({ data: { householdId: "home", userId: "bob", joinedAt } });
+		expect(await balance(joinedAt)).toMatchObject({ remaining: 4, changesAt: "2027-03-01T00:00:00.000Z" });
+		expect(await balance(joinedAt, "bob")).toMatchObject({ remaining: 2, changesAt: "2027-03-01T00:00:00.000Z" });
+		const newest = await mockPrisma.rewardMonthlyGrant.findFirstOrThrow({ orderBy: { id: "desc" } });
+		expect(newest).toMatchObject({ month: "2027-02", startsAt: at("2027-01-31T11:00:00Z") });
+	});
+
+	test("former members' claims can be reversed without creating or crediting a replacement membership", async () => {
+		await edit([monthly({ scope: "MEMBER" })], jan);
+		const log = (await spend(jan, "bob")).entry;
+		await mockPrisma.householdMember.delete({ where: { householdId_userId: { householdId: "home", userId: "bob" } } });
+		await undo(log, feb);
+		await mockPrisma.householdMember.create({ data: { householdId: "home", userId: "bob", joinedAt: feb } });
+		expect(await balance(feb, "bob")).toMatchObject({ remaining: 2, rules: [{ carried: 0 }] });
+		expect(await mockPrisma.rewardClaimAllocation.count({ where: { logId: log.id } })).toBe(1);
+	});
+
+	test("separate database connections cannot duplicate initialization or spend a shared grant twice", async () => {
+		await limits([{ period: "MONTH", maxClaims: 1, rolloverEnabled: true }]);
+		const second = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: databaseUrl }) });
+		try {
+			await Promise.allSettled([spend(jan), second.$transaction((tx) => claimReward(tx, "bob", "home", jan))]);
+			// SQLite may reject a competing writer; an ordinary retry must be safe.
+			if (!(await mockPrisma.pointLog.count({ where: { kind: "REWARD" } }))) await spend(jan);
+			expect(await mockPrisma.rewardMonthlyGrant.count()).toBe(1);
+			expect(await mockPrisma.rewardMonthlyPolicy.count()).toBe(1);
+			expect(await mockPrisma.rewardClaimAllocation.count()).toBe(1);
+			expect(await mockPrisma.pointLog.count({ where: { kind: "REWARD" } })).toBe(1);
+			expect(await balance(jan)).toMatchObject({ remaining: 0 });
+		} finally {
+			await second.$disconnect();
+		}
+	});
+
+	test("failed points checks roll back lazy grants and allocations", async () => {
+		await limits([{ period: "MONTH", rolloverEnabled: true }]);
+		await settings({ rewardThreshold: 1000 });
+		await expect(spend(jan)).rejects.toMatchObject({ message: "Not enough points to claim" });
+		expect(await mockPrisma.rewardMonthlyGrant.count()).toBe(0);
+		expect(await mockPrisma.rewardMonthlyPolicy.count()).toBe(0);
+	});
+});
+
+test("legacy echoes preserve IDs and omitted rollover values; stale replacements and removals conflict", async () => {
+	const caller = householdCoreRouter.createCaller(callerContext("alice"));
+	await caller.updateCurrent({
+		householdId: "home",
+		rewardClaimRevision: 0,
+		rewardClaimLimits: [
+			{ maxClaims: 2, period: "MONTH", windowMinutes: null, scope: "HOUSEHOLD", userId: null, rolloverEnabled: true },
+		],
+	});
+	const original = (await caller.getCurrent({ householdId: "home" })).household;
+	const id = original.rewardClaimLimits[0].id;
+	await caller.updateCurrent({
+		householdId: "home",
+		name: "Legacy name",
+		rewardClaimLimits: [{ maxClaims: 2, period: "MONTH", windowMinutes: null, scope: "HOUSEHOLD", userId: null }],
+	});
+	expect((await settings()).rewardClaimLimits[0]).toMatchObject({ id, rolloverEnabled: true });
+	await caller.updateCurrent({
+		householdId: "home",
+		rewardClaimRevision: original.rewardClaimRevision,
+		rewardClaimLimits: [{ id, maxClaims: 3, period: "MONTH", windowMinutes: null, scope: "HOUSEHOLD", userId: null }],
+	});
+	expect((await settings()).rewardClaimLimits[0]).toMatchObject({ id, rolloverEnabled: true, maxClaims: 3 });
+	await expect(
+		caller.updateCurrent({
+			householdId: "home",
+			name: "Stale name",
+			rewardClaimRevision: original.rewardClaimRevision,
+			rewardClaimLimits: [],
+		}),
+	).rejects.toMatchObject({ code: "CONFLICT" });
+	await expect(caller.updateCurrent({ householdId: "home", rewardClaimLimits: [] })).rejects.toMatchObject({
+		code: "CONFLICT",
+	});
+	expect((await settings()).name).toBe("Legacy name");
+	expect((await settings()).rewardClaimLimits[0].id).toBe(id);
+});
+
+test("simultaneous settings saves accept one revision and claims cannot observe partially replaced rules", async () => {
+	const caller = householdCoreRouter.createCaller(callerContext("alice"));
+	const rule = {
+		maxClaims: 1,
+		period: "MONTH" as const,
+		windowMinutes: null,
+		scope: "HOUSEHOLD" as const,
+		userId: null,
+		rolloverEnabled: true,
+	};
+	const results = await Promise.allSettled([
+		caller.updateCurrent({ householdId: "home", rewardClaimRevision: 0, rewardClaimLimits: [rule] }),
+		caller.updateCurrent({
+			householdId: "home",
+			rewardClaimRevision: 0,
+			rewardClaimLimits: [{ ...rule, maxClaims: 2 }],
+		}),
+	]);
+	expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+	const household = await settings();
+	expect(household.rewardClaimRevision).toBe(1);
+	expect(household.rewardClaimLimits).toHaveLength(1);
+	const revision = household.rewardClaimRevision;
+	await Promise.allSettled([
+		claim(),
+		caller.updateCurrent({
+			householdId: "home",
+			rewardClaimRevision: revision,
+			rewardClaimLimits: household.rewardClaimLimits.map((rule) => ({ ...rule, maxClaims: 5 })),
+		}),
+	]);
+	const allowance = await getRewardClaimAllowance(mockPrisma, await settings(), "home", "alice");
+	const activeClaims = await mockPrisma.pointLog.count({ where: { kind: "REWARD" } });
+	expect(allowance?.rules[0].maxClaims).toBe(household.rewardClaimLimits[0].maxClaims);
+	expect(allowance?.remaining).toBe(household.rewardClaimLimits[0].maxClaims - activeClaims);
+});
+
+test("the actual reward reversal route releases allocations exactly once", async () => {
+	await limits([{ period: "MONTH", maxClaims: 2, rolloverEnabled: true }]);
+	const claim = await mockPrisma.$transaction((tx) => claimReward(tx, "alice", "home"));
+	const caller = logsRouter.createCaller(callerContext("alice"));
+	await caller.updateStatus({ id: claim.entry.id, action: "revert" });
+	await expect(caller.updateStatus({ id: claim.entry.id, action: "revert" })).rejects.toMatchObject({
+		message: "Already reverted",
+	});
+	const household = await settings();
+	expect(await getRewardClaimAllowance(mockPrisma, household, "home", "alice")).toMatchObject({ remaining: 2 });
+	expect((await mockPrisma.rewardClaimAllocation.findFirstOrThrow()).releasedAt).not.toBeNull();
+	expect(
+		(await mockPrisma.pointLog.aggregate({ where: { userId: "alice", revertedAt: null }, _sum: { points: true } }))._sum
+			.points,
+	).toBe(500);
 });

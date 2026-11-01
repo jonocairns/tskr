@@ -40,6 +40,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 	const [initialName, setInitialName] = useState("");
 	const [threshold, setThreshold] = useState("50");
 	const [initialThreshold, setInitialThreshold] = useState(50);
+	const [claimRevision, setClaimRevision] = useState(0);
 	const [claimRules, setClaimRules] = useState<RewardClaimRuleDraft[]>([]);
 	const [initialClaimRules, setInitialClaimRules] = useState<RewardClaimRuleDraft[]>([]);
 	const [timeZone, setTimeZone] = useState(DEFAULT_TIME_ZONE);
@@ -124,6 +125,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			const updatedProgressBarColor = result.household.progressBarColor;
 
 			const rules = rewardClaimRulesSchema.parse(result.household.rewardClaimLimits).map(toRewardClaimRuleDraft);
+			setClaimRevision(result.household.rewardClaimRevision);
 			setClaimRules(rules);
 			setInitialClaimRules(rules);
 			setName(updatedName);
@@ -175,6 +177,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 					: null;
 
 			const rules = rewardClaimRulesSchema.parse(data.household.rewardClaimLimits).map(toRewardClaimRuleDraft);
+			setClaimRevision(data.household.rewardClaimRevision);
 			setClaimRules(rules);
 			setInitialClaimRules(rules);
 			setName(fetchedName);
@@ -216,6 +219,7 @@ export const SettingsCard = ({ householdId, canManage, variant = "card" }: Props
 			householdId,
 			name: isDirty ? name.trim() : undefined,
 			rewardThreshold: isThresholdDirty ? Math.floor(parsedThreshold) : undefined,
+			rewardClaimRevision: isClaimSettingsDirty || isTimeZoneDirty ? claimRevision : undefined,
 			rewardClaimLimits: isClaimSettingsDirty ? rewardClaimRulesSchema.parse(claimRules) : undefined,
 			timeZone: isTimeZoneDirty ? timeZone.trim() : undefined,
 			dateFormat: isDateFormatDirty ? dateFormat : undefined,

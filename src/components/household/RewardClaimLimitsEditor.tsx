@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
+import { Switch } from "@/components/ui/Switch";
 import { useTranslation } from "@/lib/i18nClient";
 import {
 	MAX_REWARD_CLAIM_RULES,
@@ -94,6 +95,11 @@ export const RewardClaimLimitsEditor = ({ householdId, rules, onChange, disabled
 					{t("Combine limits for the household or its members. Every applicable limit must allow the claim.")}
 				</p>
 			</div>
+			<p className="text-xs text-muted-foreground">
+				{t(
+					"Removing a rule or changing its target or period starts a separate allowance; saved claims do not transfer.",
+				)}
+			</p>
 			{rules.length === 0 && (
 				<p className="text-sm text-muted-foreground">
 					{t("No limits are set. Members can claim whenever they have enough points.")}
@@ -201,6 +207,28 @@ export const RewardClaimLimitsEditor = ({ householdId, rules, onChange, disabled
 								</Select>
 							</div>
 						</div>
+						{rule.period === "MONTH" && (
+							<div className="space-y-2">
+								<div className="flex items-center gap-3">
+									<Switch
+										id={`${rule.key}-rollover`}
+										checked={rule.rolloverEnabled ?? false}
+										onCheckedChange={(rolloverEnabled) => update(rule.key, { rolloverEnabled })}
+									/>
+									<Label htmlFor={`${rule.key}-rollover`}>{t("Carry over unused claims")}</Label>
+								</div>
+								<p className="text-xs text-muted-foreground">
+									{t(
+										"Save unused claims up to one extra month's allowance. Saved claims do not expire. Points are still required.",
+									)}
+								</p>
+								<p className="text-xs text-muted-foreground">
+									{t(
+										"Monthly changes take effect next month. First enabling carryover starts this month and counts claims already made. Existing saved claims are preserved when lowering or disabling carryover.",
+									)}
+								</p>
+							</div>
+						)}
 						{rule.period === "ROLLING" && (
 							<div className="grid gap-3 sm:grid-cols-2">
 								<div className="space-y-2">

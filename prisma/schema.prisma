@@ -107,6 +107,7 @@ model Household {
   timeFormat        TimeFormat        @default(H24)
   rewardThreshold   Int               @default(50)
   rewardClaimLimits RewardClaimLimit[]
+  rewardClaimRevision Int @default(0)
   progressBarColor  String?
   createdById       String
   createdBy         User              @relation("HouseholdCreator", fields: [createdById], references: [id], onDelete: Cascade)
@@ -134,9 +135,70 @@ model RewardClaimLimit {
   period        RewardClaimPeriod
   windowMinutes Int?
   sortOrder     Int
+  rolloverEnabled Boolean @default(false)
+  archivedAt DateTime?
+  policies RewardMonthlyPolicy[]
+  accounts RewardAllowanceAccount[]
 
   @@index([householdId, sortOrder])
   @@index([userId])
+}
+
+// Policy versions are append-only. Rule columns hold the requested settings;
+// grants use the version effective for their month, never today's rule columns.
+model RewardMonthlyPolicy {
+  id String @id @default(cuid())
+  ruleId String
+  rule RewardClaimLimit @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  revision Int
+  effectiveMonth String
+  recordedAt DateTime @default(now())
+  maxClaims Int
+  rolloverEnabled Boolean
+  timeZone String
+
+  @@unique([ruleId, revision])
+}
+
+model RewardAllowanceAccount {
+  id String @id @default(cuid())
+  ruleId String
+  rule RewardClaimLimit @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  // Empty for shared rules; membership ID for individual rules. Rejoining starts anew.
+  ownerKey String
+  initializedAt DateTime
+  grants RewardMonthlyGrant[]
+
+  @@unique([ruleId, ownerKey])
+}
+
+model RewardMonthlyGrant {
+  id String @id @default(cuid())
+  accountId String
+  account RewardAllowanceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  month String
+  startsAt DateTime
+  endsAt DateTime
+  amount Int
+  rolloverEnabled Boolean
+  expiresAt DateTime?
+  forfeited Int @default(0)
+  allocations RewardClaimAllocation[]
+
+  @@unique([accountId, month])
+}
+
+model RewardClaimAllocation {
+  id String @id @default(cuid())
+  grantId String
+  grant RewardMonthlyGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  logId String
+  log PointLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+  // A claim consumes one unit from one grant for each applicable monthly rule.
+  releasedAt DateTime?
+
+  @@unique([grantId, logId])
+  @@index([logId])
 }
 
 model HouseholdMember {
@@ -227,6 +289,7 @@ model PasswordResetToken {
 }
 
 model PointLog {
+  rewardAllocations RewardClaimAllocation[]
   id              String          @id @default(cuid())
   householdId     String
   household       Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
