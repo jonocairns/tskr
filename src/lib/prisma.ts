@@ -68,9 +68,14 @@ const hasHouseholdDashboardFields = (client: ReturnType<typeof createPrismaClien
 	if (!Array.isArray(fields)) {
 		return false;
 	}
-	return ["rewardThreshold", "rewardClaimLimits", "progressBarColor", "dateFormat", "timeFormat"].every(
-		(requiredField) => fields.some((field) => field.name === requiredField),
-	);
+	return [
+		"rewardThreshold",
+		"rewardClaimRevision",
+		"rewardClaimLimits",
+		"progressBarColor",
+		"dateFormat",
+		"timeFormat",
+	].every((requiredField) => fields.some((field) => field.name === requiredField));
 };
 
 const hasAssignedTaskModel = (client: ReturnType<typeof createPrismaClient>) => {

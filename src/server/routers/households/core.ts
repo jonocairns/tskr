@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Prisma } from "@prisma/client";
+
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -7,6 +9,7 @@ import { publishDashboardUpdate } from "@/lib/events";
 import { DATE_FORMATS, TIME_FORMATS } from "@/lib/formatDate";
 import { prisma } from "@/lib/prisma";
 import { rewardClaimRulesSchema } from "@/lib/rewardClaimSettings";
+import { saveRewardClaimSettings } from "@/lib/saveRewardClaimSettings";
 import { getTimeZoneOptions, isValidTimeZone } from "@/lib/timeZones";
 import { dictatorProcedure, householdProcedure, router } from "@/server/trpc";
 
@@ -20,6 +23,7 @@ const updateSchema = z
 		name: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
 		rewardThreshold: z.number().int().min(1, "Threshold must be at least 1").max(10000, "Threshold is too high"),
 		rewardClaimLimits: rewardClaimRulesSchema,
+		rewardClaimRevision: z.number().int().nonnegative(),
 		timeZone: z.string().trim().min(1).refine(isValidTimeZone, "Invalid time zone"),
 		dateFormat: z.enum(DATE_FORMATS),
 		timeFormat: z.enum(TIME_FORMATS),
@@ -49,7 +53,8 @@ export const householdCoreRouter = router({
 				timeFormat: true,
 				createdById: true,
 				rewardThreshold: true,
-				rewardClaimLimits: { orderBy: { sortOrder: "asc" } },
+				rewardClaimRevision: true,
+				rewardClaimLimits: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } },
 				progressBarColor: true,
 			},
 		});
@@ -83,44 +88,40 @@ export const householdCoreRouter = router({
 			throw new TRPCError({ code: "BAD_REQUEST", message: "No updates provided" });
 		}
 
-		if (input.rewardClaimLimits) {
-			const userIds = [...new Set(input.rewardClaimLimits.flatMap((rule) => (rule.userId ? [rule.userId] : [])))];
-			const memberCount = await prisma.householdMember.count({ where: { householdId, userId: { in: userIds } } });
-			if (memberCount !== userIds.length) {
-				throw new TRPCError({ code: "BAD_REQUEST", message: "Reward limits must target current household members" });
-			}
-		}
-
-		const household = await prisma.household.update({
-			where: { id: householdId },
-			data: {
-				...(hasNameUpdate && input.name ? { name: input.name.trim() } : {}),
-				...(hasThresholdUpdate && input.rewardThreshold !== undefined
-					? { rewardThreshold: input.rewardThreshold }
-					: {}),
-				...(input.rewardClaimLimits
-					? {
-							rewardClaimLimits: {
-								deleteMany: {},
-								create: input.rewardClaimLimits.map((rule, sortOrder) => ({ ...rule, sortOrder })),
-							},
-						}
-					: {}),
-				...(hasTimeZoneUpdate && input.timeZone ? { timeZone: input.timeZone.trim() } : {}),
-				...(hasDateFormatUpdate && input.dateFormat ? { dateFormat: input.dateFormat } : {}),
-				...(hasTimeFormatUpdate && input.timeFormat ? { timeFormat: input.timeFormat } : {}),
-				...(hasColorUpdate && input.progressBarColor !== undefined ? { progressBarColor: input.progressBarColor } : {}),
-			},
-			select: {
-				id: true,
-				name: true,
-				timeZone: true,
-				dateFormat: true,
-				timeFormat: true,
-				rewardThreshold: true,
-				rewardClaimLimits: { orderBy: { sortOrder: "asc" } },
-				progressBarColor: true,
-			},
+		const household = await prisma.$transaction(async (tx) => {
+			await saveRewardClaimSettings(
+				tx as Prisma.TransactionClient,
+				householdId,
+				input.rewardClaimLimits,
+				input.rewardClaimRevision,
+				input.timeZone,
+			);
+			return tx.household.update({
+				where: { id: householdId },
+				data: {
+					...(hasNameUpdate && input.name ? { name: input.name.trim() } : {}),
+					...(hasThresholdUpdate && input.rewardThreshold !== undefined
+						? { rewardThreshold: input.rewardThreshold }
+						: {}),
+					...(hasTimeZoneUpdate && input.timeZone ? { timeZone: input.timeZone.trim() } : {}),
+					...(hasDateFormatUpdate && input.dateFormat ? { dateFormat: input.dateFormat } : {}),
+					...(hasTimeFormatUpdate && input.timeFormat ? { timeFormat: input.timeFormat } : {}),
+					...(hasColorUpdate && input.progressBarColor !== undefined
+						? { progressBarColor: input.progressBarColor }
+						: {}),
+				},
+				select: {
+					id: true,
+					name: true,
+					timeZone: true,
+					dateFormat: true,
+					timeFormat: true,
+					rewardThreshold: true,
+					rewardClaimRevision: true,
+					rewardClaimLimits: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } },
+					progressBarColor: true,
+				},
+			});
 		});
 
 		publishDashboardUpdate(householdId);

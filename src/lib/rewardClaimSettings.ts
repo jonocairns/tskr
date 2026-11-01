@@ -6,6 +6,8 @@ export const MAX_ROLLING_MINUTES = 525600;
 
 export const rewardClaimRuleSchema = z
 	.object({
+		id: z.string().min(1).optional(),
+		rolloverEnabled: z.boolean().optional(),
 		maxClaims: z.number().int().min(1).max(10000),
 		period: z.enum(REWARD_CLAIM_PERIODS),
 		windowMinutes: z.number().int().min(1).max(MAX_ROLLING_MINUTES).nullable(),

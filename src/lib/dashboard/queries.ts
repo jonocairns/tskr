@@ -70,7 +70,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 			where: { id: householdId },
 			select: {
 				rewardThreshold: true,
-				rewardClaimLimits: { orderBy: { sortOrder: "asc" } },
+				rewardClaimLimits: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } },
 				progressBarColor: true,
 				timeZone: true,
 				dateFormat: true,
@@ -209,7 +209,9 @@ export async function getDashboardData(userId: string, householdId: string) {
 		lastActivity,
 		firstActivity,
 		rewardThreshold: household?.rewardThreshold ?? 50,
-		rewardClaimAllowance: household ? await getRewardClaimAllowance(prisma, household, householdId, userId) : null,
+		rewardClaimAllowance: household
+			? await getRewardClaimAllowance(prisma as unknown as Prisma.TransactionClient, household, householdId, userId)
+			: null,
 		progressBarColor: household?.progressBarColor ?? null,
 		timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,
 		dateFormat: household?.dateFormat ?? DEFAULT_DATE_FORMAT,

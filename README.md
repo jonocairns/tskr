@@ -42,10 +42,50 @@ per calendar month across the household with 2 rewards in any 48 hours per membe
 
 Calendar days, Monday-start weeks, and months follow the household time zone. Rolling
 windows measure elapsed time, configurable in minutes, hours, days, or weeks up to
-365 days. Existing approved claims count when changing limits; reverted claims free
-up allowance. Points continue to accumulate and carry over. With no rules, claims
-remain unlimited. Up to 20 rules can be combined, and the dashboard shows the remaining
-allowance and when it next updates. Only household managers can change these rules.
+365 days. Approved, non-reverted claims consume allowance. Points continue to
+accumulate, and every claim still costs points. With no rules, claims remain unlimited.
+Up to 20 rules can be combined; the dashboard identifies blocking rules and shows the
+next allowance date.
+
+Monthly rules offer **Carry over unused claims**, off by default. When enabled, unused
+claims can accumulate up to one additional month's base allowance, on top of the new
+month's allowance. This is a quantity cap, not an age limit: saved claims do not expire.
+The dashboard separates this month's allowance from carried claims. Shared rules keep
+one shared balance; each-member and named-member rules keep individual balances. All
+other rules still apply, including day, week and rolling caps.
+
+Monthly allowance and carryover edits normally take effect next month. Initial
+carryover enablement starts in the current month, counts existing claims (including
+over-limit usage), and never credits earlier months. Lowering the monthly allowance
+also lowers the carry cap, but preserves claims already saved above that cap and stops
+further accumulation until there is room. Disabling carryover stops new saving from
+its effective month, preserving the existing bank. Reenabling applies next month.
+New rules take effect immediately and count existing current-period claims. Other
+periods keep their immediate limit-edit behavior.
+
+Saved claims are spent oldest first. Reverting a reward refunds its points and returns
+the claim to its original still-valid grant; expired or forfeited units are not revived.
+Returning a spent saved claim can take a preserved balance above the current carry cap.
+Rules retain their identities across saves. Removing a rule, or changing its target or
+period, retires that allowance; a replacement starts separately and receives no saved
+balance from it. Rejoining a household starts a new individual allowance, without
+accrual through a membership gap.
+
+The upgrade preserves existing rule IDs, settings, logs, points and current available
+claims, with carryover disabled. Monthly accounting begins at initialization; it does
+not reconstruct unknown earlier policies or grant saved claims for previous months.
+Grants and policy history are stored durably and months advance lazily, without a
+scheduled job. Timezone edits leave an existing month's boundary intact and apply the
+new timezone to following monthly grants. Settings saves include only edited fields;
+concurrent rule edits require reloading settings. Older clients can echo unchanged
+rules without IDs or carryover fields, preserving stored values, but must reload using
+a current client to replace or remove existing rules safely.
+
+Before upgrading, stop the app and back up its SQLite database. Run only the upgraded
+backend against the migrated database: an older backend's settings writer can delete
+monthly allowance history. To roll back, stop the upgraded app and restore the matching
+pre-upgrade database backup before starting the older image. Restoring that backup
+also discards changes made since the backup; changing only the image is not a safe rollback.
 
 ## Tech stack
 

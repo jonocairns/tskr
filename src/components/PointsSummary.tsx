@@ -185,25 +185,39 @@ export const PointsSummary = ({
 						{rewardClaimAllowance.rules.map((rule) => (
 							<div key={rule.id}>
 								<p>
-									{t("{{target}}: {{remaining}} of {{limit}} claims left ({{period}})", {
-										target: rule.scope === "HOUSEHOLD" ? t("Household") : t("You"),
-										remaining: rule.remaining,
-										limit: rule.maxClaims,
-										period:
-											rule.period === "DAY"
-												? t("Calendar day")
-												: rule.period === "WEEK"
-													? t("Calendar week")
-													: rule.period === "MONTH"
-														? t("Calendar month")
-														: t("Rolling {{duration}}", {
-																duration: formatRollingWindow(rule.windowMinutes ?? 0, i18n.resolvedLanguage),
-															}),
-									})}
+									{rule.period === "MONTH"
+										? t("{{target}}: {{remaining}} claims available (calendar month)", {
+												target: rule.scope === "HOUSEHOLD" ? t("Household") : t("You"),
+												remaining: rule.remaining,
+											})
+										: t("{{target}}: {{remaining}} of {{limit}} claims left ({{period}})", {
+												target: rule.scope === "HOUSEHOLD" ? t("Household") : t("You"),
+												remaining: rule.remaining,
+												limit: rule.maxClaims,
+												period:
+													rule.period === "DAY"
+														? t("Calendar day")
+														: rule.period === "WEEK"
+															? t("Calendar week")
+															: t("Rolling {{duration}}", {
+																	duration: formatRollingWindow(rule.windowMinutes ?? 0, i18n.resolvedLanguage),
+																}),
+											})}
 								</p>
+								{rule.period === "MONTH" && (
+									<p className="text-xs">
+										{t("{{current}} this month + {{carried}} carried claims available", {
+											current: rule.thisMonth,
+											carried: rule.carried,
+										})}
+									</p>
+								)}
+								{rule.remaining === 0 && (
+									<p className="text-xs text-destructive">{t("This rule blocks your claim.")}</p>
+								)}
 								{rule.changesAt && (
 									<p className="text-xs">
-										{t("Allowance updates {{date}} ({{timeZone}})", {
+										{t("Next allowance {{date}} ({{timeZone}})", {
 											date: formatDateTime(rule.changesAt, { timeZone: resolvedTimeZone, dateFormat, timeFormat }),
 											timeZone: resolvedTimeZone,
 										})}

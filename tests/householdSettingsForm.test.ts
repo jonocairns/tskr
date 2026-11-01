@@ -34,6 +34,7 @@ const response = (overrides: Partial<SettingsResponse["household"]> = {}) =>
 			createdById: "alice",
 			name: "Our home",
 			rewardThreshold: 50,
+			rewardClaimRevision: 0,
 			progressBarColor: null,
 			timeZone: "UTC",
 			dateFormat: "DMY",
@@ -48,6 +49,8 @@ const response = (overrides: Partial<SettingsResponse["household"]> = {}) =>
 					userId: null,
 					windowMinutes: null,
 					sortOrder: 0,
+					rolloverEnabled: false,
+					archivedAt: null,
 				},
 			],
 			...overrides,
@@ -151,11 +154,24 @@ test("a refresh preserves edited limits, then applies when those edits are rever
 
 test("saving edited limits omits unchanged fields even when a newer response is waiting", async () => {
 	await edit(countInput(), "1");
-	await refresh(response({ name: "New name", rewardThreshold: 100, progressBarColor: "#123456" }));
+	await refresh(
+		response({ name: "New name", rewardThreshold: 100, progressBarColor: "#123456", rewardClaimRevision: 9 }),
+	);
 	await save();
 	expect(submittedFields()).toEqual({
 		householdId: "home",
-		rewardClaimLimits: [{ maxClaims: 1, period: "WEEK", scope: "HOUSEHOLD", userId: null, windowMinutes: null }],
+		rewardClaimRevision: 0,
+		rewardClaimLimits: [
+			{
+				id: "rule-1",
+				rolloverEnabled: false,
+				maxClaims: 1,
+				period: "WEEK",
+				scope: "HOUSEHOLD",
+				userId: null,
+				windowMinutes: null,
+			},
+		],
 	});
 });
 
@@ -216,4 +232,29 @@ test("clearing a custom color submits null without sending unrelated settings", 
 	await act(async () => container.querySelector<HTMLButtonElement>("#household-progress-color-enabled")?.click());
 	await save();
 	expect(submittedFields()).toEqual({ householdId: "home", progressBarColor: null });
+});
+
+test("monthly carryover has one toggle and retains rule identity and revision in an edited-fields-only save", async () => {
+	await refresh(
+		response({
+			rewardClaimRevision: 3,
+			rewardClaimLimits: mockQueryData.household.rewardClaimLimits.map((rule) => ({
+				...rule,
+				period: "MONTH",
+				rolloverEnabled: false,
+			})),
+		}),
+	);
+	const toggle = container.querySelector<HTMLButtonElement>("[id$='-rollover']");
+	if (!toggle) throw new Error("Expected carryover toggle");
+	expect(toggle.getAttribute("aria-checked")).toBe("false");
+	await act(async () => toggle.click());
+	await save();
+	expect(submittedFields()).toMatchObject({
+		householdId: "home",
+		rewardClaimRevision: 3,
+		rewardClaimLimits: [{ id: "rule-1", rolloverEnabled: true, period: "MONTH" }],
+	});
+	expect(Object.keys(submittedFields()).sort()).toEqual(["householdId", "rewardClaimLimits", "rewardClaimRevision"]);
+	expect(container.textContent).toContain("Monthly changes take effect next month.");
 });

@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Prisma } from "@prisma/client";
+
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -17,7 +19,7 @@ export const claimRouter = router({
 		const householdId = ctx.household.id;
 
 		try {
-			return await prisma.$transaction((tx) => claimReward(tx, userId, householdId));
+			return await prisma.$transaction((tx) => claimReward(tx as Prisma.TransactionClient, userId, householdId));
 		} catch (error) {
 			if (error instanceof TRPCError) {
 				throw error;
