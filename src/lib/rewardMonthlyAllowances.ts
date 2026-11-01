@@ -159,17 +159,20 @@ export const advanceMonthlyAccount = async (
 		grants.push(grant);
 		last = grant;
 	}
+	// A clock rewind must not expose persisted future grants or select them as current.
+	const startedGrants = grants.filter((grant) => grant.startsAt <= now);
+	const current = startedGrants.at(-1);
 	const available = [];
-	for (const grant of grants) {
+	for (const grant of startedGrants) {
 		// Current availability follows recorded claim/reversal state, including existing
 		// future-dated calendar claims. Boundary snapshots use event timestamps instead.
 		const remaining = grantBalance(grant, now);
-		available.push({ grantId: grant.id, remaining, current: grant.id === last.id });
+		available.push({ grantId: grant.id, remaining, current: grant.id === current?.id });
 	}
 	return {
 		available,
-		maxClaims: last.amount,
-		changesAt: last.endsAt.toISOString(),
+		maxClaims: current?.amount ?? 0,
+		changesAt: (current?.endsAt ?? grants[0].startsAt).toISOString(),
 		thisMonth: available.filter((g) => g.current).reduce((sum, g) => sum + g.remaining, 0),
 		carried: available.filter((g) => !g.current).reduce((sum, g) => sum + g.remaining, 0),
 	};

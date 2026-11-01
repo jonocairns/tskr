@@ -81,6 +81,12 @@ concurrent rule edits require reloading settings. Older clients can echo unchang
 rules without IDs or carryover fields, preserving stored values, but must reload using
 a current client to replace or remove existing rules safely.
 
+Before upgrading, stop the app and back up its SQLite database. Run only the upgraded
+backend against the migrated database: an older backend's settings writer can delete
+monthly allowance history. To roll back, stop the upgraded app and restore the matching
+pre-upgrade database backup before starting the older image. Restoring that backup
+also discards changes made since the backup; changing only the image is not a safe rollback.
+
 ## Tech stack
 
 - Next.js 16 + React 19

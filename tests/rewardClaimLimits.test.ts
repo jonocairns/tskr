@@ -415,6 +415,41 @@ describe("monthly allowance accounting", () => {
 		expect(await mockPrisma.rewardMonthlyGrant.count()).toBe(8);
 	});
 
+	test.each([false, true])(
+		"future grants stay unavailable after a clock rewind (carryover: %s)",
+		async (rolloverEnabled) => {
+			await edit([monthly({ rolloverEnabled })], jan);
+			await edit(
+				(await settings()).rewardClaimLimits.map((rule) => ({ ...rule, maxClaims: 5 })),
+				jan,
+			);
+			expect(await balance(feb)).toMatchObject({ remaining: rolloverEnabled ? 7 : 5 });
+
+			expect(await balance(jan)).toMatchObject({
+				remaining: 2,
+				changesAt: "2027-01-31T11:00:00.000Z",
+				rules: [{ maxClaims: 2, thisMonth: 2, carried: 0 }],
+			});
+			await spend(jan);
+			await spend(jan);
+			await expect(spend(jan)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+			expect(await mockPrisma.rewardClaimAllocation.count({ where: { grant: { month: "2027-02" } } })).toBe(0);
+			expect(await balance(feb)).toMatchObject({ remaining: 5, rules: [{ thisMonth: 5, carried: 0 }] });
+		},
+	);
+
+	test("rewinding before the first grant exposes no allowance", async () => {
+		await edit([monthly()], feb);
+		expect(await balance(jan)).toMatchObject({
+			remaining: 0,
+			changesAt: "2027-01-31T11:00:00.000Z",
+			rules: [{ maxClaims: 0, thisMonth: 0, carried: 0 }],
+		});
+		await expect(spend(jan)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(await mockPrisma.rewardClaimAllocation.count()).toBe(0);
+		expect(await balance(feb)).toMatchObject({ remaining: 2 });
+	});
+
 	test("spends oldest valid grants first and restores the original grant on a later reversal", async () => {
 		await edit([monthly()], jan);
 		const first = await spend(feb);
