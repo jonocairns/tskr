@@ -192,6 +192,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 			cadenceTarget,
 			cadenceIntervalMinutes,
 			isRecurring: task.isRecurring,
+			assigneeId: task.assigneeId,
 		});
 	};
 
@@ -251,13 +252,15 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 									<TableCell>
 										<Select
 											value={task.assigneeId ?? UNASSIGNED_VALUE}
-											onValueChange={(value) =>
-												updateMutation.mutate({
-													householdId,
-													id: task.id,
-													assigneeId: value === UNASSIGNED_VALUE ? null : value,
-												})
-											}
+											onValueChange={(value) => {
+												// A draft like the cadence fields, saved with the row so neither edit discards the other.
+												const member = members.find((item) => item.id === value);
+												updateTask(task.id, {
+													assigneeId: member?.id ?? null,
+													assigneeName: member?.name ?? null,
+													assigneeEmail: member?.email ?? null,
+												});
+											}}
 											disabled={isPending}
 										>
 											<SelectTrigger aria-label={t("Assignee for {{task}}", { task: task.presetLabel })}>

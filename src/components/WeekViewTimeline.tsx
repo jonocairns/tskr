@@ -18,9 +18,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { useToast } from "@/hooks/useToast";
+import { formatCadenceInterval, getBucketLabels } from "@/lib/assignedTasksCadence";
 import { formatDate, formatReadableDate, formatTime, type TimeFormat } from "@/lib/formatDate";
 import { useTranslation } from "@/lib/i18nClient";
-import { DURATION_BUCKETS } from "@/lib/points";
 import { getTimeZoneDayNumber } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
 import { cn } from "@/lib/utils";
@@ -44,8 +44,6 @@ type Props = {
 	timeZone: string;
 	actingUserId: string;
 };
-
-const bucketLabelMap = Object.fromEntries(DURATION_BUCKETS.map((bucket) => [bucket.key, bucket.label]));
 
 type EntryAppearance = {
 	iconClass: string;
@@ -136,26 +134,7 @@ const formatCadenceLabel = (
 		return labels.oneOff;
 	}
 
-	switch (entry.cadenceIntervalMinutes) {
-		case 1440:
-			return t("Daily");
-		case 10080:
-			return t("Weekly");
-		case 20160:
-			return t("Fortnightly");
-		case 43200:
-			return t("Monthly");
-		case 129600:
-			return t("Quarterly");
-		case 525600:
-			return t("Yearly");
-		default:
-			if (entry.cadenceIntervalMinutes % 60 === 0) {
-				return t("Every {{count}}h", { count: Math.round(entry.cadenceIntervalMinutes / 60) });
-			}
-
-			return t("Every {{count}}m", { count: entry.cadenceIntervalMinutes });
-	}
+	return formatCadenceInterval(entry.cadenceIntervalMinutes, t);
 };
 
 export const WeekViewTimeline = ({
@@ -344,7 +323,7 @@ const TimelineEntry = ({
 	const Icon = appearance.icon;
 	const showTime = !(entry.type === "planned" && (entry.isRecurring || entry.carriedForward));
 	const timeLabel = showTime ? formatTime(entry.occurredAt, timeFormat, timeZone) : null;
-	const bucketLabel = entry.bucket ? (bucketLabelMap[entry.bucket] ?? entry.bucket) : null;
+	const bucketLabel = entry.bucket ? getBucketLabels(t)[entry.bucket] : null;
 	const cadenceLabel = entry.type === "planned" ? formatCadenceLabel(entry, t, labels) : null;
 	const assignedTaskId = entry.type === "planned" ? entry.assignedTaskId : null;
 	const pointsLabel = t("{{count}} pts", { count: entry.points });

@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/Progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
+import { formatCadenceInterval, getBucketLabels } from "@/lib/assignedTasksCadence";
 import { type DateFormat, formatDateTime, type TimeFormat } from "@/lib/formatDate";
 import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
@@ -46,27 +47,6 @@ export type AssignedTaskEntry = {
 	nextResetAt: string | null;
 };
 
-const formatCadenceLabel = (minutes: number, t: ReturnType<typeof useTranslation>["t"]) => {
-	switch (minutes) {
-		case 1440:
-			return t("Daily");
-		case 10080:
-			return t("Weekly");
-		case 20160:
-			return t("Fortnightly");
-		case 43200:
-			return t("Monthly");
-		case 129600:
-			return t("Quarterly");
-		case 525600:
-			return t("Yearly");
-		default:
-			return minutes % 60 === 0
-				? t("Every {{count}}h", { count: minutes / 60 })
-				: t("Every {{count}}m", { count: minutes });
-	}
-};
-
 type Props = {
 	householdId: string;
 	entries: AssignedTaskEntry[];
@@ -83,14 +63,7 @@ export const AssignedTaskQueue = ({ householdId, entries, doneThisWeek, timeZone
 	// Keep the last entry rendered while the dialog animates closed.
 	const [confirmEntry, setConfirmEntry] = useState<AssignedTaskEntry | null>(null);
 	const [confirmOpen, setConfirmOpen] = useState(false);
-	const bucketLabels = {
-		TINY: t("Tiny"),
-		QUICK: t("Quick"),
-		ROUTINE: t("Routine"),
-		CHALLENGING: t("Challenging"),
-		HEAVY: t("Heavy"),
-		MAJOR: t("Major"),
-	};
+	const bucketLabels = getBucketLabels(t);
 	const [isMobile, setIsMobile] = useState(false);
 
 	useEffect(() => {
@@ -204,7 +177,7 @@ export const AssignedTaskQueue = ({ householdId, entries, doneThisWeek, timeZone
 								<div className="flex items-center gap-2 text-sm">
 									<Badge variant="secondary">{entry.isRecurring ? t("Recurring") : t("One-off")}</Badge>
 									<span className="text-muted-foreground">
-										{entry.isRecurring ? formatCadenceLabel(entry.cadenceIntervalMinutes, t) : t("None")}
+										{entry.isRecurring ? formatCadenceInterval(entry.cadenceIntervalMinutes, t) : t("None")}
 									</span>
 								</div>
 							</TableCell>
