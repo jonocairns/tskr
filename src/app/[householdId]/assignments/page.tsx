@@ -8,7 +8,6 @@ import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
 import { getServerT } from "@/lib/i18nServer";
 import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
-import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
 
@@ -34,7 +33,7 @@ export default async function AssignmentsPage({ params }: Props) {
 			orderBy: { createdAt: "asc" },
 		}),
 		prisma.presetTask.findMany({
-			where: getVisiblePresetWhere(householdId, userId),
+			where: { householdId, isShared: true },
 			orderBy: { createdAt: "asc" },
 			select: {
 				id: true,
@@ -73,7 +72,7 @@ export default async function AssignmentsPage({ params }: Props) {
 		.filter((task) => Boolean(task.preset))
 		.map((task) => ({
 			id: task.id,
-			presetLabel: task.preset?.label ?? "Task",
+			presetLabel: task.preset?.label ?? t("Task"),
 			assigneeId: task.assignedTo?.id ?? null,
 			assigneeName: task.assignedTo?.name ?? null,
 			assigneeEmail: task.assignedTo?.email ?? null,
@@ -97,7 +96,7 @@ export default async function AssignmentsPage({ params }: Props) {
 
 			<AssignTaskCard householdId={householdId} members={members} presets={presetSummaries} currentUserId={userId} />
 
-			<AssignedTasksManager householdId={householdId} initialTasks={assignedTaskEntries} />
+			<AssignedTasksManager householdId={householdId} initialTasks={assignedTaskEntries} members={members} />
 		</PageShell>
 	);
 }

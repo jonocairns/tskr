@@ -119,7 +119,7 @@ export const presetsRouter = router({
 			select: {
 				id: true,
 				preset: { select: { label: true } },
-				assignedTo: { select: { name: true } },
+				assignedTo: { select: { name: true, email: true } },
 			},
 			orderBy: [{ assignedAt: "asc" }, { id: "asc" }],
 		});

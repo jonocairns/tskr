@@ -2,8 +2,10 @@ import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import path from "node:path";
 import type { AssignedTask, Prisma } from "@prisma/client";
+import { getDashboardData } from "@/lib/dashboard/queries";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
+import { getStartOfWeekInTimeZone } from "@/lib/timeZones";
 import { getWeekViewData } from "@/lib/week-view/queries";
 import { assignedTasksRouter } from "@/server/routers/assignedTasks";
 import { logsRouter } from "@/server/routers/logs";
@@ -415,7 +417,7 @@ test("blocks un-sharing while active tasks use a preset and returns only househo
 	expect(tasks).toHaveLength(2);
 	expect(tasks).toEqual(
 		expect.arrayContaining([
-			{ id: assigned.id, preset: { label: "Vacuum" }, assignedTo: { name: "Sam" } },
+			{ id: assigned.id, preset: { label: "Vacuum" }, assignedTo: { name: "Sam", email: null } },
 			{ id: open.id, preset: { label: "Vacuum" }, assignedTo: null },
 		]),
 	);
@@ -501,4 +503,33 @@ test("push errors do not undo or fail a committed completion", async () => {
 	} finally {
 		logged.mockRestore();
 	}
+});
+
+test("dashboard loads every active household task and counts only household task logs since the local Monday", async () => {
+	const mine = await makeTask();
+	const other = await makeTask({ assignedToId: "approver" });
+	const open = await makeTask({ assignedToId: null });
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { isShared: false } });
+	const weekStart = getStartOfWeekInTimeZone(new Date(), "Pacific/Auckland");
+	const unlinked = { assignedTaskId: null, createdAt: weekStart };
+	await makeLog(mine, { ...unlinked, status: "PENDING", userId: "approver" });
+	await makeLog(mine, { ...unlinked, status: "APPROVED", kind: "TIMED" });
+	await makeLog(mine, { ...unlinked, createdAt: new Date(weekStart.getTime() - 1) });
+	await makeLog(mine, { ...unlinked, revertedAt: new Date() });
+	await makeLog(mine, { ...unlinked, status: "REJECTED" });
+	await makeLog(mine, { ...unlinked, kind: "REWARD" });
+	await prisma.household.create({ data: { id: "other-house", name: "Other", createdById: "outsider" } });
+	await makeLog(mine, { ...unlinked, householdId: "other-house", presetId: null, userId: "outsider" });
+
+	const dashboard = await getDashboardData("doer", householdId);
+	expect(dashboard.householdDoneThisWeek).toBe(2);
+	expect(dashboard.hasActiveAssignedTasks).toBe(true);
+	expect(dashboard.assignedTasks).toHaveLength(3);
+	expect(dashboard.assignedTasks).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ id: mine.id, group: "mine", assigneeLabel: "Sam" }),
+			expect.objectContaining({ id: other.id, group: "others", assigneeLabel: "Alex" }),
+			expect.objectContaining({ id: open.id, group: "open", assigneeLabel: null }),
+		]),
+	);
 });

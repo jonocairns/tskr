@@ -1,24 +1,14 @@
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import type { SyntheticEvent } from "react";
-
+import { PresetDeleteDialog } from "@/components/task-actions/PresetDeleteDialog";
 import { PresetIconPicker } from "@/components/task-actions/PresetIconPicker";
 import { PresetIconGlyph } from "@/components/task-actions/presetIcons";
 import type { PresetSummary } from "@/components/task-actions/types";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-} from "@/components/ui/AlertDialog";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
+import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { DURATION_BUCKETS } from "@/lib/points";
 import type { PresetIconKey } from "@/lib/presetIcons";
@@ -74,6 +64,7 @@ export function PresetListItem({
 	canManagePresets,
 	disabled,
 }: Props) {
+	const { t } = useTranslation();
 	if (isEditing) {
 		return (
 			<form className="space-y-3 rounded-lg border p-3" onSubmit={(event) => onUpdatePreset(event, preset.id)}>
@@ -197,36 +188,22 @@ export function PresetListItem({
 					<PencilIcon className="h-5 w-5" />
 				</Button>
 				{canDelete ? (
-					<AlertDialog>
-						<AlertDialogTrigger asChild>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								disabled={disabled}
-								aria-label="Delete task"
-								className="h-9 w-9"
-							>
-								<Trash2Icon className="h-5 w-5 text-destructive" />
-							</Button>
-						</AlertDialogTrigger>
-						<AlertDialogContent>
-							<AlertDialogHeader>
-								<AlertDialogTitle>Delete task preset?</AlertDialogTitle>
-								<AlertDialogDescription>This will delete "{displayLabel}" and cannot be undone.</AlertDialogDescription>
-							</AlertDialogHeader>
-							<AlertDialogFooter>
-								<AlertDialogCancel>Cancel</AlertDialogCancel>
-								<AlertDialogAction
-									type="button"
-									onClick={() => onDeletePreset(preset.id, preset.label)}
-									className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-								>
-									Delete
-								</AlertDialogAction>
-							</AlertDialogFooter>
-						</AlertDialogContent>
-					</AlertDialog>
+					<PresetDeleteDialog
+						presetId={preset.id}
+						label={displayLabel}
+						onDelete={() => onDeletePreset(preset.id, preset.label)}
+					>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							disabled={disabled}
+							aria-label={t("Delete task")}
+							className="h-9 w-9"
+						>
+							<Trash2Icon className="h-5 w-5 text-destructive" />
+						</Button>
+					</PresetDeleteDialog>
 				) : null}
 			</div>
 		</div>

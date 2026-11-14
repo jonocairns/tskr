@@ -7,16 +7,17 @@ import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
 import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
 import { getRewardClaimAllowance } from "@/lib/rewardClaimLimits";
-import { DEFAULT_TIME_ZONE, getTimeZoneDayNumber } from "@/lib/timeZones";
+import { DEFAULT_TIME_ZONE, getStartOfWeekInTimeZone, getTimeZoneDayNumber } from "@/lib/timeZones";
 
 const HISTORY_LIMIT = 10;
 const APPROVALS_LIMIT = 10;
 const STREAK_LIMIT_DAYS = 365;
 
 export async function getDashboardData(userId: string, householdId: string) {
-	const weekStart = new Date();
+	const now = new Date();
+	const weekStart = new Date(now);
 	weekStart.setDate(weekStart.getDate() - 7);
-	const streakStart = new Date();
+	const streakStart = new Date(now);
 	streakStart.setDate(streakStart.getDate() - STREAK_LIMIT_DAYS);
 	const approvedWhere: Prisma.PointLogWhereInput = {
 		householdId,
@@ -128,17 +129,17 @@ export async function getDashboardData(userId: string, householdId: string) {
 		prisma.assignedTask.findMany({
 			where: {
 				householdId,
-				assignedToId: userId,
 				status: "ACTIVE",
 			},
 			include: {
+				assignedTo: { select: { id: true, name: true, email: true } },
 				preset: { select: { id: true, label: true, bucket: true } },
 				logs: {
 					where: {
 						revertedAt: null,
 						status: { in: [LogStatus.PENDING, LogStatus.APPROVED] },
 					},
-					select: { createdAt: true },
+					select: { createdAt: true, status: true, user: { select: { id: true, name: true, email: true } } },
 					orderBy: { createdAt: "asc" },
 				},
 			},
@@ -175,6 +176,17 @@ export async function getDashboardData(userId: string, householdId: string) {
 			where: { householdId, requiresApprovalDefault: true },
 		}),
 	]);
+
+	const timeZone = household?.timeZone ?? DEFAULT_TIME_ZONE;
+	const householdDoneThisWeek = await prisma.pointLog.count({
+		where: {
+			householdId,
+			kind: { in: ["PRESET", "TIMED"] },
+			revertedAt: null,
+			status: { in: [LogStatus.PENDING, LogStatus.APPROVED] },
+			createdAt: { gte: getStartOfWeekInTimeZone(now, timeZone) },
+		},
+	});
 
 	const hasMoreHistory = recentLogs.length > HISTORY_LIMIT;
 	const trimmedLogs = hasMoreHistory ? recentLogs.slice(0, HISTORY_LIMIT) : recentLogs;
@@ -213,7 +225,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 			? await getRewardClaimAllowance(prisma as unknown as Prisma.TransactionClient, household, householdId, userId)
 			: null,
 		progressBarColor: household?.progressBarColor ?? null,
-		timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,
+		timeZone,
 		dateFormat: household?.dateFormat ?? DEFAULT_DATE_FORMAT,
 		timeFormat: household?.timeFormat ?? DEFAULT_TIME_FORMAT,
 		users,
@@ -222,9 +234,13 @@ export async function getDashboardData(userId: string, householdId: string) {
 		pendingLogs: trimmedApprovals,
 		hasMoreApprovals,
 		presets: orderedPresets,
+		hasActiveAssignedTasks: assignedTasks.length > 0,
+		householdDoneThisWeek,
 		assignedTasks: buildAssignedTaskEntries({
+			userId,
 			tasks: assignedTasks,
-			timeZone: household?.timeZone ?? DEFAULT_TIME_ZONE,
+			now,
+			timeZone,
 		}),
 		weeklyTaskCount,
 		weeklyPoints: weeklyPointSum._sum?.points ?? 0,
