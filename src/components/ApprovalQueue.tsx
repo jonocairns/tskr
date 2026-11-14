@@ -59,7 +59,7 @@ export const ApprovalQueue = ({ entries, currentUserId, initialHasMore, timeZone
 	};
 
 	return (
-		<Card>
+		<Card role="region" aria-label="Approvals">
 			<CardHeader>
 				<CardTitle className="text-xl">Approvals</CardTitle>
 				<CardDescription>Review pending tasks.</CardDescription>

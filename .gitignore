@@ -146,3 +146,8 @@ vite.config.ts.timestamp-*
 /src/generated/prisma
 
 .direnv/
+# Playwright e2e output
+/test-results
+/playwright-report
+/blob-report
+/e2e/.auth

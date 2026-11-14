@@ -132,10 +132,10 @@ export const PointsSummary = ({
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-					<div>
+					<section aria-label={t("Current balance")}>
 						<p className="text-sm text-muted-foreground">{t("Current balance")}</p>
 						<p className="text-3xl font-bold">{t("{{points}} pts", { points: points.toLocaleString() })}</p>
-					</div>
+					</section>
 					<div className="text-sm text-muted-foreground">
 						{t("Threshold: {{points}} pts", { points: threshold.toLocaleString() })}
 					</div>
