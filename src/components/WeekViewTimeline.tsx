@@ -342,7 +342,7 @@ const TimelineEntry = ({
 	const { t } = useTranslation();
 	const appearance = getEntryAppearance(entry, labels);
 	const Icon = appearance.icon;
-	const showTime = !(entry.type === "planned" && entry.isRecurring);
+	const showTime = !(entry.type === "planned" && (entry.isRecurring || entry.carriedForward));
 	const timeLabel = showTime ? formatTime(entry.occurredAt, timeFormat, timeZone) : null;
 	const bucketLabel = entry.bucket ? (bucketLabelMap[entry.bucket] ?? entry.bucket) : null;
 	const cadenceLabel = entry.type === "planned" ? formatCadenceLabel(entry, t, labels) : null;
@@ -419,6 +419,7 @@ const TimelineEntry = ({
 					size="sm"
 					className="ml-[2.75rem] h-7 self-start px-2.5 text-xs lg:ml-auto"
 					disabled={isAnyCompletionPending}
+					aria-label={t("Complete {{task}}", { task: entry.description })}
 					onClick={() => {
 						if (entry.type === "planned") onComplete(entry);
 					}}

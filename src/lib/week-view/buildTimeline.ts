@@ -72,6 +72,8 @@ export type WeekViewPlannedEntry = {
 	cadenceTarget: number;
 	remainingCount: number;
 	canComplete: boolean;
+	// A one-off assigned before the range, shown at the range start rather than at a real time.
+	carriedForward?: boolean;
 };
 
 export type WeekViewTimelineEntry = WeekViewCompletedEntry | WeekViewPlannedEntry;
@@ -223,13 +225,19 @@ const buildOneOffPlannedEntry = ({
 		return [];
 	}
 
+	// Only the range containing now carries unfinished one-offs forward; completing one logs today.
+	const carriedForward = task.assignedAt < range.start;
+	if (carriedForward && (now < range.start || now >= range.end)) {
+		return [];
+	}
+
 	const bucket = resolveBucket(task.preset.bucket) ?? "QUICK";
 
 	return [
 		{
 			id: `${task.id}:${task.assignedAt.toISOString()}`,
 			type: "planned" as const,
-			occurredAt: (task.assignedAt < range.start ? range.start : task.assignedAt).toISOString(),
+			occurredAt: (carriedForward ? range.start : task.assignedAt).toISOString(),
 			description: task.preset.label,
 			points: getBucketPoints(bucket),
 			bucket,
@@ -240,6 +248,7 @@ const buildOneOffPlannedEntry = ({
 			cadenceTarget: 1,
 			remainingCount: 1,
 			canComplete: task.assignedAt <= now,
+			carriedForward,
 		},
 	];
 };

@@ -433,6 +433,7 @@ test("carries an unfinished one-off forward to the range start", () => {
 	const task = makeTask({ assignedAt: atZoned(TIME_ZONE, 2023, 12, 30, 9, 0) });
 
 	const result = buildWeekViewTimeline({
+		now: atZoned(TIME_ZONE, 2024, 1, 3, 12, 0),
 		range,
 		timeZone: TIME_ZONE,
 		completedLogs: [],
@@ -444,7 +445,23 @@ test("carries an unfinished one-off forward to the range start", () => {
 		type: "planned",
 		occurredAt: range.start.toISOString(),
 		assignedTo: null,
+		carriedForward: true,
 	});
+});
+
+test("does not carry an unfinished one-off into a range that excludes now", () => {
+	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
+	const task = makeTask({ assignedAt: atZoned(TIME_ZONE, 2023, 12, 30, 9, 0) });
+
+	const result = buildWeekViewTimeline({
+		now: atZoned(TIME_ZONE, 2024, 2, 3, 12, 0),
+		range,
+		timeZone: TIME_ZONE,
+		completedLogs: [],
+		tasks: [task],
+	});
+
+	expect(result.plannedCount).toBe(0);
 });
 
 test("skips tasks without a preset", () => {
