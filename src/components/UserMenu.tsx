@@ -60,7 +60,7 @@ export const UserMenu = ({ user, household }: Props) => {
 						<DropdownMenuItem asChild>
 							<Link href={`/${householdId}/week`}>
 								<CalendarDaysIcon className="mr-2 h-4 w-4" />
-								{t("Week view")}
+								{t("Household tasks")}
 							</Link>
 						</DropdownMenuItem>
 						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (

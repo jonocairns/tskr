@@ -1,19 +1,8 @@
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useMemo } from "react";
-
+import { PresetDeleteDialog } from "@/components/task-actions/PresetDeleteDialog";
 import { PresetIconGlyph } from "@/components/task-actions/presetIcons";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-} from "@/components/ui/AlertDialog";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useTranslation } from "@/lib/i18nClient";
@@ -107,38 +96,18 @@ export const TaskButton = ({
 							<PencilIcon className="h-7 w-7" />
 						</Button>
 						{canDelete ? (
-							<AlertDialog>
-								<AlertDialogTrigger asChild>
-									<Button
-										type="button"
-										variant="ghost"
-										size="icon"
-										disabled={disabled}
-										aria-label={t("Delete task")}
-										className="h-12 w-12 rounded-none border-0 border-l border-border/70 bg-destructive/5"
-									>
-										<Trash2Icon className="h-7 w-7 text-destructive" />
-									</Button>
-								</AlertDialogTrigger>
-								<AlertDialogContent>
-									<AlertDialogHeader>
-										<AlertDialogTitle>{t("Delete task preset?")}</AlertDialogTitle>
-										<AlertDialogDescription>
-											{t('This will delete "{{label}}" and cannot be undone.', { label })}
-										</AlertDialogDescription>
-									</AlertDialogHeader>
-									<AlertDialogFooter>
-										<AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
-										<AlertDialogAction
-											type="button"
-											onClick={() => onDelete?.(id)}
-											className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-										>
-											{t("Delete")}
-										</AlertDialogAction>
-									</AlertDialogFooter>
-								</AlertDialogContent>
-							</AlertDialog>
+							<PresetDeleteDialog presetId={id} label={label} onDelete={() => onDelete?.(id)}>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									disabled={disabled}
+									aria-label={t("Delete task")}
+									className="h-12 w-12 rounded-none border-0 border-l border-border/70 bg-destructive/5"
+								>
+									<Trash2Icon className="h-7 w-7 text-destructive" />
+								</Button>
+							</PresetDeleteDialog>
 						) : null}
 					</div>
 				) : (

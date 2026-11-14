@@ -45,11 +45,14 @@ const makeLog = (overrides: Partial<CompletedLogRecord> = {}): CompletedLogRecor
 	duration: "QUICK",
 	createdAt: atZoned(TIME_ZONE, 2024, 1, 2, 9, 0),
 	assignedTaskId: null,
+	assignedTask: null,
+	user: { id: "sam", name: "Sam", email: null },
 	...overrides,
 });
 
 const makeTask = (overrides: Partial<AssignedTaskRecord> = {}): AssignedTaskRecord => ({
 	id: "task-1",
+	assignedTo: null,
 	assignedAt: atZoned(TIME_ZONE, 2024, 1, 2, 8, 0),
 	cadenceTarget: 1,
 	cadenceIntervalMinutes: 1440,
@@ -214,12 +217,12 @@ test("suppresses a future one-off planned entry before its assigned time", () =>
 	expect(result.timeline).toHaveLength(0);
 });
 
-test("builds the default range from household-local day boundaries", () => {
+test("defaults to the household calendar week, including the full Sunday", () => {
 	const now = atZoned(TIME_ZONE, 2024, 1, 7, 15, 45);
 	const range = getDefaultWeekViewRange({ now, timeZone: TIME_ZONE });
 
-	expect(range.labelKey).toBe("thisFortnight");
-	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2023, 12, 25, 0, 0).toISOString());
+	expect(range.labelKey).toBe("calendarWeek");
+	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0).toISOString());
 	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 8, 0, 0).toISOString());
 });
 
@@ -245,12 +248,13 @@ test("builds preset ranges as trailing windows that end at the next local midnig
 	expect(thisFortnight.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 11, 0, 0).toISOString());
 });
 
-test("builds the default range from household-local day boundaries across DST changes", () => {
+test("uses calendar boundaries across a DST week", () => {
 	const now = atZoned(TIME_ZONE, 2024, 3, 10, 15, 45);
 	const range = getDefaultWeekViewRange({ now, timeZone: TIME_ZONE });
 
-	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 2, 26, 0, 0).toISOString());
+	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 3, 4, 0, 0).toISOString());
 	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 3, 11, 0, 0).toISOString());
+	expect((range.end.getTime() - range.start.getTime()) / 3_600_000).toBe(167);
 });
 
 test("builds the month preset as a trailing month instead of clipping to the current calendar month", () => {
@@ -287,8 +291,8 @@ test("falls back to the default range when custom params are invalid", () => {
 		timeZone: TIME_ZONE,
 	});
 
-	expect(range.labelKey).toBe("thisFortnight");
-	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2023, 12, 25, 0, 0).toISOString());
+	expect(range.labelKey).toBe("calendarWeek");
+	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0).toISOString());
 	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 8, 0, 0).toISOString());
 });
 
@@ -306,8 +310,8 @@ test.each([
 		timeZone: TIME_ZONE,
 	});
 
-	expect(range.labelKey).toBe("thisFortnight");
-	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2023, 12, 25, 0, 0).toISOString());
+	expect(range.labelKey).toBe("calendarWeek");
+	expect(range.start.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0).toISOString());
 	expect(range.end.toISOString()).toBe(atZoned(TIME_ZONE, 2024, 1, 8, 0, 0).toISOString());
 });
 
@@ -424,11 +428,33 @@ test("suppresses one-off planned entries after any pending or approved completio
 	});
 });
 
-test("suppresses one-off planned entries whose assignedAt sits outside the range", () => {
+test("carries an unfinished one-off forward to the range start", () => {
 	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
 	const task = makeTask({ assignedAt: atZoned(TIME_ZONE, 2023, 12, 30, 9, 0) });
 
 	const result = buildWeekViewTimeline({
+		now: atZoned(TIME_ZONE, 2024, 1, 3, 12, 0),
+		range,
+		timeZone: TIME_ZONE,
+		completedLogs: [],
+		tasks: [task],
+	});
+
+	expect(result.plannedCount).toBe(1);
+	expect(result.timeline[0]).toMatchObject({
+		type: "planned",
+		occurredAt: range.start.toISOString(),
+		assignedTo: null,
+		carriedForward: true,
+	});
+});
+
+test("does not carry an unfinished one-off into a range that excludes now", () => {
+	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
+	const task = makeTask({ assignedAt: atZoned(TIME_ZONE, 2023, 12, 30, 9, 0) });
+
+	const result = buildWeekViewTimeline({
+		now: atZoned(TIME_ZONE, 2024, 2, 3, 12, 0),
 		range,
 		timeZone: TIME_ZONE,
 		completedLogs: [],
@@ -566,4 +592,53 @@ test("orders the timeline by latest first and places completed before planned at
 	});
 
 	expect(result.timeline.map((entry) => entry.id)).toEqual(["log-late", "log-tie", expect.stringMatching(/^task-1:/)]);
+});
+
+test("starts a new calendar week at the exact household-local Monday boundary", () => {
+	const now = atZoned("Pacific/Auckland", 2024, 1, 8);
+	const range = parseWeekViewRange({ now, timeZone: "Pacific/Auckland", preset: "calendarWeek" });
+	expect(range).toEqual({
+		start: now,
+		end: atZoned("Pacific/Auckland", 2024, 1, 15),
+		labelKey: "calendarWeek",
+	});
+	const previous = getDefaultWeekViewRange({ now: new Date(now.getTime() - 1), timeZone: "Pacific/Auckland" });
+	expect(previous.start).toEqual(atZoned("Pacific/Auckland", 2024, 1, 1));
+	expect(previous.end).toEqual(now);
+});
+
+test.each([8, 9])("omits a one-off assigned at or after the range end (January %s)", (day) => {
+	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1), atZoned(TIME_ZONE, 2024, 1, 8));
+	const result = buildWeekViewTimeline({
+		range,
+		timeZone: TIME_ZONE,
+		now: atZoned(TIME_ZONE, 2024, 1, 10),
+		completedLogs: [],
+		tasks: [makeTask({ assignedAt: atZoned(TIME_ZONE, 2024, 1, day) })],
+	});
+	expect(result.timeline).toEqual([]);
+});
+
+test("preserves assignee, Open, and completer details in household timeline entries", () => {
+	const assignee = { id: "alex", name: null, email: "alex@example.com" };
+	const completer = { id: "sam", name: "Sam", email: null };
+	const result = buildWeekViewTimeline({
+		range: makeRange(atZoned(TIME_ZONE, 2024, 1, 1), atZoned(TIME_ZONE, 2024, 1, 8)),
+		timeZone: TIME_ZONE,
+		now: atZoned(TIME_ZONE, 2024, 1, 5),
+		completedLogs: [
+			makeLog({
+				assignedTaskId: "completed-task",
+				assignedTask: { assignedTo: assignee },
+				user: completer,
+			}),
+		],
+		tasks: [makeTask({ id: "assigned", assignedTo: assignee }), makeTask({ id: "open" })],
+	});
+	expect(result.timeline.find((entry) => entry.type === "completed")).toMatchObject({
+		assignedTo: assignee,
+		completedBy: completer,
+	});
+	expect(result.timeline.find((entry) => entry.assignedTaskId === "assigned")).toMatchObject({ assignedTo: assignee });
+	expect(result.timeline.find((entry) => entry.assignedTaskId === "open")).toMatchObject({ assignedTo: null });
 });

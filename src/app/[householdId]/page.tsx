@@ -41,6 +41,8 @@ export default async function DashboardPage({ params }: Props) {
 		hasMoreApprovals,
 		presets,
 		assignedTasks,
+		hasActiveAssignedTasks,
+		householdDoneThisWeek,
 		weeklyTaskCount,
 		weeklyPoints,
 		rewardThreshold,
@@ -94,9 +96,10 @@ export default async function DashboardPage({ params }: Props) {
 				householdId={householdId}
 			/>
 
-			{assignedTasks.length > 0 ? (
+			{hasActiveAssignedTasks || householdDoneThisWeek > 0 ? (
 				<AssignedTaskQueue
 					entries={assignedTasks}
+					doneThisWeek={householdDoneThisWeek}
 					householdId={householdId}
 					timeZone={timeZone}
 					dateFormat={dateFormat}

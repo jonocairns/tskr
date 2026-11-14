@@ -396,10 +396,10 @@ model AssignedTask {
   household              Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
   presetId               String
   preset                 PresetTask         @relation(fields: [presetId], references: [id], onDelete: Cascade)
-  assignedToId           String
-  assignedTo             User               @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: Cascade)
-  assignedById           String
-  assignedBy             User               @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: Cascade)
+  assignedToId           String?
+  assignedTo             User?              @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedById           String?
+  assignedBy             User?              @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
   assignedAt             DateTime           @default(now())
   status                 AssignedTaskStatus @default(ACTIVE)
   cadenceTarget          Int

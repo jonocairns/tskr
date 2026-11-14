@@ -1,8 +1,14 @@
 import { type AssignedTaskLog, getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
-import { addDaysInTimeZone, addMonthsInTimeZone, getStartOfDayInTimeZone, parseDateInTimeZone } from "@/lib/timeZones";
+import {
+	addDaysInTimeZone,
+	addMonthsInTimeZone,
+	getStartOfDayInTimeZone,
+	getStartOfWeekInTimeZone,
+	parseDateInTimeZone,
+} from "@/lib/timeZones";
 
-export const WEEK_VIEW_PRESETS = ["thisWeek", "thisFortnight", "thisMonth"] as const;
+export const WEEK_VIEW_PRESETS = ["calendarWeek", "thisWeek", "thisFortnight", "thisMonth"] as const;
 
 export type WeekViewPreset = (typeof WEEK_VIEW_PRESETS)[number];
 
@@ -16,30 +22,28 @@ const isWeekViewPreset = (value: string | null | undefined): value is WeekViewPr
 	return !!value && (WEEK_VIEW_PRESETS as readonly string[]).includes(value);
 };
 
-const getRangeForPreset = ({
-	preset,
-	now,
-	timeZone,
-}: {
-	preset: WeekViewPreset;
-	now: Date;
-	timeZone: string;
-}): WeekViewRange => {
+const getRangeForPreset = ({ preset, now, timeZone }: { preset: WeekViewPreset; now: Date; timeZone: string }) => {
+	if (preset === "calendarWeek") {
+		const start = getStartOfWeekInTimeZone(now, timeZone);
+		return { start, end: addDaysInTimeZone(start, 7, timeZone), labelKey: preset };
+	}
 	const end = addDaysInTimeZone(getStartOfDayInTimeZone(now, timeZone), 1, timeZone);
 
 	if (preset === "thisWeek") {
 		const start = addDaysInTimeZone(end, -7, timeZone);
-		return { start, end, labelKey: "thisWeek" };
+		return { start, end, labelKey: preset };
 	}
 
 	if (preset === "thisFortnight") {
 		const start = addDaysInTimeZone(end, -14, timeZone);
-		return { start, end, labelKey: "thisFortnight" };
+		return { start, end, labelKey: preset };
 	}
 
 	const start = addMonthsInTimeZone(end, -1, timeZone);
-	return { start, end, labelKey: "thisMonth" };
+	return { start, end, labelKey: preset };
 };
+
+type WeekViewMember = { id: string; name: string | null; email: string | null };
 
 export type WeekViewCompletedEntry = {
 	id: string;
@@ -50,6 +54,8 @@ export type WeekViewCompletedEntry = {
 	status: "APPROVED" | "PENDING";
 	bucket: DurationKey | null;
 	assignedTaskId: string | null;
+	assignedTo: WeekViewMember | null;
+	completedBy: WeekViewMember;
 };
 
 export type WeekViewPlannedEntry = {
@@ -60,11 +66,14 @@ export type WeekViewPlannedEntry = {
 	points: number;
 	bucket: DurationKey;
 	assignedTaskId: string;
+	assignedTo: WeekViewMember | null;
 	isRecurring: boolean;
 	cadenceIntervalMinutes: number | null;
 	cadenceTarget: number;
 	remainingCount: number;
 	canComplete: boolean;
+	// A one-off assigned before the range, shown at the range start rather than at a real time.
+	carriedForward?: boolean;
 };
 
 export type WeekViewTimelineEntry = WeekViewCompletedEntry | WeekViewPlannedEntry;
@@ -77,10 +86,13 @@ type CompletedLogRecord = {
 	duration: string | null;
 	createdAt: Date;
 	assignedTaskId: string | null;
+	assignedTask: { assignedTo: WeekViewMember | null } | null;
+	user: WeekViewMember;
 };
 
 type AssignedTaskRecord = {
 	id: string;
+	assignedTo: WeekViewMember | null;
 	assignedAt: Date;
 	cadenceTarget: number;
 	cadenceIntervalMinutes: number;
@@ -115,7 +127,7 @@ const resolveBucket = (bucket: string | null | undefined) => {
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const getDefaultWeekViewRange = ({ now = new Date(), timeZone }: { now?: Date; timeZone: string }) => {
-	return getRangeForPreset({ preset: "thisFortnight", now, timeZone });
+	return getRangeForPreset({ preset: "calendarWeek", now, timeZone });
 };
 
 const parseWeekViewRange = ({
@@ -175,6 +187,8 @@ const buildCompletedEntries = (completedLogs: CompletedLogRecord[]) => {
 		status: resolveCompletedStatus(log.status),
 		bucket: resolveBucket(log.duration),
 		assignedTaskId: log.assignedTaskId,
+		assignedTo: log.assignedTask?.assignedTo ?? null,
+		completedBy: log.user,
 	}));
 };
 
@@ -207,7 +221,13 @@ const buildOneOffPlannedEntry = ({
 		return [];
 	}
 
-	if (task.assignedAt < range.start || task.assignedAt >= range.end) {
+	if (task.assignedAt >= range.end) {
+		return [];
+	}
+
+	// Only the range containing now carries unfinished one-offs forward; completing one logs today.
+	const carriedForward = task.assignedAt < range.start;
+	if (carriedForward && (now < range.start || now >= range.end)) {
 		return [];
 	}
 
@@ -217,16 +237,18 @@ const buildOneOffPlannedEntry = ({
 		{
 			id: `${task.id}:${task.assignedAt.toISOString()}`,
 			type: "planned" as const,
-			occurredAt: task.assignedAt.toISOString(),
+			occurredAt: (carriedForward ? range.start : task.assignedAt).toISOString(),
 			description: task.preset.label,
 			points: getBucketPoints(bucket),
 			bucket,
 			assignedTaskId: task.id,
+			assignedTo: task.assignedTo,
 			isRecurring: false,
 			cadenceIntervalMinutes: null,
 			cadenceTarget: 1,
 			remainingCount: 1,
 			canComplete: task.assignedAt <= now,
+			carriedForward,
 		},
 	];
 };
@@ -280,6 +302,7 @@ const buildRecurringPlannedEntries = ({
 					points: getBucketPoints(bucket),
 					bucket,
 					assignedTaskId: task.id,
+					assignedTo: task.assignedTo,
 					isRecurring: true,
 					cadenceIntervalMinutes: task.cadenceIntervalMinutes,
 					cadenceTarget: target,

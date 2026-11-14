@@ -32,6 +32,8 @@ import {
 import { useTranslation } from "@/lib/i18nClient";
 import { trpc } from "@/lib/trpc/react";
 
+const UNASSIGNED_VALUE = "unassigned";
+
 const ASSIGNEE_ALL_VALUE = "all";
 
 type AssignedTaskRow = {
@@ -49,9 +51,10 @@ type AssignedTaskRow = {
 type Props = {
 	householdId: string;
 	initialTasks: AssignedTaskRow[];
+	members: Array<{ id: string; name: string | null; email: string | null }>;
 };
 
-export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
+export const AssignedTasksManager = ({ householdId, initialTasks, members }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
@@ -75,7 +78,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 	}, [tasks, t]);
 
 	useEffect(() => {
-		if (assigneeFilter === ASSIGNEE_ALL_VALUE) {
+		if (assigneeFilter === ASSIGNEE_ALL_VALUE || assigneeFilter === UNASSIGNED_VALUE) {
 			return;
 		}
 		if (!assigneeOptions.some((option) => option.id === assigneeFilter)) {
@@ -91,12 +94,17 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 		if (assigneeFilter === ASSIGNEE_ALL_VALUE) {
 			return sortedTasks;
 		}
-		return sortedTasks.filter((task) => task.assigneeId === assigneeFilter);
+		return sortedTasks.filter((task) => (task.assigneeId ?? UNASSIGNED_VALUE) === assigneeFilter);
 	}, [assigneeFilter, sortedTasks]);
 
 	const updateTask = (
 		id: string,
-		updates: Partial<Pick<AssignedTaskRow, "cadenceTarget" | "cadenceIntervalMinutes" | "isRecurring">>,
+		updates: Partial<
+			Pick<
+				AssignedTaskRow,
+				"cadenceTarget" | "cadenceIntervalMinutes" | "isRecurring" | "assigneeId" | "assigneeName" | "assigneeEmail"
+			>
+		>,
 	) => {
 		setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, ...updates } : task)));
 	};
@@ -126,6 +134,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 	const updateMutation = trpc.assignedTasks.update.useMutation({
 		onSuccess: (result, variables) => {
 			updateTask(variables.id, {
+				assigneeId: result.assignedTask.assignedToId,
+				assigneeName: members.find((member) => member.id === result.assignedTask.assignedToId)?.name ?? null,
+				assigneeEmail: members.find((member) => member.id === result.assignedTask.assignedToId)?.email ?? null,
 				cadenceTarget: result.assignedTask.cadenceTarget,
 				cadenceIntervalMinutes: result.assignedTask.cadenceIntervalMinutes,
 				isRecurring: result.assignedTask.isRecurring,
@@ -181,6 +192,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 			cadenceTarget,
 			cadenceIntervalMinutes,
 			isRecurring: task.isRecurring,
+			assigneeId: task.assigneeId,
 		});
 	};
 
@@ -205,6 +217,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value={ASSIGNEE_ALL_VALUE}>{t("All assignees")}</SelectItem>
+								<SelectItem value={UNASSIGNED_VALUE}>{t("Unassigned")}</SelectItem>
 								{assigneeOptions.map((option) => (
 									<SelectItem key={option.id} value={option.id}>
 										{option.label}
@@ -237,10 +250,35 @@ export const AssignedTasksManager = ({ householdId, initialTasks }: Props) => {
 										<span className="font-semibold">{task.presetLabel}</span>
 									</TableCell>
 									<TableCell>
-										<div className="flex flex-col">
-											<span className="text-sm">{task.assigneeName ?? task.assigneeEmail ?? t("Unknown")}</span>
-											<span className="text-xs text-muted-foreground">{task.assigneeEmail ?? "—"}</span>
-										</div>
+										<Select
+											value={task.assigneeId ?? UNASSIGNED_VALUE}
+											onValueChange={(value) => {
+												// A draft like the cadence fields, saved with the row so neither edit discards the other.
+												const member = members.find((item) => item.id === value);
+												updateTask(task.id, {
+													assigneeId: member?.id ?? null,
+													assigneeName: member?.name ?? null,
+													assigneeEmail: member?.email ?? null,
+												});
+											}}
+											disabled={isPending}
+										>
+											<SelectTrigger aria-label={t("Assignee for {{task}}", { task: task.presetLabel })}>
+												<SelectValue>
+													{task.assigneeId === null
+														? t("Unassigned")
+														: (task.assigneeName ?? task.assigneeEmail ?? t("Unknown"))}
+												</SelectValue>
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value={UNASSIGNED_VALUE}>{t("Unassigned")}</SelectItem>
+												{members.map((member) => (
+													<SelectItem key={member.id} value={member.id}>
+														{member.name ?? member.email ?? t("Unknown")}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 									</TableCell>
 									<TableCell>
 										<Switch

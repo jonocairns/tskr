@@ -2,10 +2,14 @@ import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import path from "node:path";
 import type { AssignedTask, Prisma } from "@prisma/client";
+import { getDashboardData } from "@/lib/dashboard/queries";
 import { prisma } from "@/lib/prisma";
+import { broadcastPush, isPushConfigured } from "@/lib/push";
+import { getStartOfWeekInTimeZone } from "@/lib/timeZones";
 import { getWeekViewData } from "@/lib/week-view/queries";
 import { assignedTasksRouter } from "@/server/routers/assignedTasks";
 import { logsRouter } from "@/server/routers/logs";
+import { presetsRouter } from "@/server/routers/presets";
 
 // Exercise the production handlers and Prisma queries, substituting only auth,
 // translations, push delivery, and an isolated database for this suite.
@@ -35,14 +39,19 @@ jest.mock("@/server/trpc", () => {
 		approverProcedure: procedure,
 	};
 });
-jest.mock("@/lib/i18nServer", () => ({ getServerT: async () => (key: string) => key }));
-jest.mock("@/lib/push", () => ({ isPushConfigured: () => false }));
+jest.mock("@/lib/i18nServer", () => ({
+	getServerT:
+		async () =>
+		(key: string, params: Record<string, unknown> = {}) =>
+			key.replace(/\{\{(\w+)\}\}/g, (_, name) => String(params[name])),
+}));
+jest.mock("@/lib/push", () => ({ isPushConfigured: jest.fn(() => false), broadcastPush: jest.fn() }));
 
 const { directory } = jest.requireMock("@/lib/prisma") as { directory: string };
 const householdId = "household";
 const context = (userId: string, activeHouseholdId = householdId) => ({
 	req: undefined,
-	session: { user: { id: userId }, expires: "2099-01-01T00:00:00.000Z" },
+	session: { user: { id: userId, name: userId === "doer" ? "Sam" : "Alex" }, expires: "2099-01-01T00:00:00.000Z" },
 	sessionTimestamps: { iat: undefined, lastActivity: undefined },
 	household: { id: activeHouseholdId, membership: { requiresApprovalDefault: false } },
 });
@@ -50,6 +59,7 @@ const manage = assignedTasksRouter.createCaller(context("approver"));
 const complete = assignedTasksRouter.createCaller(context("doer"));
 const ownLogs = logsRouter.createCaller(context("doer"));
 const approval = logsRouter.createCaller(context("approver"));
+const presets = presetsRouter.createCaller(context("approver"));
 
 const makeTask = (overrides: Partial<AssignedTask> = {}) =>
 	prisma.assignedTask.create({
@@ -97,13 +107,17 @@ beforeAll(() => {
 }, 30_000);
 
 beforeEach(async () => {
+	jest.mocked(isPushConfigured).mockReturnValue(false);
+	jest.mocked(broadcastPush).mockReset();
 	await prisma.pointLog.deleteMany();
 	await prisma.assignedTask.deleteMany();
 	await prisma.presetTask.deleteMany();
 	await prisma.householdMember.deleteMany();
 	await prisma.household.deleteMany();
 	await prisma.user.deleteMany();
-	await prisma.user.createMany({ data: [{ id: "doer" }, { id: "approver" }, { id: "outsider" }] });
+	await prisma.user.createMany({
+		data: [{ id: "doer", name: "Sam" }, { id: "approver", name: "Alex" }, { id: "outsider" }],
+	});
 	await prisma.household.create({
 		data: { id: householdId, name: "Test", timeZone: "Pacific/Auckland", createdById: "approver" },
 	});
@@ -120,6 +134,7 @@ beforeEach(async () => {
 			createdById: "approver",
 			label: "Vacuum",
 			bucket: "QUICK",
+			isShared: true,
 			approvalOverride: "REQUIRE",
 		},
 	});
@@ -222,7 +237,7 @@ test.each(["PENDING", "APPROVED"] as const)(
 	"week-view eligibility includes an out-of-range %s completion",
 	async (status) => {
 		const task = await makeTask({ cadenceIntervalMinutes: 10080 });
-		await makeLog(task, { status, createdAt: new Date("2024-01-07T21:00:00.000Z") }); // Monday 10:00 NZDT
+		await makeLog(task, { userId: "approver", status, createdAt: new Date("2024-01-07T21:00:00.000Z") }); // Monday 10:00 NZDT
 		const result = await getWeekViewData({
 			householdId,
 			userId: "doer",
@@ -265,9 +280,66 @@ test("rejected and reverted completions do not suppress week-view planned work",
 	expect(result.timeline[0]).toMatchObject({ type: "planned", remainingCount: 1 });
 });
 
-test("retains owner and household checks inside the write transaction", async () => {
+test.each(["doer", "approver", "all"])(
+	"week-view filter %s includes Open tasks and filters by completer",
+	async (userId) => {
+		const mine = await makeTask({ cadenceTarget: 2 });
+		const theirs = await makeTask({ assignedToId: "approver", cadenceTarget: 2 });
+		const open = await makeTask({ assignedToId: null, cadenceTarget: 2 });
+		const now = new Date("2024-01-08T23:00:00.000Z");
+		const myLog = await makeLog(theirs, { createdAt: now });
+		const theirLog = await makeLog(mine, { userId: "approver", createdAt: now, status: "PENDING" });
+		const openLog = await makeLog(open, { userId: "approver", createdAt: now });
+		const result = await getWeekViewData({
+			householdId,
+			userId,
+			now,
+			range: {
+				start: new Date("2024-01-07T11:00:00.000Z"),
+				end: new Date("2024-01-14T11:00:00.000Z"),
+				labelKey: "calendarWeek",
+			},
+			timeZone: "Pacific/Auckland",
+			dateFormat: "DMY",
+			timeFormat: "H24",
+		});
+		const todos = result.timeline.filter((entry) => entry.type === "planned");
+		const done = result.timeline.filter((entry) => entry.type === "completed");
+		const expectedTaskIds =
+			userId === "all" ? [mine.id, theirs.id, open.id] : [userId === "doer" ? mine.id : theirs.id, open.id];
+		const expectedLogIds =
+			userId === "all"
+				? [myLog.id, theirLog.id, openLog.id]
+				: userId === "doer"
+					? [myLog.id]
+					: [theirLog.id, openLog.id];
+		expect(todos.map((entry) => entry.assignedTaskId).sort()).toEqual(expectedTaskIds.sort());
+		expect(done.map((entry) => entry.id).sort()).toEqual(expectedLogIds.sort());
+		// Other members' completions still consume capacity when their logs are filtered out.
+		expect(todos.every((entry) => entry.remainingCount === 1)).toBe(true);
+		expect(todos.find((entry) => entry.assignedTaskId === open.id)?.assignedTo).toBeNull();
+		if (userId === "all") {
+			expect(todos.find((entry) => entry.assignedTaskId === mine.id)?.assignedTo).toMatchObject({
+				id: "doer",
+				name: "Sam",
+			});
+			expect(done.find((entry) => entry.id === myLog.id)).toMatchObject({
+				assignedTo: { id: "approver", name: "Alex" },
+				completedBy: { id: "doer", name: "Sam" },
+			});
+			expect(done.find((entry) => entry.id === openLog.id)).toMatchObject({
+				assignedTo: null,
+				completedBy: { id: "approver", name: "Alex" },
+			});
+		}
+	},
+);
+
+test("retains membership and household checks inside the write transaction", async () => {
 	const task = await makeTask();
-	await expect(manage.complete({ householdId, id: task.id })).rejects.toMatchObject({ code: "FORBIDDEN" });
+	await expect(
+		assignedTasksRouter.createCaller(context("outsider")).complete({ householdId, id: task.id }),
+	).rejects.toMatchObject({ code: "FORBIDDEN" });
 	await expect(
 		assignedTasksRouter
 			.createCaller(context("approver", "other-house"))
@@ -313,4 +385,206 @@ test("serializes approval and rejection of the same pending completion", async (
 	const savedLog = await prisma.pointLog.findUniqueOrThrow({ where: { id: log.id } });
 	const savedTask = await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } });
 	expect(savedTask.status).toBe(savedLog.status === "APPROVED" ? "COMPLETED" : "ACTIVE");
+});
+
+test("a non-assignee member completes using their own points and approval default", async () => {
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { approvalOverride: null } });
+	await prisma.householdMember.update({
+		where: { householdId_userId: { householdId, userId: "doer" } },
+		data: { requiresApprovalDefault: true },
+	});
+	const task = await makeTask({ assignedToId: "approver", isRecurring: false });
+	const { entry } = await complete.complete({ householdId, id: task.id });
+	expect(entry).toMatchObject({ userId: "doer", assignedTaskId: task.id, points: 3, status: "PENDING" });
+	expect(await prisma.pointLog.findUniqueOrThrow({ where: { id: entry.id } })).toEqual(entry);
+	expect(broadcastPush).not.toHaveBeenCalled();
+});
+
+test("an Open task can be completed", async () => {
+	const task = await makeTask({ assignedToId: null });
+	await expect(complete.complete({ householdId, id: task.id })).resolves.toMatchObject({
+		entry: { userId: "doer", assignedTaskId: task.id },
+	});
+});
+
+test.each(["REQUIRE", "SKIP"] as const)("another member's %s completion consumes task capacity", async (override) => {
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { approvalOverride: override } });
+	const task = await makeTask();
+	const { entry } = await manage.complete({ householdId, id: task.id });
+	expect(entry).toMatchObject({ userId: "approver", status: override === "REQUIRE" ? "PENDING" : "APPROVED" });
+	await expect(complete.complete({ householdId, id: task.id })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	expect(await qualifyingCount(task.id)).toBe(1);
+});
+
+test("creates Open tasks, reassigns and unassigns without changing omitted assignees", async () => {
+	const input = { householdId, presetId: "preset", cadenceTarget: 1, cadenceIntervalMinutes: 1440, isRecurring: true };
+	for (const assignment of [{ assigneeId: null }, {}]) {
+		const { assignedTask } = await manage.create({ ...input, ...assignment });
+		expect(assignedTask).toMatchObject({ assignedToId: null, assignedById: "approver" });
+	}
+	const { assignedTask: task } = await manage.create({ ...input, assigneeId: "doer" });
+	expect(task.assignedToId).toBe("doer");
+	await expect(manage.update({ householdId, id: task.id, assigneeId: "approver" })).resolves.toMatchObject({
+		assignedTask: { assignedToId: "approver" },
+	});
+	await expect(manage.update({ householdId, id: task.id, cadenceTarget: 2 })).resolves.toMatchObject({
+		assignedTask: { assignedToId: "approver" },
+	});
+	await expect(manage.update({ householdId, id: task.id, assigneeId: null })).resolves.toMatchObject({
+		assignedTask: { assignedToId: null },
+	});
+	await expect(manage.update({ householdId, id: task.id, assigneeId: "doer" })).resolves.toMatchObject({
+		assignedTask: { assignedToId: "doer" },
+	});
+	await expect(manage.update({ householdId, id: task.id, assigneeId: "outsider" })).rejects.toMatchObject({
+		code: "BAD_REQUEST",
+	});
+	expect((await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).assignedToId).toBe("doer");
+	await expect(manage.create({ ...input, assigneeId: "outsider" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+});
+
+test("rejects personal presets for new tasks while retaining existing task completions", async () => {
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { isShared: false } });
+	await expect(
+		manage.create({
+			householdId,
+			presetId: "preset",
+			assigneeId: null,
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 1440,
+			isRecurring: false,
+		}),
+	).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Assigned tasks require a shared preset" });
+	const task = await makeTask();
+	await expect(manage.complete({ householdId, id: task.id })).resolves.toMatchObject({ entry: { userId: "approver" } });
+});
+
+test("blocks un-sharing while active tasks use a preset and returns only household active usage", async () => {
+	const assigned = await makeTask();
+	const open = await makeTask({ assignedToId: null });
+	await makeTask({ status: "COMPLETED" });
+	await expect(presets.update({ householdId, id: "preset", isShared: false })).rejects.toMatchObject({
+		code: "BAD_REQUEST",
+		message: "Cannot make this preset personal while active assigned tasks use it",
+	});
+	expect((await prisma.presetTask.findUniqueOrThrow({ where: { id: "preset" } })).isShared).toBe(true);
+	const { tasks } = await presets.usage({ householdId, id: "preset" });
+	expect(tasks).toHaveLength(2);
+	expect(tasks).toEqual(
+		expect.arrayContaining([
+			{ id: assigned.id, preset: { label: "Vacuum" }, assignedTo: { name: "Sam", email: null } },
+			{ id: open.id, preset: { label: "Vacuum" }, assignedTo: null },
+		]),
+	);
+	await expect(
+		presetsRouter.createCaller(context("approver", "other-house")).usage({ householdId: "other-house", id: "preset" }),
+	).resolves.toEqual({ tasks: [] });
+	await prisma.assignedTask.updateMany({ data: { status: "COMPLETED" } });
+	await expect(presets.update({ householdId, id: "preset", isShared: false })).resolves.toMatchObject({
+		preset: { isShared: false },
+	});
+});
+
+test("deleting an assignee unassigns tasks and deleting their creator retains them", async () => {
+	// Keep household/preset ownership separate: their existing cascades still apply.
+	const task = await makeTask({ assignedById: "outsider" });
+	const log = await makeLog(task, { userId: "approver" });
+	await prisma.user.delete({ where: { id: "doer" } });
+	expect(await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
+		assignedToId: null,
+		assignedById: "outsider",
+	});
+	await prisma.user.delete({ where: { id: "outsider" } });
+	expect(await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
+		assignedToId: null,
+		assignedById: null,
+	});
+	expect((await prisma.pointLog.findUniqueOrThrow({ where: { id: log.id } })).assignedTaskId).toBe(task.id);
+});
+
+test.each([
+	{ assigneeId: "doer", override: "REQUIRE", body: "Alex completed Sam's Vacuum, awaiting approval" },
+	{ assigneeId: "doer", override: "SKIP", body: "Alex completed Sam's Vacuum" },
+	{ assigneeId: "approver", override: "REQUIRE", body: "Alex completed Vacuum, awaiting approval" },
+	{ assigneeId: "approver", override: "SKIP", body: "Alex completed Vacuum" },
+	{ assigneeId: null, override: "REQUIRE", body: "Alex completed Vacuum, awaiting approval" },
+	{ assigneeId: null, override: "SKIP", body: "Alex completed Vacuum" },
+] as const)("pushes after commit: $body", async ({ assigneeId, override, body }) => {
+	jest.mocked(isPushConfigured).mockReturnValue(true);
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { approvalOverride: override } });
+	const task = await makeTask({ assignedToId: assigneeId, isRecurring: false });
+	let committedState: { count: number; status: string } | undefined;
+	jest.mocked(broadcastPush).mockImplementationOnce(async () => {
+		// A separate connection observes the completed transaction before delivery.
+		const { PrismaClient } = jest.requireActual<typeof import("@prisma/client")>("@prisma/client");
+		const { PrismaBetterSqlite3 } = jest.requireActual<typeof import("@prisma/adapter-better-sqlite3")>(
+			"@prisma/adapter-better-sqlite3",
+		);
+		const reader = new PrismaClient({
+			adapter: new PrismaBetterSqlite3({ url: `file:${path.join(directory, "test.db")}` }),
+		});
+		try {
+			committedState = {
+				count: await reader.pointLog.count({ where: { assignedTaskId: task.id } }),
+				status: (await reader.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).status,
+			};
+		} finally {
+			await reader.$disconnect();
+		}
+		return { sent: 1, removed: 0 };
+	});
+	await manage.complete({ householdId, id: task.id });
+	expect(committedState).toEqual({ count: 1, status: override === "SKIP" ? "COMPLETED" : "ACTIVE" });
+	expect(broadcastPush).toHaveBeenCalledWith(expect.objectContaining({ title: "Task completed", body }), {
+		householdId,
+		excludeUserId: "approver",
+	});
+	await expect(manage.complete({ householdId, id: task.id })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	expect(broadcastPush).toHaveBeenCalledTimes(1);
+});
+
+test("push errors do not undo or fail a committed completion", async () => {
+	jest.mocked(isPushConfigured).mockReturnValue(true);
+	const error = new Error("Delivery failed");
+	jest.mocked(broadcastPush).mockRejectedValueOnce(error);
+	const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+	try {
+		const task = await makeTask();
+		await expect(manage.complete({ householdId, id: task.id })).resolves.toMatchObject({
+			entry: { userId: "approver" },
+		});
+		expect(await qualifyingCount(task.id)).toBe(1);
+		expect(logged).toHaveBeenCalledWith("[push] notify failed", error);
+	} finally {
+		logged.mockRestore();
+	}
+});
+
+test("dashboard loads every active household task and counts only household task logs since the local Monday", async () => {
+	const mine = await makeTask();
+	const other = await makeTask({ assignedToId: "approver" });
+	const open = await makeTask({ assignedToId: null });
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { isShared: false } });
+	const weekStart = getStartOfWeekInTimeZone(new Date(), "Pacific/Auckland");
+	const unlinked = { assignedTaskId: null, createdAt: weekStart };
+	await makeLog(mine, { ...unlinked, status: "PENDING", userId: "approver" });
+	await makeLog(mine, { ...unlinked, status: "APPROVED", kind: "TIMED" });
+	await makeLog(mine, { ...unlinked, createdAt: new Date(weekStart.getTime() - 1) });
+	await makeLog(mine, { ...unlinked, revertedAt: new Date() });
+	await makeLog(mine, { ...unlinked, status: "REJECTED" });
+	await makeLog(mine, { ...unlinked, kind: "REWARD" });
+	await prisma.household.create({ data: { id: "other-house", name: "Other", createdById: "outsider" } });
+	await makeLog(mine, { ...unlinked, householdId: "other-house", presetId: null, userId: "outsider" });
+
+	const dashboard = await getDashboardData("doer", householdId);
+	expect(dashboard.householdDoneThisWeek).toBe(2);
+	expect(dashboard.hasActiveAssignedTasks).toBe(true);
+	expect(dashboard.assignedTasks).toHaveLength(3);
+	expect(dashboard.assignedTasks).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ id: mine.id, group: "mine", assigneeLabel: "Sam" }),
+			expect.objectContaining({ id: other.id, group: "others", assigneeLabel: "Alex" }),
+			expect.objectContaining({ id: open.id, group: "open", assigneeLabel: null }),
+		]),
+	);
 });

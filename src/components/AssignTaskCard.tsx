@@ -20,6 +20,8 @@ import {
 import { useTranslation } from "@/lib/i18nClient";
 import { trpc } from "@/lib/trpc/react";
 
+const UNASSIGNED_VALUE = "unassigned";
+
 type MemberOption = {
 	id: string;
 	name: string | null;
@@ -42,7 +44,10 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 		() => [...members].sort((a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")),
 		[members],
 	);
-	const sortedPresets = useMemo(() => [...presets].sort((a, b) => a.label.localeCompare(b.label)), [presets]);
+	const sortedPresets = useMemo(
+		() => presets.filter((preset) => preset.isShared).sort((a, b) => a.label.localeCompare(b.label)),
+		[presets],
+	);
 
 	const [assigneeId, setAssigneeId] = useState(currentUserId);
 	const [presetId, setPresetId] = useState(sortedPresets[0]?.id ?? "");
@@ -57,7 +62,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 	}, [presetId, sortedPresets]);
 
 	useEffect(() => {
-		if (!sortedMembers.find((member) => member.id === assigneeId)) {
+		if (assigneeId !== UNASSIGNED_VALUE && !sortedMembers.find((member) => member.id === assigneeId)) {
 			setAssigneeId(sortedMembers[0]?.id ?? currentUserId);
 		}
 	}, [assigneeId, currentUserId, sortedMembers]);
@@ -81,10 +86,10 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 
 	const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		if (!presetId || !assigneeId) {
+		if (!presetId) {
 			toast({
 				title: t("Missing details"),
-				description: t("Pick a member and preset to assign."),
+				description: t("Pick a shared preset to assign."),
 				variant: "destructive",
 			});
 			return;
@@ -98,24 +103,24 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 		createMutation.mutate({
 			householdId,
 			presetId,
-			assigneeId,
+			assigneeId: assigneeId === UNASSIGNED_VALUE ? null : assigneeId,
 			cadenceTarget: cadenceTargetValue,
 			cadenceIntervalMinutes,
 			isRecurring,
 		});
 	};
 
-	const disabled = createMutation.isPending || sortedMembers.length === 0 || sortedPresets.length === 0;
+	const disabled = createMutation.isPending || sortedPresets.length === 0;
 
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle className="text-xl">{t("Assign task")}</CardTitle>
-				<CardDescription>{t("Send a preset task to someone's queue.")}</CardDescription>
+				<CardDescription>{t("Add a shared preset task to the household board.")}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{sortedPresets.length === 0 ? (
-					<p className="text-sm text-muted-foreground">{t("Create a preset chore before assigning tasks.")}</p>
+					<p className="text-sm text-muted-foreground">{t("Create a shared preset chore before assigning tasks.")}</p>
 				) : (
 					<form className="grid gap-4" onSubmit={handleSubmit}>
 						<div className="grid gap-4 md:grid-cols-2">
@@ -126,6 +131,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 										<SelectValue placeholder={t("Select member")} />
 									</SelectTrigger>
 									<SelectContent>
+										<SelectItem value={UNASSIGNED_VALUE}>{t("Unassigned")}</SelectItem>
 										{sortedMembers.map((member) => (
 											<SelectItem key={member.id} value={member.id}>
 												{member.name ?? member.email ?? t("Unknown")}

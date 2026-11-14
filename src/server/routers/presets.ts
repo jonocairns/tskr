@@ -113,6 +113,19 @@ export const presetsRouter = router({
 		return { preset: { ...preset, sortOrder } };
 	}),
 
+	usage: approverProcedure(deletePresetSchema).query(async ({ ctx, input }) => {
+		const tasks = await prisma.assignedTask.findMany({
+			where: { householdId: ctx.household.id, presetId: input.id, status: "ACTIVE" },
+			select: {
+				id: true,
+				preset: { select: { label: true } },
+				assignedTo: { select: { name: true, email: true } },
+			},
+			orderBy: [{ assignedAt: "asc" }, { id: "asc" }],
+		});
+		return { tasks };
+	}),
+
 	update: approverProcedure(updatePresetSchema).mutation(async ({ ctx, input }) => {
 		const { id, ...updates } = input;
 		const householdId = ctx.household.id;
@@ -142,6 +155,18 @@ export const presetsRouter = router({
 
 		if (updates.isShared !== undefined && updates.isShared !== preset.isShared && !isOwner) {
 			throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner can change sharing" });
+		}
+		if (updates.isShared === false && preset.isShared) {
+			const activeTask = await prisma.assignedTask.findFirst({
+				where: { householdId, presetId: id, status: "ACTIVE" },
+				select: { id: true },
+			});
+			if (activeTask) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Cannot make this preset personal while active assigned tasks use it",
+				});
+			}
 		}
 
 		const clearTemplateKey = shouldClearTemplateKeyOnPresetUpdate({

@@ -6,22 +6,29 @@ type AssignedTaskRecord = {
 	id: string;
 	assignedAt: Date;
 	status: string;
+	assignedTo: { id: string; name: string | null; email: string | null } | null;
 	cadenceTarget: number;
 	cadenceIntervalMinutes: number;
 	isRecurring: boolean;
 	preset: { id: string; label: string; bucket: string } | null;
-	logs: Array<{ createdAt: Date }>;
+	logs: Array<{ createdAt: Date; status: string; user: { id: string; name: string | null; email: string | null } }>;
 };
 
 const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
 type BuildAssignedTaskEntriesInput = {
 	tasks: AssignedTaskRecord[];
+	userId: string;
 	now?: Date;
 	timeZone: string;
 };
 
-export const buildAssignedTaskEntries = ({ tasks, now = new Date(), timeZone }: BuildAssignedTaskEntriesInput) => {
+export const buildAssignedTaskEntries = ({
+	tasks,
+	userId,
+	now = new Date(),
+	timeZone,
+}: BuildAssignedTaskEntriesInput) => {
 	return tasks.flatMap((task) => {
 		if (task.status !== "ACTIVE" || !task.preset) {
 			return [];
@@ -39,7 +46,18 @@ export const buildAssignedTaskEntries = ({ tasks, now = new Date(), timeZone }: 
 			timeZone,
 		});
 
-		if (!state.isActive) {
+		const period = getAssignedTaskPeriodBounds(now, task.cadenceIntervalMinutes, timeZone);
+		const pendingUsers = new Map(
+			task.logs
+				.filter(
+					(log) =>
+						log.status === "PENDING" &&
+						(!task.isRecurring || (log.createdAt >= period.periodStart && log.createdAt < period.periodEnd)),
+				)
+				.map((log) => [log.user.id, log.user.name ?? log.user.email]),
+		);
+
+		if (!state.isActive && pendingUsers.size === 0) {
 			return [];
 		}
 
@@ -65,6 +83,10 @@ export const buildAssignedTaskEntries = ({ tasks, now = new Date(), timeZone }: 
 		return [
 			{
 				id: task.id,
+				group: !task.assignedTo ? "open" : task.assignedTo.id === userId ? "mine" : "others",
+				assigneeLabel: task.assignedTo?.name ?? task.assignedTo?.email ?? null,
+				state: state.isActive ? "available" : "awaitingApproval",
+				pendingCompleters: Array.from(pendingUsers.values()),
 				presetId: task.preset.id,
 				label: task.preset.label,
 				bucket,

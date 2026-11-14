@@ -49,7 +49,7 @@ export const getWeekViewData = async ({
 		prisma.pointLog.findMany({
 			where: {
 				householdId,
-				userId,
+				...(userId === "all" ? {} : { userId }),
 				kind: { in: ["PRESET", "TIMED"] },
 				revertedAt: null,
 				status: { in: [LogStatus.PENDING, LogStatus.APPROVED] },
@@ -66,17 +66,22 @@ export const getWeekViewData = async ({
 				duration: true,
 				createdAt: true,
 				assignedTaskId: true,
+				assignedTask: {
+					select: { assignedTo: { select: { id: true, name: true, email: true } } },
+				},
+				user: { select: { id: true, name: true, email: true } },
 			},
 			orderBy: { createdAt: "asc" },
 		}),
 		prisma.assignedTask.findMany({
 			where: {
 				householdId,
-				assignedToId: userId,
+				...(userId === "all" ? {} : { OR: [{ assignedToId: userId }, { assignedToId: null }] }),
 				status: "ACTIVE",
 			},
 			select: {
 				id: true,
+				assignedTo: { select: { id: true, name: true, email: true } },
 				assignedAt: true,
 				cadenceTarget: true,
 				cadenceIntervalMinutes: true,

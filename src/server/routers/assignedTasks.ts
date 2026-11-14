@@ -3,8 +3,10 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { getServerT } from "@/lib/i18nServer";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 import { prisma } from "@/lib/prisma";
+import { broadcastPush, isPushConfigured } from "@/lib/push";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { ensureAssignedTaskCapacity, getAssignedTaskStatus, lockAssignedTask } from "@/server/assignedTaskState";
 import { approverProcedure, householdProcedure, router } from "@/server/trpc";
@@ -12,7 +14,7 @@ import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 const createAssignedTaskSchema = z.object({
 	householdId: z.string().min(1),
 	presetId: z.string().min(1),
-	assigneeId: z.string().min(1),
+	assigneeId: z.string().min(1).nullish(),
 	cadenceTarget: z.number().int().min(1),
 	cadenceIntervalMinutes: z.number().int().min(1),
 	isRecurring: z.boolean(),
@@ -22,13 +24,17 @@ const updateAssignedTaskSchema = z
 	.object({
 		householdId: z.string().min(1),
 		id: z.string(),
+		assigneeId: z.string().min(1).nullish(),
 		cadenceTarget: z.number().int().min(1).optional(),
 		cadenceIntervalMinutes: z.number().int().min(1).optional(),
 		isRecurring: z.boolean().optional(),
 	})
 	.refine(
 		(data) =>
-			data.cadenceTarget !== undefined || data.cadenceIntervalMinutes !== undefined || data.isRecurring !== undefined,
+			data.assigneeId !== undefined ||
+			data.cadenceTarget !== undefined ||
+			data.cadenceIntervalMinutes !== undefined ||
+			data.isRecurring !== undefined,
 		{ message: "No updates provided" },
 	);
 
@@ -51,22 +57,26 @@ export const assignedTasksRouter = router({
 		const normalizedCadenceTarget = isRecurring ? cadenceTarget : 1;
 		const normalizedCadenceIntervalMinutes = Math.max(1, cadenceIntervalMinutes);
 
-		const member = await prisma.householdMember.findFirst({
-			where: { householdId, userId: assigneeId },
-			select: { id: true },
-		});
-
-		if (!member) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Assignee not found in household" });
+		if (assigneeId) {
+			const member = await prisma.householdMember.findFirst({
+				where: { householdId, userId: assigneeId },
+				select: { id: true },
+			});
+			if (!member) {
+				throw new TRPCError({ code: "BAD_REQUEST", message: "Assignee not found in household" });
+			}
 		}
 
 		const preset = await prisma.presetTask.findFirst({
 			where: { id: presetId, householdId },
-			select: { id: true },
+			select: { id: true, isShared: true },
 		});
 
 		if (!preset) {
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Preset not found" });
+		}
+		if (!preset.isShared) {
+			throw new TRPCError({ code: "BAD_REQUEST", message: "Assigned tasks require a shared preset" });
 		}
 
 		try {
@@ -100,6 +110,15 @@ export const assignedTasksRouter = router({
 			if (!task) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
 			}
+			if (input.assigneeId) {
+				const member = await tx.householdMember.findFirst({
+					where: { householdId, userId: input.assigneeId },
+					select: { id: true },
+				});
+				if (!member) {
+					throw new TRPCError({ code: "BAD_REQUEST", message: "Assignee not found in household" });
+				}
+			}
 
 			const isRecurring = input.isRecurring ?? task.isRecurring;
 			const cadenceTarget = isRecurring ? (input.cadenceTarget ?? task.cadenceTarget) : 1;
@@ -107,6 +126,7 @@ export const assignedTasksRouter = router({
 			const assignedTask = await tx.assignedTask.update({
 				where: { id },
 				data: {
+					assignedToId: input.assigneeId,
 					isRecurring,
 					cadenceTarget,
 					cadenceIntervalMinutes: input.cadenceIntervalMinutes ?? task.cadenceIntervalMinutes,
@@ -144,20 +164,18 @@ export const assignedTasksRouter = router({
 		const userId = ctx.session.user.id;
 		const { id } = input;
 
-		return prisma.$transaction(async (tx) => {
+		const { entry, task } = await prisma.$transaction(async (tx) => {
 			await lockAssignedTask(tx, id, householdId);
 			const task = await tx.assignedTask.findFirst({
 				where: { id, householdId },
 				include: {
+					assignedTo: { select: { name: true, email: true } },
 					household: { select: { timeZone: true } },
 					preset: { select: { id: true, label: true, bucket: true, approvalOverride: true } },
 				},
 			});
 			if (!task?.preset) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
-			}
-			if (task.assignedToId !== userId) {
-				throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
 			}
 			if (task.status !== "ACTIVE") {
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });
@@ -206,7 +224,30 @@ export const assignedTasksRouter = router({
 					data: { status: await getAssignedTaskStatus(tx, task, householdId) },
 				});
 			}
-			return { entry };
+			return { entry, task };
 		});
+
+		if (isPushConfigured()) {
+			try {
+				const t = await getServerT(ctx.session.user.language);
+				const actor = ctx.session.user.name ?? ctx.session.user.email ?? t("Someone");
+				const params = { actor, task: task.preset.label, assignee: task.assignedTo?.name ?? task.assignedTo?.email };
+				const body =
+					task.assignedToId !== userId && params.assignee
+						? entry.status === "PENDING"
+							? t("{{actor}} completed {{assignee}}'s {{task}}, awaiting approval", params)
+							: t("{{actor}} completed {{assignee}}'s {{task}}", params)
+						: entry.status === "PENDING"
+							? t("{{actor}} completed {{task}}, awaiting approval", params)
+							: t("{{actor}} completed {{task}}", params);
+				await broadcastPush(
+					{ title: t("Task completed"), body, url: "/", icon: "/icon-192.png", badge: "/icon-192.png" },
+					{ householdId, excludeUserId: userId },
+				);
+			} catch (error) {
+				console.error("[push] notify failed", error);
+			}
+		}
+		return { entry };
 	}),
 });
