@@ -237,7 +237,7 @@ test.each(["PENDING", "APPROVED"] as const)(
 	"week-view eligibility includes an out-of-range %s completion",
 	async (status) => {
 		const task = await makeTask({ cadenceIntervalMinutes: 10080 });
-		await makeLog(task, { status, createdAt: new Date("2024-01-07T21:00:00.000Z") }); // Monday 10:00 NZDT
+		await makeLog(task, { userId: "approver", status, createdAt: new Date("2024-01-07T21:00:00.000Z") }); // Monday 10:00 NZDT
 		const result = await getWeekViewData({
 			householdId,
 			userId: "doer",
@@ -279,6 +279,61 @@ test("rejected and reverted completions do not suppress week-view planned work",
 	expect(result.plannedCount).toBe(1);
 	expect(result.timeline[0]).toMatchObject({ type: "planned", remainingCount: 1 });
 });
+
+test.each(["doer", "approver", "all"])(
+	"week-view filter %s includes Open tasks and filters by completer",
+	async (userId) => {
+		const mine = await makeTask({ cadenceTarget: 2 });
+		const theirs = await makeTask({ assignedToId: "approver", cadenceTarget: 2 });
+		const open = await makeTask({ assignedToId: null, cadenceTarget: 2 });
+		const now = new Date("2024-01-08T23:00:00.000Z");
+		const myLog = await makeLog(theirs, { createdAt: now });
+		const theirLog = await makeLog(mine, { userId: "approver", createdAt: now, status: "PENDING" });
+		const openLog = await makeLog(open, { userId: "approver", createdAt: now });
+		const result = await getWeekViewData({
+			householdId,
+			userId,
+			now,
+			range: {
+				start: new Date("2024-01-07T11:00:00.000Z"),
+				end: new Date("2024-01-14T11:00:00.000Z"),
+				labelKey: "calendarWeek",
+			},
+			timeZone: "Pacific/Auckland",
+			dateFormat: "DMY",
+			timeFormat: "H24",
+		});
+		const todos = result.timeline.filter((entry) => entry.type === "planned");
+		const done = result.timeline.filter((entry) => entry.type === "completed");
+		const expectedTaskIds =
+			userId === "all" ? [mine.id, theirs.id, open.id] : [userId === "doer" ? mine.id : theirs.id, open.id];
+		const expectedLogIds =
+			userId === "all"
+				? [myLog.id, theirLog.id, openLog.id]
+				: userId === "doer"
+					? [myLog.id]
+					: [theirLog.id, openLog.id];
+		expect(todos.map((entry) => entry.assignedTaskId).sort()).toEqual(expectedTaskIds.sort());
+		expect(done.map((entry) => entry.id).sort()).toEqual(expectedLogIds.sort());
+		// Other members' completions still consume capacity when their logs are filtered out.
+		expect(todos.every((entry) => entry.remainingCount === 1)).toBe(true);
+		expect(todos.find((entry) => entry.assignedTaskId === open.id)?.assignedTo).toBeNull();
+		if (userId === "all") {
+			expect(todos.find((entry) => entry.assignedTaskId === mine.id)?.assignedTo).toMatchObject({
+				id: "doer",
+				name: "Sam",
+			});
+			expect(done.find((entry) => entry.id === myLog.id)).toMatchObject({
+				assignedTo: { id: "approver", name: "Alex" },
+				completedBy: { id: "doer", name: "Sam" },
+			});
+			expect(done.find((entry) => entry.id === openLog.id)).toMatchObject({
+				assignedTo: null,
+				completedBy: { id: "approver", name: "Alex" },
+			});
+		}
+	},
+);
 
 test("retains membership and household checks inside the write transaction", async () => {
 	const task = await makeTask();

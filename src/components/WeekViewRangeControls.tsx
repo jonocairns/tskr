@@ -13,9 +13,9 @@ import { type DateFormat, formatDate } from "@/lib/formatDate";
 import { addDaysInTimeZone, formatDateInTimeZoneForInput } from "@/lib/timeZones";
 import { cn } from "@/lib/utils";
 import { WEEK_VIEW_PRESETS, type WeekViewPreset, type WeekViewRange } from "@/lib/week-view/buildTimeline";
+import { getWeekViewMemberCookieName } from "@/lib/week-view/memberFilter";
 
 type Props = {
-	actingUserId: string;
 	dateFormat: DateFormat;
 	householdId: string;
 	members: { id: string; label: string }[];
@@ -34,23 +34,19 @@ type Props = {
 
 const buildHref = ({
 	householdId,
-	actingUserId,
 	selectedUserId,
 	preset,
 	from,
 	to,
 }: {
 	householdId: string;
-	actingUserId: string;
 	selectedUserId: string;
 	preset?: WeekViewPreset | null;
 	from?: string | null;
 	to?: string | null;
 }) => {
 	const params = new URLSearchParams();
-	if (selectedUserId !== actingUserId) {
-		params.set("userId", selectedUserId);
-	}
+	params.set("userId", selectedUserId);
 	if (preset) {
 		params.set("preset", preset);
 	} else if (from && to) {
@@ -62,7 +58,6 @@ const buildHref = ({
 };
 
 export const WeekViewRangeControls = ({
-	actingUserId,
 	dateFormat,
 	householdId,
 	members,
@@ -89,12 +84,13 @@ export const WeekViewRangeControls = ({
 	};
 
 	const onMemberChange = (nextUserId: string) => {
+		// biome-ignore lint/suspicious/noDocumentCookie: Keep this preference compatible with browsers without the Cookie Store API.
+		document.cookie = `${getWeekViewMemberCookieName(householdId)}=${encodeURIComponent(nextUserId)}; Path=/; Max-Age=31536000; SameSite=Lax`;
 		if (nextUserId === selectedUserId) return;
 		const preserveCustom = range.labelKey === "custom";
 		navigate(
 			buildHref({
 				householdId,
-				actingUserId,
 				selectedUserId: nextUserId,
 				preset: preserveCustom ? null : (range.labelKey as WeekViewPreset),
 				from: preserveCustom ? fromInput : null,
@@ -108,7 +104,6 @@ export const WeekViewRangeControls = ({
 		navigate(
 			buildHref({
 				householdId,
-				actingUserId,
 				selectedUserId,
 				preset,
 			}),
@@ -129,7 +124,6 @@ export const WeekViewRangeControls = ({
 		navigate(
 			buildHref({
 				householdId,
-				actingUserId,
 				selectedUserId,
 				from: draftFrom,
 				to: draftTo,

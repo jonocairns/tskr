@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
@@ -8,6 +10,7 @@ import { getServerT } from "@/lib/i18nServer";
 import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
 import { parseWeekViewRange } from "@/lib/week-view/buildTimeline";
+import { getWeekViewMemberCookieName, resolveWeekViewMember } from "@/lib/week-view/memberFilter";
 import { getWeekViewData, getWeekViewHouseholdSettings } from "@/lib/week-view/queries";
 
 export const dynamic = "force-dynamic";
@@ -31,12 +34,12 @@ const getSingleSearchParamValue = (value?: string | string[]) => {
 	return value ?? null;
 };
 
-export default async function WeekViewPage({ params, searchParams }: Props) {
+const WeekViewPage = async ({ params, searchParams }: Props) => {
 	const { householdId } = await params;
 	const resolvedSearchParams = searchParams ? await searchParams : {};
 	const { session, userId, membership } = await getHouseholdContext(householdId);
 	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
-	const [settings, householdMembers] = await Promise.all([
+	const [settings, householdMembers, cookieStore] = await Promise.all([
 		getWeekViewHouseholdSettings(householdId),
 		prisma.householdMember.findMany({
 			where: { householdId },
@@ -50,6 +53,7 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 				},
 			},
 		}),
+		cookies(),
 	]);
 	const getMemberLabel = (member: { user: { name: string | null; email: string | null } }) =>
 		member.user.name ?? member.user.email ?? t("Unknown");
@@ -60,11 +64,11 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 			name: getMemberLabel(member),
 		}))
 		.sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }));
-	const selectedUserIdFromSearch = getSingleSearchParamValue(resolvedSearchParams.userId);
-	const selectedMember =
-		members.find((member) => member.id === selectedUserIdFromSearch) ?? members.find((member) => member.id === userId);
-	const selectedUserId = selectedMember?.id ?? userId;
-	const viewingSelf = selectedUserId === userId;
+	const selectedUserId = resolveWeekViewMember({
+		query: getSingleSearchParamValue(resolvedSearchParams.userId),
+		cookie: cookieStore.get(getWeekViewMemberCookieName(householdId))?.value,
+		memberIds: members.map((member) => member.id),
+	});
 	const range = parseWeekViewRange({
 		from: getSingleSearchParamValue(resolvedSearchParams.from),
 		to: getSingleSearchParamValue(resolvedSearchParams.to),
@@ -77,17 +81,17 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 		range,
 		...settings,
 	});
-	const memberOptions = members.map((member) => ({
-		id: member.id,
-		label: member.id === userId && viewingSelf ? `${member.name} (${t("You")})` : member.label,
-	}));
+	const memberOptions = [
+		{ id: "all", label: t("Everyone") },
+		...members.map((member) => ({ id: member.id, label: member.label })),
+	];
 
 	return (
 		<PageShell size="lg">
 			<PageHeader
 				eyebrow={t("tskr")}
-				title={t("Week view")}
-				description={t("Recent completions and planned tasks in one simple timeline.")}
+				title={t("Household tasks")}
+				description={t("To-do tasks and recent completions for your household.")}
 				backHref={`/${householdId}`}
 				backLabel={t("Back to dashboard")}
 				user={session.user}
@@ -98,7 +102,6 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 				header={
 					<WeekViewRangeControls
 						householdId={householdId}
-						actingUserId={userId}
 						selectedUserId={selectedUserId}
 						members={memberOptions}
 						range={data.range}
@@ -111,9 +114,10 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 							to: t("To"),
 							apply: t("Apply"),
 							presets: {
-								thisWeek: t("Week"),
-								thisFortnight: t("Fortnight"),
-								thisMonth: t("Month"),
+								calendarWeek: t("This week"),
+								thisWeek: t("Last 7 days"),
+								thisFortnight: t("Last 14 days"),
+								thisMonth: t("Last month"),
 							},
 						}}
 					/>
@@ -122,13 +126,13 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 				householdId={householdId}
 				timeZone={data.timeZone}
 				timeFormat={data.timeFormat}
-				canCompletePlannedEntries={viewingSelf}
+				actingUserId={userId}
 				labels={{
 					emptyTitle: t("No activity in this range yet."),
-					emptyDescription: t("Upcoming assigned tasks and fresh completions will show up here."),
+					emptyDescription: t("To-do tasks and fresh completions will show up here."),
 					completed: t("Completed"),
 					pendingApproval: t("Pending approval"),
-					planned: t("Planned"),
+					planned: t("To do"),
 					oneOff: t("One-off"),
 				}}
 			/>
@@ -136,4 +140,6 @@ export default async function WeekViewPage({ params, searchParams }: Props) {
 			<LiveRefresh householdId={householdId} />
 		</PageShell>
 	);
-}
+};
+
+export default WeekViewPage;
