@@ -36,15 +36,15 @@ const getUserId = async (user: SeededUser) => {
 	return id;
 };
 
-type MemberSeed = {
-	user: SeededUser;
+type MemberSeed<U extends SeededUser = SeededUser> = {
+	user: U;
 	role: HouseholdRole;
 	requiresApproval?: boolean;
 };
 
 // Each test gets a brand-new household, so tests (and CI retries) never share
 // points, logs or presets even though they reuse the same signed-in accounts.
-export const createHousehold = async (members: MemberSeed[]) => {
+export const createHousehold = async <U extends SeededUser>(members: MemberSeed<U>[]) => {
 	const prisma = getPrisma();
 	const memberIds = await Promise.all(members.map(({ user }) => getUserId(user)));
 	const household = await prisma.household.create({
@@ -63,10 +63,7 @@ export const createHousehold = async (members: MemberSeed[]) => {
 	// Make it each member's active household, so signing in redirects here even
 	// when an earlier attempt (retry or repeat) left the user in other households.
 	await prisma.user.updateMany({ where: { id: { in: memberIds } }, data: { lastHouseholdId: household.id } });
-	const userIds = Object.fromEntries(members.map(({ user }, index) => [user, memberIds[index]])) as Record<
-		SeededUser,
-		string
-	>;
+	const userIds = Object.fromEntries(members.map(({ user }, index) => [user, memberIds[index]])) as Record<U, string>;
 	return { householdId: household.id, userIds };
 };
 

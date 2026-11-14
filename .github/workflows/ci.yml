@@ -106,8 +106,9 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Run e2e tests
         run: pnpm test:e2e
+      # Also upload when a test only passed on retry, so flakes can be diagnosed.
       - name: Upload Playwright report
-        if: failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ github.run_attempt }}
