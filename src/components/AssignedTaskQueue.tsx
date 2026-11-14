@@ -80,7 +80,9 @@ export const AssignedTaskQueue = ({ householdId, entries, doneThisWeek, timeZone
 	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
+	// Keep the last entry rendered while the dialog animates closed.
 	const [confirmEntry, setConfirmEntry] = useState<AssignedTaskEntry | null>(null);
+	const [confirmOpen, setConfirmOpen] = useState(false);
 	const bucketLabels = {
 		TINY: t("Tiny"),
 		QUICK: t("Quick"),
@@ -213,7 +215,14 @@ export const AssignedTaskQueue = ({ householdId, entries, doneThisWeek, timeZone
 										size="sm"
 										disabled={isPending}
 										aria-label={t("Complete {{task}}", { task: entry.label })}
-										onClick={() => (entry.group === "others" ? setConfirmEntry(entry) : handleComplete(entry.id))}
+										onClick={() => {
+											if (entry.group === "others") {
+												setConfirmEntry(entry);
+												setConfirmOpen(true);
+											} else {
+												handleComplete(entry.id);
+											}
+										}}
 									>
 										<CheckIcon className="h-4 w-4 sm:mr-2" />
 										<span className="hidden sm:inline">{t("Complete")}</span>
@@ -267,12 +276,7 @@ export const AssignedTaskQueue = ({ householdId, entries, doneThisWeek, timeZone
 					</Link>
 				) : null}
 			</CardContent>
-			<AlertDialog
-				open={confirmEntry !== null}
-				onOpenChange={(open) => {
-					if (!open) setConfirmEntry(null);
-				}}
-			>
+			<AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>{t("Complete someone else's task?")}</AlertDialogTitle>

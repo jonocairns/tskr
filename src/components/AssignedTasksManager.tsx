@@ -216,7 +216,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value={ASSIGNEE_ALL_VALUE}>{t("All assignees")}</SelectItem>
-								<SelectItem value={UNASSIGNED_VALUE}>{t("Open")}</SelectItem>
+								<SelectItem value={UNASSIGNED_VALUE}>{t("Unassigned")}</SelectItem>
 								{assigneeOptions.map((option) => (
 									<SelectItem key={option.id} value={option.id}>
 										{option.label}
@@ -263,7 +263,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 											<SelectTrigger aria-label={t("Assignee for {{task}}", { task: task.presetLabel })}>
 												<SelectValue>
 													{task.assigneeId === null
-														? t("Open")
+														? t("Unassigned")
 														: (task.assigneeName ?? task.assigneeEmail ?? t("Unknown"))}
 												</SelectValue>
 											</SelectTrigger>
