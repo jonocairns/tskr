@@ -169,7 +169,7 @@ export const assignedTasksRouter = router({
 			const task = await tx.assignedTask.findFirst({
 				where: { id, householdId },
 				include: {
-					assignedTo: { select: { name: true } },
+					assignedTo: { select: { name: true, email: true } },
 					household: { select: { timeZone: true } },
 					preset: { select: { id: true, label: true, bucket: true, approvalOverride: true } },
 				},
@@ -231,9 +231,9 @@ export const assignedTasksRouter = router({
 			try {
 				const t = await getServerT(ctx.session.user.language);
 				const actor = ctx.session.user.name ?? ctx.session.user.email ?? t("Someone");
-				const params = { actor, task: task.preset.label, assignee: task.assignedTo?.name };
+				const params = { actor, task: task.preset.label, assignee: task.assignedTo?.name ?? task.assignedTo?.email };
 				const body =
-					task.assignedToId !== userId && task.assignedTo?.name
+					task.assignedToId !== userId && params.assignee
 						? entry.status === "PENDING"
 							? t("{{actor}} completed {{assignee}}'s {{task}}, awaiting approval", params)
 							: t("{{actor}} completed {{assignee}}'s {{task}}", params)
