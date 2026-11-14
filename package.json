@@ -23,6 +23,7 @@
 		"predev": "pnpm i18n:supported",
 		"compile": "tsc --pretty",
 		"test": "jest && node --test tests/release-workflow.test.cjs",
+		"test:e2e": "playwright test",
 		"check": "node ./scripts/check.cjs",
 		"prep": "node ./scripts/check.cjs --fix"
 	},
@@ -73,6 +74,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
+		"@playwright/test": "^1.65.1",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@types/jest": "^29.5.14",
 		"@types/node": "^24.19.0",

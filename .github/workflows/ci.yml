@@ -73,6 +73,51 @@ jobs:
       - name: Check container startup and health
         run: bash scripts/ci/docker-smoke.sh tskr-ci:local
 
+  # Small core-flow browser suite. It runs alongside build-and-lint rather than
+  # after it, and Playwright builds the app and owns its throwaway SQLite DB.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.22.2"
+          cache: "pnpm"
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+      - name: Generate Prisma client
+        run: pnpm prisma generate
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run e2e tests
+        run: pnpm test:e2e
+      # Also upload when a test only passed on retry, so flakes can be diagnosed.
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   release-please:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-and-lint

@@ -138,7 +138,7 @@ export const AuditLog = ({
 	};
 
 	return (
-		<Card>
+		<Card role="region" aria-label={t("History")}>
 			<CardHeader>
 				<CardTitle className="text-xl">{t("History")}</CardTitle>
 				<CardDescription>{t("Everything recorded, including reward claims and reverts.")}</CardDescription>
@@ -214,6 +214,7 @@ export const AuditLog = ({
 												size="sm"
 												disabled={isPending}
 												onClick={() => undo(log.id)}
+												aria-label={t("Undo")}
 												className="text-muted-foreground hover:text-foreground"
 											>
 												<Undo2Icon className="h-4 w-4 sm:mr-2" />
