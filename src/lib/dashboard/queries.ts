@@ -19,6 +19,7 @@ export const getHouseholdAssignedTasks = (householdId: string) =>
 		where: {
 			householdId,
 			status: "ACTIVE",
+			archivedAt: null,
 		},
 		include: {
 			assignedTo: { select: { id: true, name: true, email: true } },

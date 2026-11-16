@@ -164,7 +164,7 @@ test("rolls back the preset when writing the assignment fails", async () => {
 
 	await expect(assignments("approver").createWithPreset(input())).rejects.toMatchObject({
 		code: "INTERNAL_SERVER_ERROR",
-		message: "Failed to assign task",
+		message: "Failed to add task",
 	});
 	expect(consoleError).toHaveBeenCalled();
 	consoleError.mockRestore();

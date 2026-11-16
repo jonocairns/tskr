@@ -118,7 +118,7 @@ export const presetsRouter = router({
 
 	usage: approverProcedure(deletePresetSchema).query(async ({ ctx, input }) => {
 		const tasks = await prisma.assignedTask.findMany({
-			where: { householdId: ctx.household.id, presetId: input.id, status: "ACTIVE" },
+			where: { householdId: ctx.household.id, presetId: input.id, status: "ACTIVE", archivedAt: null },
 			select: {
 				id: true,
 				preset: { select: { label: true } },
@@ -161,7 +161,7 @@ export const presetsRouter = router({
 		}
 		if (updates.isShared === false && preset.isShared) {
 			const activeTask = await prisma.assignedTask.findFirst({
-				where: { householdId, presetId: id, status: "ACTIVE" },
+				where: { householdId, presetId: id, status: "ACTIVE", archivedAt: null },
 				select: { id: true },
 			});
 			if (activeTask) {

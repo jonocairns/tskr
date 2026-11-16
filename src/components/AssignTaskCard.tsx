@@ -53,12 +53,22 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 	const { toast } = useToast();
 	const { t } = useTranslation();
 
+	const [hydrated, setHydrated] = useState(false);
+	useEffect(() => setHydrated(true), []);
+
 	const sortedMembers = useMemo(
 		() => [...members].sort((a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")),
 		[members],
 	);
 	// Presets created inline stay selectable until the refreshed server props include them.
 	const [createdPresets, setCreatedPresets] = useState<PresetSummary[]>([]);
+	useEffect(() => {
+		const knownIds = new Set(presets.map((preset) => preset.id));
+		setCreatedPresets((previous) => {
+			const remaining = previous.filter((preset) => !knownIds.has(preset.id));
+			return remaining.length === previous.length ? previous : remaining;
+		});
+	}, [presets]);
 	const sortedPresets = useMemo(() => {
 		const knownIds = new Set(presets.map((preset) => preset.id));
 		return [...presets, ...createdPresets.filter((preset) => !knownIds.has(preset.id))]
@@ -92,7 +102,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 		onSuccess: () => {
 			toast({
 				title: t("Task added"),
-				description: t("The task is now in the queue."),
+				description: t("The task is now on the list."),
 			});
 			router.refresh();
 		},
@@ -117,7 +127,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 			setNewApprovalOverride("DEFAULT");
 			toast({
 				title: t("Task added"),
-				description: t("{{label}} was created and added to the queue.", { label: summary.label }),
+				description: t("{{label}} was created and added to the list.", { label: summary.label }),
 				variant: "success",
 			});
 			void utils.presets.invalidate();
@@ -190,7 +200,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 		createMutation.mutate({ ...assignment, presetId });
 	};
 
-	const disabled = createMutation.isPending || createWithPresetMutation.isPending;
+	const disabled = !hydrated || createMutation.isPending || createWithPresetMutation.isPending;
 
 	return (
 		<Card>

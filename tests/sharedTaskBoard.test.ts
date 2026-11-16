@@ -35,6 +35,7 @@ jest.mock("@/lib/trpc/react", () => ({
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { type AssignedTaskEntry, AssignedTaskQueue } from "@/components/AssignedTaskQueue";
+import { AssignedTaskTable } from "@/components/AssignedTaskTable";
 import { PresetDeleteDialog } from "@/components/task-actions/PresetDeleteDialog";
 
 const mockComplete = jest.fn();
@@ -117,7 +118,18 @@ const renderDelete = async () =>
 beforeEach(() => {
 	jest.clearAllMocks();
 	mockRole = "APPROVER";
-	mockUsage = { ...mockUsage, isFetching: false, isPending: false, isError: false };
+	mockUsage = {
+		...mockUsage,
+		data: {
+			tasks: [
+				{ preset: { label: "Bins" }, assignedTo: { name: "Sam", email: null } },
+				{ preset: { label: "Vacuum lounge" }, assignedTo: null },
+			],
+		},
+		isFetching: false,
+		isPending: false,
+		isError: false,
+	};
 	container = document.createElement("div");
 	document.body.append(container);
 	root = createRoot(container);
@@ -187,6 +199,9 @@ test("preset deletion loads usage only when opened by an approver and names assi
 	expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
 		"This will also remove: Bins (Sam), Vacuum lounge (Open)",
 	);
+	expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe(
+		"Delete from quick log and the task list?",
+	);
 	await click("Delete");
 	expect(mockDelete).toHaveBeenCalledTimes(1);
 });
@@ -207,4 +222,28 @@ test("preset deletion waits for usage, with retry on failure, while doers do not
 	await click("Delete preset");
 	expect(mockUsageQuery).toHaveBeenLastCalledWith({ householdId: "home", id: "preset" }, { enabled: false });
 	expect(button("Delete").disabled).toBe(false);
+});
+
+test("quick-log deletion keeps its short title when there are no current tasks", async () => {
+	mockUsage = { ...mockUsage, data: { tasks: [] } };
+	await renderDelete();
+	await click("Delete preset");
+	expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe("Delete from quick log?");
+});
+
+test("a selected member's long To do list is expanded", async () => {
+	await act(async () =>
+		root.render(
+			createElement(AssignedTaskTable, {
+				entries: Array.from({ length: 6 }, (_, index) => entry("others", { id: String(index) })),
+				householdId: "home",
+				timeZone: "UTC",
+				dateFormat: "DMY",
+				timeFormat: "H24",
+				collapseOthers: false,
+			}),
+		),
+	);
+	expect(container.querySelector("details")).toBeNull();
+	expect(container.querySelectorAll('button[aria-label="Complete others"]')).toHaveLength(6);
 });

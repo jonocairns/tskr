@@ -72,5 +72,17 @@ test.describe("as an approver", () => {
 			"href",
 			`/${householdId}/tasks?tab=done&${rangeQuery}`,
 		);
+
+		await page.getByRole("row").filter({ hasText: "Water the plants" }).getByRole("button", { name: "Remove" }).click();
+		await expect(page.getByRole("alertdialog")).toContainText("Its completions stay in Done.");
+		await page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
+		await expect(page.getByText("Task removed", { exact: true }).first()).toBeVisible();
+		await expect(page.getByRole("row").filter({ hasText: "Water the plants" })).toHaveCount(0);
+		await openTasks(page, householdId, "tab=done&userId=all");
+		await expect(page.getByText("Water the plants", { exact: true })).toBeVisible();
+		await expect(
+			page.getByText("Assigned to Avery Approver", { exact: false }).filter({ visible: true }),
+		).toBeVisible();
+		await expect(page.getByText("Quick log", { exact: true })).toHaveCount(0);
 	});
 });

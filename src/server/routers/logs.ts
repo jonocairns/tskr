@@ -307,7 +307,8 @@ export const logsRouter = router({
 						where: { id: log.assignedTaskId, householdId: log.householdId },
 						include: { household: { select: { timeZone: true } } },
 					});
-					if (task?.status !== "ACTIVE") {
+					// Archiving removes the task from current lists, not its existing log workflow.
+					if (!task || (!task.archivedAt && task.status !== "ACTIVE")) {
 						throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });
 					}
 					await ensureAssignedTaskCapacity({

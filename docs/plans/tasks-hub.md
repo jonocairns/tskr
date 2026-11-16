@@ -2,7 +2,7 @@
 
 Use **task** as the user-facing noun. **Open** means no assignee; **Quick log** identifies an ad-hoc preset or timed completion without an assigned task.
 
-The Tasks hub at `/[householdId]/tasks` has URL tabs: **To do** (`tab=todo`, the default) and **Done** (`tab=done`). The approver-only **Manage** tab (`tab=manage`) creates and edits tasks, lists all ACTIVE tasks including those fulfilled this cycle, and shows progress from full qualifying history. DOER Manage requests fall back to To do before management data loads. Manage ignores range params and hides member/range controls. Member selection and range params survive tab switches. To do shares the dashboard derivation and full completion history, independent of the display range; a member sees their assigned tasks plus Open tasks. Done filters by completer and defaults to the household calendar week. Done and the weekly dashboard count include quick-log completions.
+The Tasks hub at `/[householdId]/tasks` has URL tabs: **To do** (`tab=todo`, the default) and **Done** (`tab=done`). The approver-only **Manage** tab (`tab=manage`) creates and edits tasks, lists all unarchived ACTIVE tasks including those fulfilled this cycle, and shows progress from full qualifying history. DOER Manage requests fall back to To do before management data loads. Manage ignores range params and hides member/range controls. Member selection and range params survive tab switches. To do shares the dashboard derivation and full completion history, independent of the display range; a member sees their assigned tasks plus Open tasks. Done filters by completer and defaults to the household calendar week. Done and the weekly dashboard count include quick-log completions.
 
 `/week` redirects to `/tasks`, forwarding every query param and selecting Done when `preset`, `from`, or `to` is present. `/assignments` redirects approvers to `/tasks?tab=manage` and DOERs to `/tasks`.
 
@@ -12,5 +12,11 @@ PR sequence:
 
 1. #168: task wording and inline preset creation.
 2. #169: Tasks page with To do and Done tabs.
-3. Implemented in this branch: Manage tab, `/assignments` redirect, and empty-household visibility.
-4. Implemented in this branch: dashboard Quick log grid, task wording in its controls and toasts, and listed-task guidance.
+3. #170: Manage tab, `/assignments` redirect, and empty-household visibility.
+4. #171: dashboard Quick log grid, task wording in its controls and toasts, and listed-task guidance.
+
+5. PR 5: archive removed tasks, preserve Done provenance, protect Manage drafts from live refresh, prune inline-created picker entries, show all tasks for a selected member, and polish task-list and quick-log deletion copy.
+
+Removing a task sets `AssignedTask.archivedAt` and excludes it from current-task lists. Its completions remain linked in Done, including the assignee; subsequent log status changes never un-archive it. Manage disables live refresh to protect unsaved drafts.
+
+Known limitation: deleting a quick-log preset still cascades to its tasks and clears their completion links. The quick-log deletion dialog lists affected current tasks and expands its title when the task list is affected.

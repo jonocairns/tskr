@@ -179,11 +179,16 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 				<Card>
 					<CardHeader>{controls}</CardHeader>
 					<CardContent>
-						<AssignedTaskTable householdId={householdId} entries={todoEntries} {...settings} />
+						<AssignedTaskTable
+							householdId={householdId}
+							entries={todoEntries}
+							collapseOthers={selectedUserId === "all"}
+							{...settings}
+						/>
 					</CardContent>
 				</Card>
 			)}
-			<LiveRefresh householdId={householdId} />
+			<LiveRefresh householdId={householdId} enabled={tab !== "manage"} />
 		</PageShell>
 	);
 };

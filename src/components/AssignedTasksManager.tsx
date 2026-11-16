@@ -165,13 +165,13 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 				setTasks(context.previousTasks);
 			}
 			toast({
-				title: t("Unable to delete task"),
+				title: t("Unable to remove task"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: () => {
-			toast({ title: t("Task deleted") });
+			toast({ title: t("Task removed") });
 			router.refresh();
 		},
 	});
@@ -367,7 +367,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 														size="icon"
 														variant="ghost"
 														disabled={isPending}
-														aria-label={t("Delete")}
+														aria-label={t("Remove")}
 														className="h-9 w-9"
 													>
 														<Trash2Icon className="h-5 w-5 text-destructive" />
@@ -375,9 +375,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 												</AlertDialogTrigger>
 												<AlertDialogContent>
 													<AlertDialogHeader>
-														<AlertDialogTitle>{t("Delete task?")}</AlertDialogTitle>
+														<AlertDialogTitle>{t("Remove task?")}</AlertDialogTitle>
 														<AlertDialogDescription>
-															{t("This removes the task from the queue. Existing completions stay in the log.")}
+															{t("This removes the task from the list. Its completions stay in Done.")}
 														</AlertDialogDescription>
 													</AlertDialogHeader>
 													<AlertDialogFooter>
@@ -387,7 +387,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 															onClick={() => handleDelete(task.id)}
 															className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 														>
-															{t("Delete")}
+															{t("Remove")}
 														</AlertDialogAction>
 													</AlertDialogFooter>
 												</AlertDialogContent>

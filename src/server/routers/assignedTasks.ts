@@ -117,10 +117,10 @@ export const assignedTasksRouter = router({
 		});
 
 		if (!preset) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Preset not found" });
+			throw new TRPCError({ code: "BAD_REQUEST", message: "Task not found" });
 		}
 		if (!preset.isShared) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Tasks require a shared preset" });
+			throw new TRPCError({ code: "BAD_REQUEST", message: "Only shared tasks can be added to the list" });
 		}
 
 		try {
@@ -131,7 +131,7 @@ export const assignedTasksRouter = router({
 			return { assignedTask };
 		} catch (error) {
 			console.error("[assignedTasks:create]", error);
-			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to assign task" });
+			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to add task" });
 		}
 	}),
 
@@ -143,6 +143,8 @@ export const assignedTasksRouter = router({
 
 		try {
 			return await prisma.$transaction(async (tx) => {
+				// A no-match update still acquires SQLite's write lock before any reads.
+				await lockAssignedTask(tx, "", householdId);
 				await assertHouseholdAssignee(tx, householdId, assignment.assigneeId);
 				const { preset, sortOrder } = await createPresetWithOrdering(tx, {
 					householdId,
@@ -163,7 +165,7 @@ export const assignedTasksRouter = router({
 				throw error;
 			}
 			console.error("[assignedTasks:createWithPreset]", error);
-			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to assign task" });
+			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to add task" });
 		}
 	}),
 
@@ -173,7 +175,7 @@ export const assignedTasksRouter = router({
 
 		return prisma.$transaction(async (tx) => {
 			await lockAssignedTask(tx, id, householdId);
-			const task = await tx.assignedTask.findFirst({ where: { id, householdId } });
+			const task = await tx.assignedTask.findFirst({ where: { id, householdId, archivedAt: null } });
 			if (!task) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
 			}
@@ -208,22 +210,18 @@ export const assignedTasksRouter = router({
 		const householdId = ctx.household.id;
 		const { id } = input;
 
-		const task = await prisma.assignedTask.findFirst({
-			where: { id, householdId },
-			select: { id: true },
-		});
-
-		if (!task) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
-		}
-
-		try {
-			await prisma.assignedTask.delete({ where: { id } });
+		return prisma.$transaction(async (tx) => {
+			await lockAssignedTask(tx, id, householdId);
+			const task = await tx.assignedTask.findFirst({
+				where: { id, householdId, archivedAt: null },
+				select: { id: true },
+			});
+			if (!task) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+			}
+			await tx.assignedTask.update({ where: { id }, data: { archivedAt: new Date() } });
 			return { ok: true };
-		} catch (error) {
-			console.error("[assignedTasks:delete]", error);
-			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to delete task" });
-		}
+		});
 	}),
 
 	complete: householdProcedure(completeAssignedTaskSchema).mutation(async ({ ctx, input }) => {
@@ -234,7 +232,7 @@ export const assignedTasksRouter = router({
 		const { entry, task } = await prisma.$transaction(async (tx) => {
 			await lockAssignedTask(tx, id, householdId);
 			const task = await tx.assignedTask.findFirst({
-				where: { id, householdId },
+				where: { id, householdId, archivedAt: null },
 				include: {
 					assignedTo: { select: { name: true, email: true } },
 					household: { select: { timeZone: true } },

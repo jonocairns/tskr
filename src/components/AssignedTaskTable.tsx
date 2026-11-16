@@ -51,9 +51,17 @@ type Props = {
 	timeZone: string;
 	dateFormat: DateFormat;
 	timeFormat: TimeFormat;
+	collapseOthers?: boolean;
 };
 
-export const AssignedTaskTable = ({ householdId, entries, timeZone, dateFormat, timeFormat }: Props) => {
+export const AssignedTaskTable = ({
+	householdId,
+	entries,
+	timeZone,
+	dateFormat,
+	timeFormat,
+	collapseOthers = true,
+}: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
@@ -219,7 +227,7 @@ export const AssignedTaskTable = ({ householdId, entries, timeZone, dateFormat, 
 				groups.map((group) => {
 					const groupEntries = entries.filter((entry) => entry.group === group.key);
 					if (groupEntries.length === 0) return null;
-					return group.key === "others" && groupEntries.length > 5 ? (
+					return collapseOthers && group.key === "others" && groupEntries.length > 5 ? (
 						<details key={group.key} className="space-y-2">
 							<summary className="cursor-pointer font-semibold">{group.label}</summary>
 							<div className="overflow-x-auto">{renderEntries(groupEntries)}</div>

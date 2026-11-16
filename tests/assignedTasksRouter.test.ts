@@ -5,7 +5,7 @@ import type { AssignedTask, Prisma } from "@prisma/client";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
-import { getTasksTodoData } from "@/lib/tasks/queries";
+import { getTasksManageData, getTasksTodoData } from "@/lib/tasks/queries";
 import { getStartOfWeekInTimeZone } from "@/lib/timeZones";
 import { getWeekViewData } from "@/lib/week-view/queries";
 import { assignedTasksRouter } from "@/server/routers/assignedTasks";
@@ -487,7 +487,7 @@ test("rejects personal presets for new tasks while retaining existing task compl
 			cadenceIntervalMinutes: 1440,
 			isRecurring: false,
 		}),
-	).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Tasks require a shared preset" });
+	).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Only shared tasks can be added to the list" });
 	const task = await makeTask();
 	await expect(manage.complete({ householdId, id: task.id })).resolves.toMatchObject({ entry: { userId: "approver" } });
 });
@@ -621,3 +621,80 @@ test("dashboard loads every active household task and counts only household task
 		]),
 	);
 });
+
+test("removing archives a task, excludes current usage, and preserves Done provenance and weekly counts", async () => {
+	const task = await makeTask({ cadenceTarget: 2 });
+	const log = await makeLog(task);
+	await expect(manage.delete({ householdId, id: task.id })).resolves.toEqual({ ok: true });
+	const saved = await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } });
+	expect(saved.archivedAt).toBeInstanceOf(Date);
+	expect((await prisma.pointLog.findUniqueOrThrow({ where: { id: log.id } })).assignedTaskId).toBe(task.id);
+	const query = { householdId, userId: "all", timeZone: "Pacific/Auckland" };
+	expect(await getTasksTodoData({ ...query, actingUserId: "approver" })).toEqual([]);
+	expect((await getTasksManageData({ ...query, userId: "approver" })).tasks).toEqual([]);
+	const dashboard = await getDashboardData("doer", householdId);
+	expect(dashboard.assignedTasks).toEqual([]);
+	expect(dashboard.hasActiveAssignedTasks).toBe(false);
+	expect(dashboard.householdDoneThisWeek).toBe(1);
+	expect(await presets.usage({ householdId, id: "preset" })).toEqual({ tasks: [] });
+	await expect(presets.update({ householdId, id: "preset", isShared: false })).resolves.toMatchObject({
+		preset: { isShared: false },
+	});
+	const done = await getWeekViewData({
+		...query,
+		range: {
+			start: new Date(log.createdAt.getTime() - 1),
+			end: new Date(log.createdAt.getTime() + 1),
+			labelKey: "calendarWeek",
+		},
+		dateFormat: "DMY",
+		timeFormat: "H24",
+	});
+	expect(done.timeline).toMatchObject([
+		{
+			id: log.id,
+			description: "Vacuum",
+			assignedTaskId: task.id,
+			assignedTo: { id: "doer", name: "Sam" },
+		},
+	]);
+});
+
+test("archived tasks reject completion, edits and repeated removal", async () => {
+	const task = await makeTask();
+	await manage.delete({ householdId, id: task.id });
+	await expect(complete.complete({ householdId, id: task.id })).rejects.toMatchObject({
+		code: "NOT_FOUND",
+		message: "Task not found",
+	});
+	await expect(manage.update({ householdId, id: task.id, cadenceTarget: 3 })).rejects.toMatchObject({
+		code: "NOT_FOUND",
+		message: "Task not found",
+	});
+	await expect(manage.delete({ householdId, id: task.id })).rejects.toMatchObject({
+		code: "NOT_FOUND",
+		message: "Task not found",
+	});
+	expect(await prisma.pointLog.count()).toBe(0);
+});
+
+test.each(["approve", "reject", "revert"] as const)(
+	"%s on an archived task's pending log keeps it archived",
+	async (action) => {
+		const task = await makeTask({ isRecurring: false });
+		const log = await makeLog(task, { status: "PENDING" });
+		await manage.delete({ householdId, id: task.id });
+		const archived = await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } });
+		await approval.updateStatus({ id: log.id, action });
+		if (action === "reject") {
+			await ownLogs.updateStatus({ id: log.id, action: "resubmit" });
+			await approval.updateStatus({ id: log.id, action: "approve" });
+		}
+		if (action !== "revert") await ownLogs.updateStatus({ id: log.id, action: "revert" });
+		expect((await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).archivedAt).toEqual(
+			archived.archivedAt,
+		);
+		expect((await getDashboardData("doer", householdId)).hasActiveAssignedTasks).toBe(false);
+		expect((await prisma.pointLog.findUniqueOrThrow({ where: { id: log.id } })).assignedTaskId).toBe(task.id);
+	},
+);

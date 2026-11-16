@@ -43,13 +43,13 @@ export const PresetDeleteDialog = ({ presetId, label, onDelete, children }: Prop
 			<AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>{t("Delete from quick log?")}</AlertDialogTitle>
+					<AlertDialogTitle>
+						{taskLabels?.length ? t("Delete from quick log and the task list?") : t("Delete from quick log?")}
+					</AlertDialogTitle>
 					<AlertDialogDescription>
 						{t('This will delete "{{label}}" and cannot be undone.', { label })}
-						{isApprover && usage.isFetching ? <span className="mt-2 block">{t("Loading assigned tasks…")}</span> : null}
-						{isApprover && usage.isError ? (
-							<span className="mt-2 block">{t("Unable to load assigned tasks.")}</span>
-						) : null}
+						{isApprover && usage.isFetching ? <span className="mt-2 block">{t("Loading tasks…")}</span> : null}
+						{isApprover && usage.isError ? <span className="mt-2 block">{t("Unable to load tasks.")}</span> : null}
 						{taskLabels?.length ? (
 							<span className="mt-2 block">
 								{t("This will also remove: {{tasks}}", { tasks: taskLabels.join(", ") })}
