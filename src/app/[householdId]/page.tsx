@@ -101,6 +101,7 @@ export default async function DashboardPage({ params }: Props) {
 					entries={assignedTasks}
 					doneThisWeek={householdDoneThisWeek}
 					householdId={householdId}
+					canManageTasks={membership.role !== "DOER"}
 					timeZone={timeZone}
 					dateFormat={dateFormat}
 					timeFormat={timeFormat}

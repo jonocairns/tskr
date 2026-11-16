@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -54,9 +54,18 @@ type Props = {
 	timeZone: string;
 	dateFormat: DateFormat;
 	timeFormat: TimeFormat;
+	canManageTasks?: boolean;
 };
 
-export const AssignedTaskQueue = ({ householdId, entries, doneThisWeek, timeZone, dateFormat, timeFormat }: Props) => {
+export const AssignedTaskQueue = ({
+	householdId,
+	entries,
+	doneThisWeek,
+	timeZone,
+	dateFormat,
+	timeFormat,
+	canManageTasks = false,
+}: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
@@ -216,9 +225,19 @@ export const AssignedTaskQueue = ({ householdId, entries, doneThisWeek, timeZone
 
 	return (
 		<Card>
-			<CardHeader>
-				<CardTitle className="text-xl">{t("Household tasks")}</CardTitle>
-				<CardDescription>{t("Anyone in the household can complete these tasks.")}</CardDescription>
+			<CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+				<div className="space-y-1.5">
+					<CardTitle className="text-xl">{t("Household tasks")}</CardTitle>
+					<CardDescription>{t("Anyone in the household can complete these tasks.")}</CardDescription>
+				</div>
+				{canManageTasks ? (
+					<Button asChild variant="outline" size="sm" className="shrink-0">
+						<Link href={`/${householdId}/assignments`}>
+							<PlusIcon />
+							{t("Add task")}
+						</Link>
+					</Button>
+				) : null}
 			</CardHeader>
 			<CardContent className="space-y-4">
 				{entries.length === 0 ? (

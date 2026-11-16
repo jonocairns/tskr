@@ -7,7 +7,7 @@ import { createContext, useContext, useEffect, useState, useTransition } from "r
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
-import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
+import { DEFAULT_DURATION_BUCKET, type DurationKey, PRESET_TASKS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
 type TaskActionsContextValue = {
@@ -46,7 +46,7 @@ export const TaskActionsProvider = ({
 	currentUserRole,
 	children,
 }: TaskActionsProviderProps) => {
-	const defaultBucket = DURATION_BUCKETS.find((bucket) => bucket.key === "QUICK")?.key ?? DURATION_BUCKETS[0].key;
+	const defaultBucket = DEFAULT_DURATION_BUCKET;
 	const [note, setNote] = useState("");
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [isPresetPending, startPresetTransition] = useTransition();

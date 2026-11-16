@@ -1,6 +1,8 @@
 export const DURATION_KEYS = ["TINY", "QUICK", "ROUTINE", "CHALLENGING", "HEAVY", "MAJOR"] as const;
 
 export type DurationKey = (typeof DURATION_KEYS)[number];
+
+export const DEFAULT_DURATION_BUCKET: DurationKey = "QUICK";
 type Translator = (value: string) => string;
 
 export const BUCKET_POINTS: Record<DurationKey, number> = {

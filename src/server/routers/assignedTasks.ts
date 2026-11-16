@@ -5,19 +5,38 @@ import { z } from "zod";
 
 import { getServerT } from "@/lib/i18nServer";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
+import {
+	presetApprovalOverrideSchema,
+	presetBucketSchema,
+	presetIconKeySchema,
+	presetLabelSchema,
+} from "@/lib/presetInput";
+import { createPresetWithOrdering } from "@/lib/presetTaskOrderManagement";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { ensureAssignedTaskCapacity, getAssignedTaskStatus, lockAssignedTask } from "@/server/assignedTaskState";
 import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
-const createAssignedTaskSchema = z.object({
+const assignmentFieldsSchema = z.object({
 	householdId: z.string().min(1),
-	presetId: z.string().min(1),
 	assigneeId: z.string().min(1).nullish(),
 	cadenceTarget: z.number().int().min(1),
 	cadenceIntervalMinutes: z.number().int().min(1),
 	isRecurring: z.boolean(),
+});
+
+const createAssignedTaskSchema = assignmentFieldsSchema.extend({
+	presetId: z.string().min(1),
+});
+
+const createAssignedTaskWithPresetSchema = assignmentFieldsSchema.extend({
+	preset: z.object({
+		label: presetLabelSchema,
+		bucket: presetBucketSchema,
+		iconKey: presetIconKeySchema,
+		approvalOverride: presetApprovalOverrideSchema,
+	}),
 });
 
 const updateAssignedTaskSchema = z
@@ -50,22 +69,47 @@ const deleteAssignedTaskSchema = z.object({
 
 const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
+type AssignmentFields = z.infer<typeof assignmentFieldsSchema>;
+
+const assertHouseholdAssignee = async (
+	db: Pick<typeof prisma, "householdMember">,
+	householdId: string,
+	assigneeId: string | null | undefined,
+) => {
+	if (!assigneeId) {
+		return;
+	}
+	const member = await db.householdMember.findFirst({
+		where: { householdId, userId: assigneeId },
+		select: { id: true },
+	});
+	if (!member) {
+		throw new TRPCError({ code: "BAD_REQUEST", message: "Assignee not found in household" });
+	}
+};
+
+const buildAssignedTaskData = (
+	householdId: string,
+	presetId: string,
+	assignedById: string,
+	{ assigneeId, cadenceTarget, cadenceIntervalMinutes, isRecurring }: AssignmentFields,
+) => ({
+	householdId,
+	presetId,
+	assignedToId: assigneeId,
+	assignedById,
+	cadenceTarget: isRecurring ? cadenceTarget : 1,
+	cadenceIntervalMinutes: Math.max(1, cadenceIntervalMinutes),
+	isRecurring,
+	status: "ACTIVE" as const,
+});
+
 export const assignedTasksRouter = router({
 	create: approverProcedure(createAssignedTaskSchema).mutation(async ({ ctx, input }) => {
 		const householdId = ctx.household.id;
-		const { presetId, assigneeId, cadenceTarget, cadenceIntervalMinutes, isRecurring } = input;
-		const normalizedCadenceTarget = isRecurring ? cadenceTarget : 1;
-		const normalizedCadenceIntervalMinutes = Math.max(1, cadenceIntervalMinutes);
+		const { presetId, ...assignment } = input;
 
-		if (assigneeId) {
-			const member = await prisma.householdMember.findFirst({
-				where: { householdId, userId: assigneeId },
-				select: { id: true },
-			});
-			if (!member) {
-				throw new TRPCError({ code: "BAD_REQUEST", message: "Assignee not found in household" });
-			}
-		}
+		await assertHouseholdAssignee(prisma, householdId, assignment.assigneeId);
 
 		const preset = await prisma.presetTask.findFirst({
 			where: { id: presetId, householdId },
@@ -81,21 +125,44 @@ export const assignedTasksRouter = router({
 
 		try {
 			const assignedTask = await prisma.assignedTask.create({
-				data: {
-					householdId,
-					presetId: preset.id,
-					assignedToId: assigneeId,
-					assignedById: ctx.session.user.id,
-					cadenceTarget: normalizedCadenceTarget,
-					cadenceIntervalMinutes: normalizedCadenceIntervalMinutes,
-					isRecurring,
-					status: "ACTIVE",
-				},
+				data: buildAssignedTaskData(householdId, preset.id, ctx.session.user.id, assignment),
 			});
 
 			return { assignedTask };
 		} catch (error) {
 			console.error("[assignedTasks:create]", error);
+			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to assign task" });
+		}
+	}),
+
+	// Creates a shared preset and its assignment together, so a failed assignment never leaves an orphan preset.
+	createWithPreset: approverProcedure(createAssignedTaskWithPresetSchema).mutation(async ({ ctx, input }) => {
+		const householdId = ctx.household.id;
+		const userId = ctx.session.user.id;
+		const { preset: presetInput, ...assignment } = input;
+
+		try {
+			return await prisma.$transaction(async (tx) => {
+				await assertHouseholdAssignee(tx, householdId, assignment.assigneeId);
+				const { preset, sortOrder } = await createPresetWithOrdering(tx, {
+					householdId,
+					userId,
+					label: presetInput.label,
+					bucket: presetInput.bucket,
+					iconKey: presetInput.iconKey,
+					approvalOverride: presetInput.approvalOverride,
+					isShared: true,
+				});
+				const assignedTask = await tx.assignedTask.create({
+					data: buildAssignedTaskData(householdId, preset.id, userId, assignment),
+				});
+				return { preset: { ...preset, sortOrder }, assignedTask };
+			});
+		} catch (error) {
+			if (error instanceof TRPCError) {
+				throw error;
+			}
+			console.error("[assignedTasks:createWithPreset]", error);
 			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to assign task" });
 		}
 	}),

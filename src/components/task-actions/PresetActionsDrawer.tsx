@@ -6,6 +6,12 @@ import type { ReactNode, SyntheticEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+import {
+	type ApprovalOverrideOption,
+	PresetApprovalOverrideSelect,
+	PresetBucketSelect,
+	resolveApprovalOverride,
+} from "@/components/task-actions/PresetFormFields";
 import { PresetIconPicker } from "@/components/task-actions/PresetIconPicker";
 import { PresetListItem } from "@/components/task-actions/PresetListItem";
 import { TaskButton } from "@/components/task-actions/TaskButton";
@@ -16,7 +22,6 @@ import { BUCKET_WINDOW_SHORT, normalizeText } from "@/components/task-actions/ut
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useTranslation } from "@/lib/i18nClient";
@@ -25,7 +30,6 @@ import { getLocalizedDurationBuckets, getLocalizedPresetTasks } from "@/lib/poin
 import type { PresetIconKey } from "@/lib/presetIcons";
 import { cn } from "@/lib/utils";
 
-type ApprovalOverrideOption = "DEFAULT" | "REQUIRE" | "SKIP";
 type TaskCreateMode = "preset" | "one-off";
 
 type TemplatesByBucket = Array<{
@@ -72,19 +76,6 @@ type Props = {
 	showPresetList?: boolean;
 	showListHeader?: boolean;
 	onLogTimedSuccess?: () => void;
-};
-
-const resolveApprovalOverride = (
-	canEdit: boolean,
-	value: ApprovalOverrideOption,
-): "REQUIRE" | "SKIP" | null | undefined => {
-	if (!canEdit) {
-		return undefined;
-	}
-	if (value === "DEFAULT") {
-		return null;
-	}
-	return value;
 };
 
 type SortableGridItemProps = {
@@ -386,22 +377,12 @@ export const PresetActionsDrawer = ({
 				<Label htmlFor={`preset-bucket-${preset.id}`} className="text-xs text-muted-foreground">
 					{t("Bucket")}
 				</Label>
-				<Select
+				<PresetBucketSelect
+					id={`preset-bucket-${preset.id}`}
 					value={editBucket}
-					onValueChange={(value: DurationKey) => setEditBucket(value)}
+					onChange={setEditBucket}
 					disabled={editFormDisabled}
-				>
-					<SelectTrigger id={`preset-bucket-${preset.id}`}>
-						<SelectValue placeholder={t("Bucket")} />
-					</SelectTrigger>
-					<SelectContent>
-						{localizedBuckets.map((bucket) => (
-							<SelectItem key={bucket.key} value={bucket.key}>
-								{bucket.label} ({bucket.points} pts)
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
+				/>
 			</div>
 			<div className="space-y-2">
 				<Label htmlFor={`preset-icon-${preset.id}`} className="text-xs text-muted-foreground">
@@ -435,20 +416,12 @@ export const PresetActionsDrawer = ({
 			{canEditApprovalOverride ? (
 				<div className="space-y-2">
 					<p className="text-xs font-medium text-muted-foreground">{t("Approval override")}</p>
-					<Select
+					<PresetApprovalOverrideSelect
+						id={`preset-approval-${preset.id}`}
 						value={editApprovalOverride}
-						onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setEditApprovalOverride(value)}
+						onChange={setEditApprovalOverride}
 						disabled={editFormDisabled}
-					>
-						<SelectTrigger id={`preset-approval-${preset.id}`}>
-							<SelectValue placeholder={t("Use member default")} />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="DEFAULT">{t("Use member default")}</SelectItem>
-							<SelectItem value="REQUIRE">{t("Require approval")}</SelectItem>
-							<SelectItem value="SKIP">{t("Skip approval")}</SelectItem>
-						</SelectContent>
-					</Select>
+					/>
 				</div>
 			) : null}
 			<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -558,20 +531,11 @@ export const PresetActionsDrawer = ({
 			{isPresetMode && canEditApprovalOverride ? (
 				<div className="space-y-2">
 					<p className="text-xs font-medium text-muted-foreground">{t("Approval override")}</p>
-					<Select
+					<PresetApprovalOverrideSelect
 						value={customApprovalOverride}
-						onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setCustomApprovalOverride(value)}
+						onChange={setCustomApprovalOverride}
 						disabled={createFormDisabled}
-					>
-						<SelectTrigger>
-							<SelectValue placeholder={t("Use member default")} />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="DEFAULT">{t("Use member default")}</SelectItem>
-							<SelectItem value="REQUIRE">{t("Require approval")}</SelectItem>
-							<SelectItem value="SKIP">{t("Skip approval")}</SelectItem>
-						</SelectContent>
-					</Select>
+					/>
 				</div>
 			) : null}
 			{isPresetMode && canManagePresets ? (
