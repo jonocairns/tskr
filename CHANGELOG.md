@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/jonocairns/tskr/compare/1.5.0...1.6.0) (2026-11-16)
+
+
+### Features
+
+* **board:** Tasks hub with inline task creation, Quick log matching and task archiving ([#173](https://github.com/jonocairns/tskr/issues/173)) ([c5cd650](https://github.com/jonocairns/tskr/commit/c5cd6508b03217d278133fea6546261869865174))
+
 ## [1.5.0](https://github.com/jonocairns/tskr/compare/1.4.0...1.5.0) (2026-11-14)
 
 
