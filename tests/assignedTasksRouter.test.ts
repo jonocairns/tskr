@@ -986,7 +986,7 @@ test("a Quick log tap racing an archive keeps its link or is rejected", async ()
 });
 
 test("adding a task while its Quick log item is archived never leaves it on an archived item", async () => {
-	const [created] = await Promise.allSettled([
+	const [created, archived] = await Promise.allSettled([
 		manage.create({
 			householdId,
 			presetId: "preset",
@@ -997,6 +997,10 @@ test("adding a task while its Quick log item is archived never leaves it on an a
 		}),
 		presets.delete({ householdId, id: "preset" }),
 	]);
+	expect(archived.status).toBe("fulfilled");
+	expect(await prisma.presetTask.findUniqueOrThrow({ where: { id: "preset" } })).toMatchObject({
+		archivedAt: expect.any(Date),
+	});
 	expect(await unarchivedTasksOnArchivedItems()).toBe(0);
 	if (created.status === "rejected") expect(created.reason).toMatchObject({ code: "BAD_REQUEST" });
 });
