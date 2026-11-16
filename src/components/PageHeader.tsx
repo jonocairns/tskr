@@ -40,10 +40,10 @@ export const PageHeader = ({
 				<Link
 					href={backHref}
 					aria-label={backLabel}
-					className="-my-2 -ml-1.5 inline-flex min-h-11 items-center gap-0.5 rounded-md pl-0.5 pr-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					className="-my-2 -ml-1.5 inline-flex min-h-11 min-w-0 items-center gap-0.5 rounded-md pl-0.5 pr-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
-					<ChevronLeftIcon aria-hidden="true" className="h-4 w-4" />
-					{backText}
+					<ChevronLeftIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
+					<span className="truncate">{backText}</span>
 				</Link>
 			) : eyebrow ? (
 				<p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
