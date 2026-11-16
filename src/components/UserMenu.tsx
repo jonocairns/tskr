@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDaysIcon, ClipboardListIcon, HomeIcon, LogOutIcon, SettingsIcon } from "lucide-react";
+import { CalendarDaysIcon, HomeIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 
@@ -36,7 +36,6 @@ export const UserMenu = ({ user, household }: Props) => {
 	const resolvedUser = sessionUser ?? user;
 
 	const householdId = household?.id;
-	const currentHouseholdRole = household?.role;
 	const name = resolvedUser?.name?.slice(0, 1)?.toUpperCase();
 	const email = resolvedUser?.email?.slice(0, 1)?.toUpperCase();
 	const initials = name ?? email ?? "U";
@@ -64,14 +63,6 @@ export const UserMenu = ({ user, household }: Props) => {
 								{t("Tasks")}
 							</Link>
 						</DropdownMenuItem>
-						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (
-							<DropdownMenuItem asChild>
-								<Link href={`/${householdId}/assignments`}>
-									<ClipboardListIcon className="mr-2 h-4 w-4" />
-									{t("Assignments")}
-								</Link>
-							</DropdownMenuItem>
-						) : null}
 						<DropdownMenuItem asChild>
 							<Link href={`/${householdId}/settings`}>
 								<SettingsIcon className="mr-2 h-4 w-4" />

@@ -120,7 +120,7 @@ export const assignedTasksRouter = router({
 			throw new TRPCError({ code: "BAD_REQUEST", message: "Preset not found" });
 		}
 		if (!preset.isShared) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Assigned tasks require a shared preset" });
+			throw new TRPCError({ code: "BAD_REQUEST", message: "Tasks require a shared preset" });
 		}
 
 		try {
@@ -175,7 +175,7 @@ export const assignedTasksRouter = router({
 			await lockAssignedTask(tx, id, householdId);
 			const task = await tx.assignedTask.findFirst({ where: { id, householdId } });
 			if (!task) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
+				throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
 			}
 			if (input.assigneeId) {
 				const member = await tx.householdMember.findFirst({
@@ -214,7 +214,7 @@ export const assignedTasksRouter = router({
 		});
 
 		if (!task) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
+			throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
 		}
 
 		try {
@@ -222,7 +222,7 @@ export const assignedTasksRouter = router({
 			return { ok: true };
 		} catch (error) {
 			console.error("[assignedTasks:delete]", error);
-			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to delete assigned task" });
+			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to delete task" });
 		}
 	}),
 
@@ -242,7 +242,7 @@ export const assignedTasksRouter = router({
 				},
 			});
 			if (!task?.preset) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Assigned task not found" });
+				throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
 			}
 			if (task.status !== "ACTIVE") {
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });

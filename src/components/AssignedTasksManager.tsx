@@ -46,6 +46,7 @@ type AssignedTaskRow = {
 	cadenceIntervalMinutes: number;
 	isRecurring: boolean;
 	assignedAt: string;
+	progress: { completed: number; target: number; isRecurring: boolean };
 };
 
 type Props = {
@@ -141,7 +142,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 				cadenceIntervalMinutes: result.assignedTask.cadenceIntervalMinutes,
 				isRecurring: result.assignedTask.isRecurring,
 			});
-			toast({ title: t("Assigned task updated") });
+			toast({ title: t("Task updated") });
 			router.refresh();
 		},
 		onError: (error) => {
@@ -170,7 +171,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 			});
 		},
 		onSuccess: () => {
-			toast({ title: t("Assigned task deleted") });
+			toast({ title: t("Task deleted") });
 			router.refresh();
 		},
 	});
@@ -206,8 +207,8 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 		<Card>
 			<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div className="space-y-1">
-					<CardTitle className="text-xl">{t("Assigned tasks")}</CardTitle>
-					<CardDescription>{t("Manage assigned tasks across the household.")}</CardDescription>
+					<CardTitle className="text-xl">{t("All tasks")}</CardTitle>
+					<CardDescription>{t("Manage tasks across the household.")}</CardDescription>
 				</div>
 				{sortedTasks.length > 0 ? (
 					<div className="sm:min-w-[220px]">
@@ -230,7 +231,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
 				{sortedTasks.length === 0 ? (
-					<p className="text-sm text-muted-foreground">{t("No assigned tasks yet.")}</p>
+					<p className="text-sm text-muted-foreground">{t("No tasks yet.")}</p>
 				) : (
 					<Table>
 						<TableHeader>
@@ -240,6 +241,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 								<TableHead>{t("Recurring")}</TableHead>
 								<TableHead>{t("Cadence")}</TableHead>
 								<TableHead>{t("Completions")}</TableHead>
+								<TableHead>{t("Progress")}</TableHead>
 								<TableHead className="text-right">{t("Actions")}</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -334,6 +336,17 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 											/>
 										</div>
 									</TableCell>
+									<TableCell className="whitespace-nowrap">
+										{task.progress.isRecurring
+											? t("{{completed}}/{{target}} this cycle", {
+													completed: task.progress.completed,
+													target: task.progress.target,
+												})
+											: t("{{completed}}/{{target}} completed", {
+													completed: task.progress.completed,
+													target: task.progress.target,
+												})}
+									</TableCell>
 									<TableCell className="text-right">
 										<div className="flex justify-end gap-1">
 											<Button
@@ -362,7 +375,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 												</AlertDialogTrigger>
 												<AlertDialogContent>
 													<AlertDialogHeader>
-														<AlertDialogTitle>{t("Delete assigned task?")}</AlertDialogTitle>
+														<AlertDialogTitle>{t("Delete task?")}</AlertDialogTitle>
 														<AlertDialogDescription>
 															{t("This removes the task from the queue. Existing completions stay in the log.")}
 														</AlertDialogDescription>

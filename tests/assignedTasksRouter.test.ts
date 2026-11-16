@@ -487,7 +487,7 @@ test("rejects personal presets for new tasks while retaining existing task compl
 			cadenceIntervalMinutes: 1440,
 			isRecurring: false,
 		}),
-	).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Assigned tasks require a shared preset" });
+	).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Tasks require a shared preset" });
 	const task = await makeTask();
 	await expect(manage.complete({ householdId, id: task.id })).resolves.toMatchObject({ entry: { userId: "approver" } });
 });

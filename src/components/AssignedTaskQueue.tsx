@@ -34,7 +34,7 @@ export const AssignedTaskQueue = ({ doneThisWeek, canManageTasks = false, ...tab
 				</div>
 				{canManageTasks ? (
 					<Button asChild variant="outline" size="sm" className="shrink-0">
-						<Link href={`/${householdId}/assignments`}>
+						<Link href={buildTasksHref(householdId, { tab: "manage" })}>
 							<PlusIcon />
 							{t("Add task")}
 						</Link>
@@ -47,7 +47,7 @@ export const AssignedTaskQueue = ({ doneThisWeek, canManageTasks = false, ...tab
 					<Link href={buildTasksHref(householdId, { tab: "todo", userId: "all" })}>{t("All tasks →")}</Link>
 					{doneThisWeek > 0 ? (
 						<Link href={buildTasksHref(householdId, { tab: "done", preset: "calendarWeek", userId: "all" })}>
-							{t("{{count}} done this week →", { count: doneThisWeek })}
+							{t("{{completedTotal}} done this week →", { completedTotal: doneThisWeek })}
 						</Link>
 					) : null}
 				</div>

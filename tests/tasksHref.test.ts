@@ -15,7 +15,7 @@ test.each<[TasksSearchParams, TasksTab]>([
 	[{ tab: ["done", "todo"] }, "done"],
 	[{ tab: [] }, "todo"],
 ])("resolves the Tasks tab from %j", (params, expected) => {
-	expect(resolveTasksTab(params)).toBe(expected);
+	expect(resolveTasksTab(params, "DOER")).toBe(expected);
 });
 
 test("builds stable Tasks URLs, omitting the default tab and preserving range params", () => {
@@ -51,4 +51,23 @@ test("forwards every legacy query param, including repeated values and an explic
 	expect(
 		legacyWeekRedirectHref("home", { tab: "done", userId: "sam", extra: ["one", "two"], missing: undefined }),
 	).toBe("/home/tasks?tab=done&userId=sam&extra=one&extra=two");
+});
+
+test.each(["APPROVER", "DICTATOR", "DOER"] as const)("resolves Manage for %s", (role) => {
+	expect(resolveTasksTab({ tab: "manage" }, role)).toBe(role === "DOER" ? "todo" : "manage");
+	expect(resolveTasksTab({ tab: ["manage", "done"] }, role)).toBe(role === "DOER" ? "todo" : "manage");
+	expect(resolveTasksTab({ tab: "done" }, role)).toBe("done");
+});
+
+test("builds Manage URLs with optional member and preserved ranges", () => {
+	expect(buildTasksHref("home", { tab: "manage" })).toBe("/home/tasks?tab=manage");
+	expect(
+		buildTasksHref("home", {
+			tab: "manage",
+			userId: "sam",
+			preset: "calendarWeek",
+			from: "2024-01-01",
+			to: "2024-01-07",
+		}),
+	).toBe("/home/tasks?tab=manage&userId=sam&preset=calendarWeek&from=2024-01-01&to=2024-01-07");
 });

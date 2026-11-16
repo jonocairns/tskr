@@ -1,13 +1,17 @@
-export type TasksTab = "todo" | "done";
+import type { HouseholdRole } from "@prisma/client";
+
+export type TasksTab = "todo" | "done" | "manage";
 export type TasksSearchParams = Record<string, string | string[] | undefined>;
 
 export const getSingleSearchParamValue = (value?: string | string[]) =>
 	(Array.isArray(value) ? value[0] : value) ?? null;
 
-export const resolveTasksTab = (searchParams: TasksSearchParams) =>
-	getSingleSearchParamValue(searchParams.tab) === "done" ? "done" : "todo";
+export const resolveTasksTab = (searchParams: TasksSearchParams, role: HouseholdRole) => {
+	const tab = getSingleSearchParamValue(searchParams.tab);
+	if (tab === "manage" && role !== "DOER") return "manage";
+	return tab === "done" ? "done" : "todo";
+};
 
-// Keep tab handling in one place so Manage can be added without changing callers.
 export const buildTasksHref = (
 	householdId: string,
 	{

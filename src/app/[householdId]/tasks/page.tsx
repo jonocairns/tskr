@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 
+import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignedTaskTable } from "@/components/AssignedTaskTable";
+import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
@@ -13,7 +15,7 @@ import { getServerT } from "@/lib/i18nServer";
 import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
 import { buildTasksHref, getSingleSearchParamValue, resolveTasksTab, type TasksSearchParams } from "@/lib/tasks/href";
-import { getTasksTodoData } from "@/lib/tasks/queries";
+import { getTasksManageData, getTasksTodoData } from "@/lib/tasks/queries";
 import { cn } from "@/lib/utils";
 import { parseWeekViewRange } from "@/lib/week-view/buildTimeline";
 import { getWeekViewMemberCookieName, resolveWeekViewMember } from "@/lib/week-view/memberFilter";
@@ -29,8 +31,8 @@ type Props = {
 const TasksPage = async ({ params, searchParams }: Props) => {
 	const { householdId } = await params;
 	const resolvedSearchParams = searchParams ? await searchParams : {};
-	const tab = resolveTasksTab(resolvedSearchParams);
 	const { session, userId, membership } = await getHouseholdContext(householdId);
+	const tab = resolveTasksTab(resolvedSearchParams, membership.role);
 	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
 	const [settings, householdMembers, cookieStore] = await Promise.all([
 		getWeekViewHouseholdSettings(householdId),
@@ -67,7 +69,7 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 		to: getSingleSearchParamValue(resolvedSearchParams.to),
 		preset: getSingleSearchParamValue(resolvedSearchParams.preset),
 	};
-	const range = parseWeekViewRange({ ...rangeParams, timeZone: settings.timeZone });
+	const range = parseWeekViewRange({ ...(tab === "manage" ? {} : rangeParams), timeZone: settings.timeZone });
 	const doneData =
 		tab === "done" ? await getWeekViewData({ householdId, userId: selectedUserId, range, ...settings }) : null;
 	const todoEntries =
@@ -79,36 +81,39 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 					timeZone: settings.timeZone,
 				})
 			: [];
+	const manageData =
+		tab === "manage" ? await getTasksManageData({ householdId, userId, timeZone: settings.timeZone }) : null;
 	const memberOptions = [
 		{ id: "all", label: t("Everyone") },
 		...members.map((member) => ({ id: member.id, label: member.label })),
 	];
 
-	const controls = (
-		<WeekViewRangeControls
-			tab={tab}
-			rangeParams={rangeParams}
-			householdId={householdId}
-			selectedUserId={selectedUserId}
-			members={memberOptions}
-			range={range}
-			timeZone={settings.timeZone}
-			dateFormat={settings.dateFormat}
-			labels={{
-				member: t("Member"),
-				dateRange: t("Date range"),
-				from: t("From"),
-				to: t("To"),
-				apply: t("Apply"),
-				presets: {
-					calendarWeek: t("This week"),
-					thisWeek: t("Last 7 days"),
-					thisFortnight: t("Last 14 days"),
-					thisMonth: t("Last month"),
-				},
-			}}
-		/>
-	);
+	const controls =
+		tab !== "manage" ? (
+			<WeekViewRangeControls
+				tab={tab}
+				rangeParams={rangeParams}
+				householdId={householdId}
+				selectedUserId={selectedUserId}
+				members={memberOptions}
+				range={range}
+				timeZone={settings.timeZone}
+				dateFormat={settings.dateFormat}
+				labels={{
+					member: t("Member"),
+					dateRange: t("Date range"),
+					from: t("From"),
+					to: t("To"),
+					apply: t("Apply"),
+					presets: {
+						calendarWeek: t("This week"),
+						thisWeek: t("Last 7 days"),
+						thisFortnight: t("Last 14 days"),
+						thisMonth: t("Last month"),
+					},
+				}}
+			/>
+		) : null;
 
 	return (
 		<PageShell size="lg">
@@ -126,6 +131,7 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 					[
 						{ id: "todo", label: t("To do") },
 						{ id: "done", label: t("Done") },
+						...(membership.role !== "DOER" ? [{ id: "manage", label: t("Manage") } as const] : []),
 					] as const
 				).map((item) => (
 					<Link
@@ -141,7 +147,21 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 					</Link>
 				))}
 			</nav>
-			{doneData ? (
+			{manageData ? (
+				<>
+					<AssignTaskCard
+						householdId={householdId}
+						members={manageData.members}
+						presets={manageData.presets}
+						currentUserId={userId}
+					/>
+					<AssignedTasksManager
+						householdId={householdId}
+						initialTasks={manageData.tasks}
+						members={manageData.members}
+					/>
+				</>
+			) : doneData ? (
 				<WeekViewTimeline
 					header={controls}
 					entries={doneData.timeline}

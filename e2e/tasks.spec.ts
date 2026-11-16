@@ -33,6 +33,14 @@ test("redirects week ranges to Done and lists assigned work on To do", async ({ 
 	await expect(page.getByRole("button", { name: "This week", exact: true })).toHaveCount(0);
 	await expect(page.getByRole("button", { name: "Complete Water the plants" })).toBeVisible();
 
+	// DOERs fall back before any management controls are loaded.
+	await openTasks(page, householdId, "tab=manage&userId=all");
+	await expect(page.getByRole("link", { name: "Manage", exact: true })).toHaveCount(0);
+	await expect(page.getByRole("link", { name: "To do", exact: true })).toHaveAttribute("aria-current", "page");
+	await expect(page.getByRole("button", { name: "Add task", exact: true })).toHaveCount(0);
+	await openTasks(page, householdId, "", "assignments");
+	await expect(page).toHaveURL(new RegExp(`/${householdId}/tasks$`));
+
 	// A historical Done range must never hide today's outstanding work.
 	await openTasks(page, householdId, `userId=${userIds.member}&from=2020-01-01&to=2020-01-02`);
 	await page.getByRole("button", { name: "Complete Water the plants" }).click();

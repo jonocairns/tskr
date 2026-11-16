@@ -13,7 +13,7 @@ const HISTORY_LIMIT = 10;
 const APPROVALS_LIMIT = 10;
 const STREAK_LIMIT_DAYS = 365;
 
-// Full household history is required for cadence eligibility on both surfaces.
+// Full household history is required for cadence eligibility and Manage progress.
 export const getHouseholdAssignedTasks = (householdId: string) =>
 	prisma.assignedTask.findMany({
 		where: {
