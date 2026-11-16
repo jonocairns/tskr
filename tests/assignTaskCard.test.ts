@@ -61,6 +61,7 @@ test("an inline task stays selected until server props adopt it, then disappears
 					currentUserId: "approver",
 					members: [{ id: "approver", name: "Alex", email: null }],
 					presets: mapPresetSummaries(records),
+					existingTasks: [],
 				}),
 			),
 		);

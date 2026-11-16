@@ -75,6 +75,7 @@ export const getTasksManageData = async ({
 	const presetSummaries = mapPresetSummaries(applyUserPresetOrdering(presets, presetOrders));
 	const assignedTaskEntries = assignedTasks.map((task) => ({
 		id: task.id,
+		presetId: task.presetId,
 		presetLabel: task.preset.label,
 		assigneeId: task.assignedTo?.id ?? null,
 		assigneeName: task.assignedTo?.name ?? null,

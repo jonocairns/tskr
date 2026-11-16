@@ -140,5 +140,8 @@ test("Manage supplies members and ordered shared creation presets while retainin
 	const { members, presets, tasks } = await getTasksManageData(query);
 	expect(members.map((member) => member.id).sort()).toEqual(["approver", "member"]);
 	expect(presets.map((preset) => preset.id)).toEqual(["second", "first"]);
-	expect(tasks.find((task) => task.id === "one-off")?.presetLabel).toBe("Legacy personal");
+	expect(tasks.find((task) => task.id === "one-off")).toMatchObject({
+		presetId: "personal",
+		presetLabel: "Legacy personal",
+	});
 });

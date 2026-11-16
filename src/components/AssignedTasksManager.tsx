@@ -38,6 +38,7 @@ const ASSIGNEE_ALL_VALUE = "all";
 
 type AssignedTaskRow = {
 	id: string;
+	presetId: string;
 	presetLabel: string;
 	assigneeId: string | null;
 	assigneeName: string | null;

@@ -153,6 +153,7 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 						householdId={householdId}
 						members={manageData.members}
 						presets={manageData.presets}
+						existingTasks={manageData.tasks}
 						currentUserId={userId}
 					/>
 					<AssignedTasksManager

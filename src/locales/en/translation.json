@@ -69,8 +69,7 @@
 	"Confirm change": "Confirm change",
 	"Connect your account with external providers.": "Connect your account with external providers.",
 	"Copy": "Copy",
-	"Count towards it": "Count towards it",
-	"Count towards {{name}}'s {{task}}?": "Count towards {{name}}'s {{task}}?",
+	"Counted towards {{name}}'s {{task}}": "Counted towards {{name}}'s {{task}}",
 	"Counted towards {{task}}": "Counted towards {{task}}",
 	"Current": "Current",
 	"Current balance": "Current balance",
@@ -188,12 +187,11 @@
 	"Loading push settings": "Loading push settings",
 	"Loading tasks…": "Loading tasks…",
 	"Loading...": "Loading...",
-	"Log as extra": "Log as extra",
 	"Log one-off task": "Log one-off task",
 	"Log something not in your saved tasks": "Log something not in your saved tasks",
 	"Log tasks, climb the leaderboard, claim rewards.": "Log tasks, climb the leaderboard, claim rewards.",
 	"Log tasks, keep an audit trail, and claim rewards when you hit the threshold.": "Log tasks, keep an audit trail, and claim rewards when you hit the threshold.",
-	"Log work in one tap. Taps count towards your listed tasks.": "Log work in one tap. Taps count towards your listed tasks.",
+	"Log work in one tap. Taps count towards matching listed tasks.": "Log work in one tap. Taps count towards matching listed tasks.",
 	"MM/DD/YYYY": "MM/DD/YYYY",
 	"Major": "Major",
 	"Manage": "Manage",
@@ -473,5 +471,6 @@
 	"{{target}}: {{remaining}} claims available (calendar month)": "{{target}}: {{remaining}} claims available (calendar month)",
 	"{{target}}: {{remaining}} of {{limit}} claims left ({{period}})": "{{target}}: {{remaining}} of {{limit}} claims left ({{period}})",
 	"{{task}} ({{assignee}})": "{{task}} ({{assignee}})",
-	"{{task}} is assigned to {{name}}. You will receive the points either way.": "{{task}} is assigned to {{name}}. You will receive the points either way."
+	"{{task}} is already on the list as Open. Adding it again creates a second copy.": "{{task}} is already on the list as Open. Adding it again creates a second copy.",
+	"{{task}} is already on the list for {{name}}. Adding it again creates a second copy.": "{{task}} is already on the list for {{name}}. Adding it again creates a second copy."
 }

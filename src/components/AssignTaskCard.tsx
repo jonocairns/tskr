@@ -30,6 +30,7 @@ import { useTranslation } from "@/lib/i18nClient";
 import { DEFAULT_DURATION_BUCKET, type DurationKey } from "@/lib/points";
 import type { PresetIconKey } from "@/lib/presetIcons";
 import { PRESET_LABEL_MIN_LENGTH } from "@/lib/presetInput";
+import { type DuplicateTask, findDuplicateTask } from "@/lib/tasks/duplicates";
 import { trpc } from "@/lib/trpc/react";
 
 const UNASSIGNED_VALUE = "unassigned";
@@ -45,10 +46,17 @@ type AssignTaskCardProps = {
 	householdId: string;
 	members: MemberOption[];
 	presets: PresetSummary[];
+	existingTasks: DuplicateTask[];
 	currentUserId: string;
 };
 
-export const AssignTaskCard = ({ householdId, members, presets, currentUserId }: AssignTaskCardProps) => {
+export const AssignTaskCard = ({
+	householdId,
+	members,
+	presets,
+	currentUserId,
+	existingTasks,
+}: AssignTaskCardProps) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
@@ -143,6 +151,13 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 	});
 
 	const isCreatingPreset = presetId === NEW_PRESET_VALUE;
+	const duplicate = findDuplicateTask({
+		tasks: existingTasks,
+		presetId: isCreatingPreset ? null : presetId,
+		label: newLabel,
+		assigneeId: assigneeId === UNASSIGNED_VALUE ? null : assigneeId,
+	});
+	const assignee = members.find((member) => member.id === assigneeId);
 
 	// Radix's hidden native select reports "" when the value and its newly added option arrive in the same render.
 	const handlePresetChange = (value: string) => {
@@ -356,6 +371,18 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 							</>
 						) : null}
 					</div>
+					{duplicate ? (
+						<p role="status" className="text-sm text-amber-700 dark:text-amber-400">
+							{duplicate.assigneeId === null
+								? t("{{task}} is already on the list as Open. Adding it again creates a second copy.", {
+										task: duplicate.presetLabel,
+									})
+								: t("{{task}} is already on the list for {{name}}. Adding it again creates a second copy.", {
+										task: duplicate.presetLabel,
+										name: assignee?.name ?? assignee?.email ?? t("Unknown"),
+									})}
+						</p>
+					) : null}
 					<Button type="submit" disabled={disabled}>
 						{disabled ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
 						{t("Add task")}

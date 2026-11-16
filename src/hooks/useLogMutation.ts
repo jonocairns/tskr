@@ -13,7 +13,6 @@ export const useLogMutation = () => {
 
 	const createLogMutation = trpc.logs.create.useMutation({
 		onSuccess: (data) => {
-			if (data.outcome !== "logged") return;
 			const isPending = data.entry.status === "PENDING";
 			toast({
 				title: isPending ? t("Submitted for approval") : t("Task logged"),

@@ -4,14 +4,13 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState, useTransition } from "react";
 
-import { CountTowardsDialog } from "@/components/task-actions/CountTowardsDialog";
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
 import { DEFAULT_DURATION_BUCKET, type DurationKey, PRESET_TASKS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
 
-type PresetPayload = { presetKey?: string; presetId?: string; assignedTaskId?: string; asExtra?: boolean };
+type PresetPayload = { presetKey?: string; presetId?: string };
 
 type TaskActionsContextValue = {
 	householdId: string;
@@ -51,12 +50,6 @@ export const TaskActionsProvider = ({
 }: TaskActionsProviderProps) => {
 	const defaultBucket = DEFAULT_DURATION_BUCKET;
 	const [note, setNote] = useState("");
-	const [confirmation, setConfirmation] = useState<{
-		task: { id: string; label: string; assigneeName: string | null };
-		payload: PresetPayload;
-		note: string;
-		onLogged?: () => void;
-	} | null>(null);
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [isPresetPending, startPresetTransition] = useTransition();
 
@@ -66,21 +59,17 @@ export const TaskActionsProvider = ({
 	const utils = trpc.useUtils();
 
 	const createLogMutation = trpc.logs.create.useMutation({
-		onSuccess: (data, variables) => {
-			if (data.outcome === "needsConfirmation") {
-				setConfirmation({
-					task: data.task,
-					payload: { presetId: variables.type === "preset" ? variables.presetId : undefined },
-					note: variables.description ?? "",
-				});
-				return;
-			}
-			setConfirmation(null);
+		onSuccess: (data) => {
 			const isPending = data.entry.status === "PENDING";
 			setNote("");
 			toast({
 				title: data.countedTowards
-					? t("Counted towards {{task}}", { task: data.countedTowards.label })
+					? data.countedTowards.assigneeName
+						? t("Counted towards {{name}}'s {{task}}", {
+								name: data.countedTowards.assigneeName,
+								task: data.countedTowards.label,
+							})
+						: t("Counted towards {{task}}", { task: data.countedTowards.label })
 					: isPending
 						? t("Submitted for approval")
 						: t("Task logged"),
@@ -98,7 +87,6 @@ export const TaskActionsProvider = ({
 		},
 		onError: (error) => {
 			if (error.data?.code === "BAD_REQUEST") {
-				setConfirmation(null);
 				router.refresh();
 			}
 			toast({
@@ -125,7 +113,7 @@ export const TaskActionsProvider = ({
 		sortOrder: task.sortOrder,
 	}));
 
-	// onLogged fires only once a log is written, never for a pending confirmation or an error.
+	// onLogged fires only once a log is written, never for an error.
 	const logPreset = (payload: PresetPayload, overrideNote?: string, onLogged?: () => void) => {
 		const noteValue = overrideNote ?? note.trim();
 		createLogMutation.mutate(
@@ -136,11 +124,7 @@ export const TaskActionsProvider = ({
 				description: noteValue || undefined,
 			},
 			{
-				onSuccess: (data) => {
-					if (data.outcome === "needsConfirmation") {
-						setConfirmation((current) => (current ? { ...current, onLogged } : current));
-						return;
-					}
+				onSuccess: () => {
 					onLogged?.();
 				},
 			},
@@ -171,23 +155,6 @@ export const TaskActionsProvider = ({
 			}}
 		>
 			{children}
-			<CountTowardsDialog
-				task={confirmation?.task ?? null}
-				disabled={createLogMutation.isPending}
-				onCancel={() => setConfirmation(null)}
-				onCount={() => {
-					if (confirmation)
-						logPreset(
-							{ ...confirmation.payload, assignedTaskId: confirmation.task.id },
-							confirmation.note,
-							confirmation.onLogged,
-						);
-				}}
-				onExtra={() => {
-					if (confirmation)
-						logPreset({ ...confirmation.payload, asExtra: true }, confirmation.note, confirmation.onLogged);
-				}}
-			/>
 		</TaskActionsContext.Provider>
 	);
 };
