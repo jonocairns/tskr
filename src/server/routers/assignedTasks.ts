@@ -105,27 +105,25 @@ export const assignedTasksRouter = router({
 		const householdId = ctx.household.id;
 		const { presetId, ...assignment } = input;
 
-		await assertHouseholdAssignee(prisma, householdId, assignment.assigneeId);
-
-		const preset = await prisma.presetTask.findFirst({
-			where: { id: presetId, householdId },
-			select: { id: true, isShared: true },
-		});
-
-		if (!preset) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Task not found" });
-		}
-		if (!preset.isShared) {
-			throw new TRPCError({ code: "BAD_REQUEST", message: "Only shared tasks can be added to the list" });
-		}
-
 		try {
-			const assignedTask = await prisma.assignedTask.create({
-				data: buildAssignedTaskData(householdId, preset.id, ctx.session.user.id, assignment),
+			return await prisma.$transaction(async (tx) => {
+				await lockAssignedTask(tx, "", householdId);
+				await assertHouseholdAssignee(tx, householdId, assignment.assigneeId);
+				const preset = await tx.presetTask.findFirst({
+					where: { id: presetId, householdId, archivedAt: null },
+					select: { id: true, isShared: true },
+				});
+				if (!preset) throw new TRPCError({ code: "BAD_REQUEST", message: "Task not found" });
+				if (!preset.isShared) {
+					throw new TRPCError({ code: "BAD_REQUEST", message: "Only shared tasks can be added to the list" });
+				}
+				const assignedTask = await tx.assignedTask.create({
+					data: buildAssignedTaskData(householdId, preset.id, ctx.session.user.id, assignment),
+				});
+				return { assignedTask };
 			});
-
-			return { assignedTask };
 		} catch (error) {
+			if (error instanceof TRPCError) throw error;
 			console.error("[assignedTasks:create]", error);
 			throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to add task" });
 		}

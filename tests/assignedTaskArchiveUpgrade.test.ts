@@ -19,7 +19,7 @@ test("archive migration upgrades existing tasks additively and preserves log lin
 		);
 	const unrelatedSchema = () => db.$queryRaw`
 		SELECT type, name, tbl_name, sql FROM sqlite_master
-		WHERE tbl_name != 'AssignedTask' AND name NOT LIKE 'sqlite_%' ORDER BY type, name`;
+		WHERE tbl_name NOT IN ('AssignedTask', 'PresetTask') AND name NOT LIKE 'sqlite_%' ORDER BY type, name`;
 	try {
 		const oldMigrations = join(directory, "migrations");
 		mkdirSync(oldMigrations);
@@ -36,6 +36,7 @@ test("archive migration upgrades existing tasks additively and preserves log lin
 		await db.user.create({ data: { id: "creator" } });
 		await db.household.create({ data: { id: "home", name: "Home", createdById: "creator" } });
 		await db.presetTask.create({
+			select: { id: true },
 			data: {
 				id: "preset",
 				householdId: "home",

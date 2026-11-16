@@ -28,6 +28,7 @@ import { trpc } from "@/lib/trpc/react";
 export type AssignedTaskEntry = {
 	id: string;
 	group: "mine" | "open" | "others";
+	assignedToOther: boolean;
 	assigneeLabel: string | null;
 	state: "available" | "awaitingApproval";
 	pendingCompleters: Array<string | null>;
@@ -52,6 +53,7 @@ type Props = {
 	dateFormat: DateFormat;
 	timeFormat: TimeFormat;
 	collapseOthers?: boolean;
+	mineLabel?: string;
 };
 
 export const AssignedTaskTable = ({
@@ -61,6 +63,7 @@ export const AssignedTaskTable = ({
 	dateFormat,
 	timeFormat,
 	collapseOthers = true,
+	mineLabel,
 }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
@@ -194,7 +197,7 @@ export const AssignedTaskTable = ({
 										disabled={isPending}
 										aria-label={t("Complete {{task}}", { task: entry.label })}
 										onClick={() => {
-											if (entry.group === "others") {
+											if (entry.assignedToOther) {
 												setConfirmEntry(entry);
 												setConfirmOpen(true);
 											} else {
@@ -214,7 +217,7 @@ export const AssignedTaskTable = ({
 		</Table>
 	);
 	const groups = [
-		{ key: "mine", label: t("Yours") },
+		{ key: "mine", label: mineLabel ?? t("Yours") },
 		{ key: "open", label: t("Open") },
 		{ key: "others", label: t("Everyone else's") },
 	];

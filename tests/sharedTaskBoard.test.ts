@@ -63,6 +63,7 @@ let root: Root;
 
 const entry = (group: AssignedTaskEntry["group"], overrides: Partial<AssignedTaskEntry> = {}) => ({
 	id: group,
+	assignedToOther: group === "others",
 	group,
 	label: group,
 	assigneeLabel: "Sam",
@@ -197,10 +198,10 @@ test("preset deletion loads usage only when opened by an approver and names assi
 	await click("Delete preset");
 	expect(mockUsageQuery).toHaveBeenLastCalledWith({ householdId: "home", id: "preset" }, { enabled: true });
 	expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
-		"This will also remove: Bins (Sam), Vacuum lounge (Open)",
+		"Tasks using it are removed from the list: Bins (Sam), Vacuum lounge (Open)",
 	);
 	expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe(
-		"Delete from quick log and the task list?",
+		"Delete from Quick log and the task list?",
 	);
 	await click("Delete");
 	expect(mockDelete).toHaveBeenCalledTimes(1);
@@ -228,7 +229,7 @@ test("quick-log deletion keeps its short title when there are no current tasks",
 	mockUsage = { ...mockUsage, data: { tasks: [] } };
 	await renderDelete();
 	await click("Delete preset");
-	expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe("Delete from quick log?");
+	expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe("Delete from Quick log?");
 });
 
 test("a selected member's long To do list is expanded", async () => {
@@ -246,4 +247,26 @@ test("a selected member's long To do list is expanded", async () => {
 	);
 	expect(container.querySelector("details")).toBeNull();
 	expect(container.querySelectorAll('button[aria-label="Complete others"]')).toHaveLength(6);
+});
+
+test("selected member heading keeps completion confirmation relative to the viewer", async () => {
+	await act(async () =>
+		root.render(
+			createElement(AssignedTaskTable, {
+				householdId: "home",
+				entries: [entry("mine", { assignedToOther: true })],
+				mineLabel: "Sam",
+				timeZone: "UTC",
+				dateFormat: "DMY",
+				timeFormat: "H24",
+			}),
+		),
+	);
+	expect(container.textContent).toContain("Sam");
+	expect(container.textContent).not.toContain("Assigned to");
+	expect(container.textContent).not.toContain("Yours");
+	await click("Complete mine");
+	expect(mockComplete).not.toHaveBeenCalled();
+	expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("assigned to Sam");
+	await click("Cancel");
 });

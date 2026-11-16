@@ -22,7 +22,7 @@ test("nullable-assignee migration preserves seeded tasks, log links, indexes and
 		);
 	const unrelatedSchema = (db: PrismaClient) => db.$queryRaw`
 		SELECT type, name, tbl_name, sql FROM sqlite_master
-		WHERE tbl_name != 'AssignedTask' AND name NOT LIKE 'sqlite_%' ORDER BY type, name`;
+		WHERE tbl_name NOT IN ('AssignedTask', 'PresetTask') AND name NOT LIKE 'sqlite_%' ORDER BY type, name`;
 	const taskIndexes = (db: PrismaClient) => db.$queryRaw<Array<{ name: string; sql: string }>>`
 		SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'AssignedTask' ORDER BY name`;
 	try {
@@ -42,6 +42,7 @@ test("nullable-assignee migration preserves seeded tasks, log links, indexes and
 		await source.user.createMany({ data: [{ id: "creator" }, { id: "assignee" }] });
 		await source.household.create({ data: { id: "home", name: "Home", createdById: "creator" } });
 		await source.presetTask.create({
+			select: { id: true },
 			data: {
 				id: "preset",
 				householdId: "home",

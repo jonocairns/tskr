@@ -19,6 +19,7 @@ const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.i
 type BuildAssignedTaskEntriesInput = {
 	tasks: AssignedTaskRecord[];
 	userId: string;
+	groupRelativeToUserId?: string;
 	now?: Date;
 	timeZone: string;
 };
@@ -26,9 +27,11 @@ type BuildAssignedTaskEntriesInput = {
 export const buildAssignedTaskEntries = ({
 	tasks,
 	userId,
+	groupRelativeToUserId,
 	now = new Date(),
 	timeZone,
 }: BuildAssignedTaskEntriesInput) => {
+	const groupUserId = groupRelativeToUserId ?? userId;
 	return tasks.flatMap((task) => {
 		if (task.status !== "ACTIVE" || !task.preset || task.assignedAt > now) {
 			return [];
@@ -83,7 +86,8 @@ export const buildAssignedTaskEntries = ({
 		return [
 			{
 				id: task.id,
-				group: !task.assignedTo ? "open" : task.assignedTo.id === userId ? "mine" : "others",
+				group: !task.assignedTo ? "open" : task.assignedTo.id === groupUserId ? "mine" : "others",
+				assignedToOther: Boolean(task.assignedTo) && task.assignedTo?.id !== userId,
 				assigneeLabel: task.assignedTo?.name ?? task.assignedTo?.email ?? null,
 				state: state.isActive ? "available" : "awaitingApproval",
 				pendingCompleters: Array.from(pendingUsers.values()),

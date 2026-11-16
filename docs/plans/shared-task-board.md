@@ -10,7 +10,7 @@ Sized for how tskr runs: one container, one Node process (`Dockerfile:70`), one 
 
 ### v1
 
-- Every assigned task is visible to every household member. The dashboard groups them Yours / Open / Everyone else's.
+- Every assigned task is visible to every household member. The dashboard groups them Yours / Open / Everyone else's. To do regroups relative to a selected member, using their name (Yours for the viewer); confirmations remain relative to the signed-in user.
 - The assignee is optional. Only approvers (APPROVER/DICTATOR) create, assign, reassign or unassign tasks.
 - Anyone can complete any task. The completer gets the points.
 - The week view becomes the household's task list, with an Everyone/member filter remembered per browser and a calendar-week default.
@@ -20,7 +20,7 @@ Sized for how tskr runs: one container, one Node process (`Dockerfile:70`), one 
 
 - Claiming, holds or locks; bounties.
 - Free-text items, lists or big cleans, templates. Tasks created by DOERs. Changes to personal presets.
-- Reversed by Tasks hub PR 6: shared Quick log preset taps match listed tasks (own, then Open, then another member's after confirmation).
+- Reversed by Tasks hub PR 6: shared Quick log preset taps match listed tasks (own, then Open, then another member's, named in the toast without confirmation).
 - A shared "outstanding work" helper for the dashboard and week view.
 
 ## 2. Already on main (#156)
@@ -46,7 +46,7 @@ No further work needed:
 - `create`: `assigneeId` nullable; membership check only when set. Only shared presets (`isShared: true`). Existing tasks on personal presets keep working and display as they are.
 - `update`: optional nullable `assigneeId` (absent = unchanged, `null` = unassign; membership check when set). Allow an assignee-only update through the "No updates provided" refine (`assignedTasks.ts:29-33`).
 - `presets.update` (`src/server/routers/presets.ts:116`): reject un-sharing a preset while any ACTIVE task references it.
-- `presets.delete` (`presets.ts:193`) stays. A small usage query returns a preset's active tasks so the delete confirmation can name them ("This will also remove: Bins (Sam), Vacuum lounge (Open)").
+- `presets.delete` archives the item and all its unarchived tasks in one locked transaction, preserving completion links. A small usage query returns a preset's active tasks so the delete confirmation can name them ("Tasks using it are removed from the list: Bins (Sam), Vacuum lounge (Open)").
 
 ## 4. Schema and migration
 
@@ -70,7 +70,7 @@ model AssignedTask {
   - `available`: can be completed now.
   - `awaitingApproval`: capacity full with a pending completion, shown as "Awaiting approval, done by X". Today these rows disappear (`assigned.ts:42`).
   - Met-and-approved periods and completed one-offs stay omitted.
-- `AssignedTaskQueue`: Yours, Open, Everyone else's (the last collapsed when long). Move remaining hard-coded strings to `t()`.
+- `AssignedTaskQueue`: Yours, Open, Everyone else's (the last collapsed when long). To do uses the selected member's name and grouping; the dashboard stays viewer-relative. Move remaining hard-coded strings to `t()`.
 - Completing someone else's task asks for confirmation; Open tasks and your own complete in one tap. A stale tap (`BAD_REQUEST`) shows the message and refreshes.
 - Show the board when the household has any active task or N > 0 (`src/app/[householdId]/page.tsx:97`).
 - **Done link:** "N done this week →" to the week view with `?preset=calendarWeek&userId=all`. N counts household PRESET/TIMED, unreverted, PENDING + APPROVED logs since the household week start. Shown whenever N > 0.
@@ -103,8 +103,8 @@ Settled by the user on 2026-11-15:
 | Who can complete | Anyone; the completer gets the points |
 | Personal presets | Unchanged; new board tasks use shared presets; existing tasks on personal presets shown as they are |
 | Un-sharing a preset used by tasks | Blocked |
-| Deleting a preset used by tasks | Allowed, with a warning naming the tasks |
-| Undo | Unchanged: the completer or an approver |
+| Deleting a preset used by tasks | Archives the item and all its tasks; dialog names affected tasks |
+| Undo | Quick log toast and History, both using the same revert path: the completer or an approver |
 | Approval, including sole-approver households | Unchanged |
 | Push recipients | Whole household excluding the actor |
 | Finished work | In the week view; the dashboard keeps "Awaiting approval" rows and a done link |
@@ -143,7 +143,7 @@ Commit order inside it: schema and migration; server and harness tests; dashboar
 - A task's assignee cannot undo someone else's completion of it; the completer or an approver can.
 - A sole approver cannot approve their own completion of a preset set to REQUIRE, as today.
 - Resolved in Tasks hub PR 6: shared Quick log taps advance matching listed tasks; unmatched taps remain extra work.
-- Deleting a preset removes its tasks (with a warning). Existing tasks on personal presets show their labels to everyone (settled).
+- Resolved in Tasks hub PR 7: deleting a Quick log item archives it and its tasks, preserving completion links. Existing tasks on personal presets show their labels to everyone (settled).
 - Lowering a recurring target below progress, or changing the cadence interval, can leave a period above target; the task reads as met.
 - Audit entries do not show which task or assignee a completion belonged to.
 - "Last completed" and "Completed last cycle" count pending completions (`assigned.ts:55-63`), now visible household-wide.

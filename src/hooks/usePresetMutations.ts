@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import type { PresetSummary } from "@/lib/dashboard/presets";
 import { useTranslation } from "@/lib/i18nClient";
@@ -32,6 +33,7 @@ const normalizePreset = <
 });
 
 export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: UsePresetMutationsOptions) => {
+	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
 
@@ -117,13 +119,14 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 				setCustomPresetsAction(context.previousPresets);
 			}
 			toast({
-				title: t("Unable to delete from quick log"),
+				title: t("Unable to delete from Quick log"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: () => {
-			toast({ title: t("Deleted from quick log"), variant: "success" });
+			toast({ title: t("Deleted from Quick log"), variant: "success" });
+			router.refresh();
 		},
 	});
 

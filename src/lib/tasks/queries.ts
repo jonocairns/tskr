@@ -24,6 +24,7 @@ export const getTasksTodoData = async ({
 	return buildAssignedTaskEntries({
 		tasks: tasks.filter((task) => userId === "all" || task.assignedToId === userId || task.assignedToId === null),
 		userId: actingUserId,
+		groupRelativeToUserId: userId === "all" ? undefined : userId,
 		now,
 		timeZone,
 	});
@@ -48,7 +49,7 @@ export const getTasksManageData = async ({
 			orderBy: { createdAt: "asc" },
 		}),
 		prisma.presetTask.findMany({
-			where: { householdId, isShared: true },
+			where: { householdId, isShared: true, archivedAt: null },
 			orderBy: { createdAt: "asc" },
 			select: {
 				id: true,
