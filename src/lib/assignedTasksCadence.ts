@@ -22,7 +22,7 @@ export const CADENCE_OPTIONS = [
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
-// Shared by the dashboard queue and the week view so both show the same translated labels.
+// Shared by the dashboard queue and the Tasks page so both show the same translated labels.
 export const formatCadenceInterval = (minutes: number, t: Translate) => {
 	switch (minutes) {
 		case 1440:

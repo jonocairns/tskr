@@ -10,6 +10,10 @@ export const openDashboard = async (page: Page, householdId: string) => {
 	await Promise.all([waitForHydration(page), page.goto(`/${householdId}`)]);
 };
 
+export const openTasks = async (page: Page, householdId: string, query = "userId=all", route = "tasks") => {
+	await Promise.all([waitForHydration(page), page.goto(`/${householdId}/${route}?${query}`)]);
+};
+
 export const reloadDashboard = async (page: Page) => {
 	await Promise.all([waitForHydration(page), page.reload()]);
 };

@@ -169,10 +169,14 @@ test("long others sections start collapsed and done links also work on an empty 
 	await renderBoard(Array.from({ length: 6 }, (_, index) => entry("others", { id: String(index) })));
 	expect(container.querySelector("details")?.open).toBe(false);
 	await renderBoard([], 2);
-	expect(container.querySelector("a")?.getAttribute("href")).toBe("/home/week?preset=calendarWeek&userId=all");
-	expect(container.querySelector("a")?.textContent).toBe("2 done this week →");
+	expect(container.querySelector('a[href*="tab=done"]')?.getAttribute("href")).toBe(
+		"/home/tasks?tab=done&userId=all&preset=calendarWeek",
+	);
+	expect(container.querySelector('a[href*="tab=done"]')?.textContent).toBe("2 done this week →");
 	await renderBoard([], 0);
-	expect(container.querySelector("a")).toBeNull();
+	expect(container.querySelector('a[href*="tab=done"]')).toBeNull();
+	expect(container.querySelector("a")?.getAttribute("href")).toBe("/home/tasks?userId=all");
+	expect(container.querySelector("a")?.textContent).toBe("All tasks →");
 });
 
 test("preset deletion loads usage only when opened by an approver and names assigned and Open tasks", async () => {

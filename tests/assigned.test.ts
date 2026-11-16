@@ -148,3 +148,44 @@ test("only current-period pending completions produce an awaiting-approval row",
 	});
 	expect(buildEntries(makeTask({ logs: [previousPending, makeLog(NOW)] }))).toEqual([]);
 });
+
+// These eligibility cases previously lived in weekViewTimeline.test.ts. To do
+// now uses this single, range-independent derivation for the dashboard and hub.
+test("keeps unfinished one-offs regardless of how long ago they were assigned", () => {
+	const task = makeTask({ isRecurring: false, assignedAt: new Date("2023-01-01T00:00:00.000Z") });
+	expect(buildEntries(task)[0]).toMatchObject({ id: task.id, state: "available", progress: 0 });
+});
+
+test("omits work before its assigned time and includes it at that exact time", () => {
+	for (const isRecurring of [false, true]) {
+		const task = makeTask({ isRecurring, assignedAt: new Date(NOW.getTime() + 1) });
+		expect(buildEntries(task)).toEqual([]);
+		expect(buildEntries(task, task.assignedAt)[0]?.state).toBe("available");
+	}
+});
+
+test("includes a new recurring task in a partial calendar period with its preset metadata", () => {
+	const assignedAt = new Date("2024-01-03T14:30:00.000Z");
+	const task = makeTask({ assignedAt, preset: { id: "preset", label: "Mop floors", bucket: "ROUTINE" } });
+	expect(buildEntries(task, new Date("2024-01-04T09:00:00.000Z"))[0]).toMatchObject({
+		assignedAt: assignedAt.toISOString(),
+		label: "Mop floors",
+		bucket: "ROUTINE",
+		points: getBucketPoints("ROUTINE"),
+		state: "available",
+		nextResetAt: NOW.toISOString(),
+	});
+});
+
+test("uses only the current calendar period, including a week crossing a month boundary", () => {
+	const now = new Date("2024-05-02T09:00:00.000Z");
+	const previousLog = makeLog(new Date("2024-04-28T12:00:00.000Z"));
+	const currentLog = makeLog(new Date("2024-04-30T12:00:00.000Z"));
+	const task = makeTask({ logs: [previousLog, currentLog], cadenceTarget: 2 });
+	expect(buildEntries(task, now)[0]).toMatchObject({
+		progress: 1,
+		state: "available",
+		nextResetAt: "2024-05-06T00:00:00.000Z",
+	});
+	expect(buildEntries({ ...task, cadenceTarget: 1 }, now)).toEqual([]);
+});

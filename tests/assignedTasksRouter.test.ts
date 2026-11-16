@@ -5,6 +5,7 @@ import type { AssignedTask, Prisma } from "@prisma/client";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
+import { getTasksTodoData } from "@/lib/tasks/queries";
 import { getStartOfWeekInTimeZone } from "@/lib/timeZones";
 import { getWeekViewData } from "@/lib/week-view/queries";
 import { assignedTasksRouter } from "@/server/routers/assignedTasks";
@@ -234,54 +235,43 @@ test("keeps one-off targets normalized on partial updates", async () => {
 });
 
 test.each(["PENDING", "APPROVED"] as const)(
-	"week-view eligibility includes an out-of-range %s completion",
+	"To do eligibility includes every household member's %s completions outside the Done range",
 	async (status) => {
 		const task = await makeTask({ cadenceIntervalMinutes: 10080 });
-		await makeLog(task, { userId: "approver", status, createdAt: new Date("2024-01-07T21:00:00.000Z") }); // Monday 10:00 NZDT
-		const result = await getWeekViewData({
+		await makeLog(task, { userId: "approver", status, createdAt: new Date("2024-01-07T21:00:00.000Z") });
+		const result = await getTasksTodoData({
 			householdId,
+			actingUserId: "doer",
 			userId: "doer",
-			now: new Date("2024-01-08T23:00:00.000Z"), // Tuesday noon NZDT
-			range: {
-				start: new Date("2024-01-08T11:00:00.000Z"),
-				end: new Date("2024-01-09T11:00:00.000Z"),
-				labelKey: "custom",
-			},
+			now: new Date("2024-01-08T23:00:00.000Z"),
 			timeZone: "Pacific/Auckland",
-			dateFormat: "DMY",
-			timeFormat: "H24",
 		});
-		expect(result.timeline).toEqual([]);
-		expect(result.completedCount).toBe(0);
-		expect(result.plannedCount).toBe(0);
+		if (status === "APPROVED") expect(result).toEqual([]);
+		else
+			expect(result).toMatchObject([
+				{ id: task.id, state: "awaitingApproval", progress: 1, pendingCompleters: ["Alex"] },
+			]);
 	},
 );
 
-test("rejected and reverted completions do not suppress week-view planned work", async () => {
+test("rejected and reverted completions do not suppress To do work", async () => {
 	const task = await makeTask({ cadenceIntervalMinutes: 10080, cadenceTarget: 2 });
 	const createdAt = new Date("2024-01-07T21:00:00.000Z");
 	await makeLog(task, { createdAt, status: "REJECTED" });
 	await makeLog(task, { createdAt, revertedAt: new Date() });
 	await makeLog(task, { createdAt, status: "PENDING" });
-	const result = await getWeekViewData({
+	const result = await getTasksTodoData({
 		householdId,
+		actingUserId: "doer",
 		userId: "doer",
 		now: new Date("2024-01-08T23:00:00.000Z"),
-		range: {
-			start: new Date("2024-01-08T11:00:00.000Z"),
-			end: new Date("2024-01-09T11:00:00.000Z"),
-			labelKey: "custom",
-		},
 		timeZone: "Pacific/Auckland",
-		dateFormat: "DMY",
-		timeFormat: "H24",
 	});
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline[0]).toMatchObject({ type: "planned", remainingCount: 1 });
+	expect(result).toMatchObject([{ id: task.id, state: "available", progress: 1, cadenceTarget: 2 }]);
 });
 
 test.each(["doer", "approver", "all"])(
-	"week-view filter %s includes Open tasks and filters by completer",
+	"Tasks filter %s includes Open tasks in To do and filters Done by completer",
 	async (userId) => {
 		const mine = await makeTask({ cadenceTarget: 2 });
 		const theirs = await makeTask({ assignedToId: "approver", cadenceTarget: 2 });
@@ -293,7 +283,6 @@ test.each(["doer", "approver", "all"])(
 		const result = await getWeekViewData({
 			householdId,
 			userId,
-			now,
 			range: {
 				start: new Date("2024-01-07T11:00:00.000Z"),
 				end: new Date("2024-01-14T11:00:00.000Z"),
@@ -303,7 +292,13 @@ test.each(["doer", "approver", "all"])(
 			dateFormat: "DMY",
 			timeFormat: "H24",
 		});
-		const todos = result.timeline.filter((entry) => entry.type === "planned");
+		const todos = await getTasksTodoData({
+			householdId,
+			actingUserId: "doer",
+			userId,
+			now,
+			timeZone: "Pacific/Auckland",
+		});
 		const done = result.timeline.filter((entry) => entry.type === "completed");
 		const expectedTaskIds =
 			userId === "all" ? [mine.id, theirs.id, open.id] : [userId === "doer" ? mine.id : theirs.id, open.id];
@@ -313,16 +308,14 @@ test.each(["doer", "approver", "all"])(
 				: userId === "doer"
 					? [myLog.id]
 					: [theirLog.id, openLog.id];
-		expect(todos.map((entry) => entry.assignedTaskId).sort()).toEqual(expectedTaskIds.sort());
+		expect(todos.map((entry) => entry.id).sort()).toEqual(expectedTaskIds.sort());
 		expect(done.map((entry) => entry.id).sort()).toEqual(expectedLogIds.sort());
 		// Other members' completions still consume capacity when their logs are filtered out.
-		expect(todos.every((entry) => entry.remainingCount === 1)).toBe(true);
-		expect(todos.find((entry) => entry.assignedTaskId === open.id)?.assignedTo).toBeNull();
+		expect(todos.every((entry) => entry.progress === 1 && entry.state === "available")).toBe(true);
+		expect(todos.find((entry) => entry.id === open.id)?.group).toBe("open");
 		if (userId === "all") {
-			expect(todos.find((entry) => entry.assignedTaskId === mine.id)?.assignedTo).toMatchObject({
-				id: "doer",
-				name: "Sam",
-			});
+			expect(todos.find((entry) => entry.id === mine.id)).toMatchObject({ group: "mine", assigneeLabel: "Sam" });
+			expect(todos.find((entry) => entry.id === theirs.id)?.group).toBe("others");
 			expect(done.find((entry) => entry.id === myLog.id)).toMatchObject({
 				assignedTo: { id: "approver", name: "Alex" },
 				completedBy: { id: "doer", name: "Sam" },
@@ -334,6 +327,46 @@ test.each(["doer", "approver", "all"])(
 		}
 	},
 );
+
+test("Done includes ad-hoc PRESET and TIMED completions with the same range/status rules", async () => {
+	const now = new Date("2024-01-08T23:00:00.000Z");
+	const quickLog = (data: Partial<Prisma.PointLogUncheckedCreateInput>) =>
+		prisma.pointLog.create({
+			data: {
+				householdId,
+				userId: "doer",
+				description: "Quick completion",
+				points: 3,
+				kind: "PRESET",
+				status: "APPROVED",
+				createdAt: now,
+				...data,
+			},
+		});
+	const preset = await quickLog({});
+	const timed = await quickLog({ kind: "TIMED", status: "PENDING" });
+	await quickLog({ status: "REJECTED" });
+	await quickLog({ revertedAt: now });
+	await quickLog({ kind: "REWARD" });
+	await quickLog({ createdAt: new Date("2024-01-07T10:59:59.999Z") });
+	await quickLog({ createdAt: new Date("2024-01-14T11:00:00.000Z") });
+	await quickLog({ userId: "approver" });
+	const result = await getWeekViewData({
+		householdId,
+		userId: "doer",
+		timeZone: "Pacific/Auckland",
+		dateFormat: "DMY",
+		timeFormat: "H24",
+		range: {
+			start: new Date("2024-01-07T11:00:00.000Z"),
+			end: new Date("2024-01-14T11:00:00.000Z"),
+			labelKey: "calendarWeek",
+		},
+	});
+	expect(result.timeline.map((entry) => entry.id).sort()).toEqual([preset.id, timed.id].sort());
+	expect(result.timeline.every((entry) => entry.assignedTaskId === null)).toBe(true);
+	expect(result).toMatchObject({ completedCount: 2, pendingCount: 1, approvedPoints: 3 });
+});
 
 test("retains membership and household checks inside the write transaction", async () => {
 	const task = await makeTask();

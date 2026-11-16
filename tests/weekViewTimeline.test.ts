@@ -27,15 +27,8 @@ const atZoned = (
 
 type BuildInput = Parameters<typeof buildWeekViewTimeline>[0];
 type CompletedLogRecord = BuildInput["completedLogs"][number];
-type AssignedTaskRecord = BuildInput["tasks"][number];
 
 const TIME_ZONE = "America/Los_Angeles";
-
-const makeRange = (start: Date, end: Date) => ({
-	start,
-	end,
-	labelKey: "thisWeek" as const,
-});
 
 const makeLog = (overrides: Partial<CompletedLogRecord> = {}): CompletedLogRecord => ({
 	id: "log-1",
@@ -48,173 +41,6 @@ const makeLog = (overrides: Partial<CompletedLogRecord> = {}): CompletedLogRecor
 	assignedTask: null,
 	user: { id: "sam", name: "Sam", email: null },
 	...overrides,
-});
-
-const makeTask = (overrides: Partial<AssignedTaskRecord> = {}): AssignedTaskRecord => ({
-	id: "task-1",
-	assignedTo: null,
-	assignedAt: atZoned(TIME_ZONE, 2024, 1, 2, 8, 0),
-	cadenceTarget: 1,
-	cadenceIntervalMinutes: 1440,
-	isRecurring: false,
-	preset: {
-		id: "preset-1",
-		label: "Vacuum",
-		bucket: "QUICK",
-	},
-	...overrides,
-});
-
-test("suppresses one-off planned entries when a pending completion already exists", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		completedLogs: [makeLog({ status: "PENDING", assignedTaskId: "task-1" })],
-		tasks: [makeTask()],
-	});
-
-	expect(result.completedCount).toBe(1);
-	expect(result.pendingCount).toBe(1);
-	expect(result.approvedPoints).toBe(0);
-	expect(result.plannedCount).toBe(0);
-	expect(result.timeline).toHaveLength(1);
-	expect(result.timeline[0]?.type).toBe("completed");
-});
-
-test("uses assignedAt for the first recurring occurrence inside a partial cadence window", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 3, 14, 30),
-		cadenceIntervalMinutes: 10080,
-		isRecurring: true,
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 1, 4, 9, 0),
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline[0]).toMatchObject({
-		type: "planned",
-		occurredAt: task.assignedAt.toISOString(),
-	});
-});
-
-test("suppresses a recurring planned entry once the period target is already met", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 2, 0, 0), atZoned(TIME_ZONE, 2024, 1, 3, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 1, 8, 0),
-		cadenceTarget: 1,
-		isRecurring: true,
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		completedLogs: [
-			makeLog({
-				assignedTaskId: task.id,
-				createdAt: atZoned(TIME_ZONE, 2024, 1, 2, 9, 0),
-				status: "PENDING",
-			}),
-		],
-		tasks: [task],
-	});
-
-	expect(result.completedCount).toBe(1);
-	expect(result.pendingCount).toBe(1);
-	expect(result.plannedCount).toBe(0);
-	expect(result.timeline).toHaveLength(1);
-	expect(result.timeline[0]).toMatchObject({
-		type: "completed",
-		status: "PENDING",
-	});
-});
-
-test("keeps a recurring planned entry when the period target is only partially complete", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 2, 0, 0), atZoned(TIME_ZONE, 2024, 1, 3, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 1, 8, 0),
-		cadenceTarget: 2,
-		isRecurring: true,
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		completedLogs: [
-			makeLog({
-				assignedTaskId: task.id,
-				createdAt: atZoned(TIME_ZONE, 2024, 1, 2, 9, 0),
-				status: "PENDING",
-			}),
-		],
-		now: atZoned(TIME_ZONE, 2024, 1, 2, 10, 0),
-		tasks: [task],
-	});
-
-	expect(result.completedCount).toBe(1);
-	expect(result.pendingCount).toBe(1);
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline).toHaveLength(2);
-	expect(result.timeline.find((entry) => entry.type === "planned")).toMatchObject({
-		type: "planned",
-		cadenceIntervalMinutes: 1440,
-		cadenceTarget: 2,
-		remainingCount: 1,
-		canComplete: true,
-	});
-});
-
-test("suppresses older recurring planned entries outside the current cadence window", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 5, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 1, 0, 0),
-		cadenceIntervalMinutes: 1440,
-		isRecurring: true,
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 1, 4, 9, 0),
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	const jan4Entry = result.timeline.find(
-		(entry) => entry.type === "planned" && entry.occurredAt === atZoned(TIME_ZONE, 2024, 1, 4, 0, 0).toISOString(),
-	);
-
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline).toHaveLength(1);
-	expect(
-		result.timeline.find(
-			(entry) => entry.type === "planned" && entry.occurredAt === atZoned(TIME_ZONE, 2024, 1, 2, 0, 0).toISOString(),
-		),
-	).toBeUndefined();
-	expect(jan4Entry).toMatchObject({ type: "planned", canComplete: true });
-});
-
-test("suppresses a future one-off planned entry before its assigned time", () => {
-	const task = makeTask({ assignedAt: atZoned(TIME_ZONE, 2024, 1, 4, 9, 0) });
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 1, 3, 12, 0),
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(0);
-	expect(result.timeline).toHaveLength(0);
 });
 
 test("defaults to the household calendar week, including the full Sunday", () => {
@@ -316,10 +142,7 @@ test.each([
 });
 
 test("maps completed log status, points, and bucket onto timeline entries", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
 	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
 		completedLogs: [
 			makeLog({ id: "log-pending", status: "PENDING", points: 4, duration: "ROUTINE" }),
 			makeLog({
@@ -330,7 +153,6 @@ test("maps completed log status, points, and bucket onto timeline entries", () =
 				createdAt: atZoned(TIME_ZONE, 2024, 1, 3, 10, 0),
 			}),
 		],
-		tasks: [],
 	});
 
 	expect(result.completedCount).toBe(2);
@@ -343,23 +165,15 @@ test("maps completed log status, points, and bucket onto timeline entries", () =
 });
 
 test("throws when a completed log status falls outside the week-view invariant", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-
 	expect(() =>
 		buildWeekViewTimeline({
-			range,
-			timeZone: TIME_ZONE,
 			completedLogs: [makeLog({ status: "REJECTED" })],
-			tasks: [],
 		}),
 	).toThrow("Unexpected week-view completed log status: REJECTED");
 });
 
 test("falls back to QUICK for unknown bucket strings and to null when missing", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
 	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
 		completedLogs: [
 			makeLog({ id: "log-unknown", duration: "MYSTERY" }),
 			makeLog({
@@ -368,230 +182,12 @@ test("falls back to QUICK for unknown bucket strings and to null when missing", 
 				createdAt: atZoned(TIME_ZONE, 2024, 1, 3, 10, 0),
 			}),
 		],
-		tasks: [],
 	});
 
 	const unknown = result.timeline.find((entry) => entry.id === "log-unknown");
 	const missing = result.timeline.find((entry) => entry.id === "log-missing");
 	expect(unknown).toMatchObject({ type: "completed", bucket: "QUICK" });
 	expect(missing).toMatchObject({ type: "completed", bucket: null });
-});
-
-test("emits a one-off planned entry with preset metadata when assignedAt is in range", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 4, 9, 0),
-		preset: { id: "preset-1", label: "Mop floors", bucket: "ROUTINE" },
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 1, 4, 12, 0),
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline[0]).toMatchObject({
-		type: "planned",
-		assignedTaskId: task.id,
-		description: "Mop floors",
-		bucket: "ROUTINE",
-		points: 6,
-		isRecurring: false,
-		cadenceIntervalMinutes: null,
-		cadenceTarget: 1,
-		remainingCount: 1,
-		canComplete: true,
-	});
-});
-
-test("suppresses one-off planned entries after any pending or approved completion", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 4, 9, 0),
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		completedLogs: [makeLog({ assignedTaskId: task.id, status: "PENDING" })],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(0);
-	expect(result.timeline).toHaveLength(1);
-	expect(result.timeline[0]).toMatchObject({
-		type: "completed",
-		status: "PENDING",
-	});
-});
-
-test("carries an unfinished one-off forward to the range start", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-	const task = makeTask({ assignedAt: atZoned(TIME_ZONE, 2023, 12, 30, 9, 0) });
-
-	const result = buildWeekViewTimeline({
-		now: atZoned(TIME_ZONE, 2024, 1, 3, 12, 0),
-		range,
-		timeZone: TIME_ZONE,
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline[0]).toMatchObject({
-		type: "planned",
-		occurredAt: range.start.toISOString(),
-		assignedTo: null,
-		carriedForward: true,
-	});
-});
-
-test("does not carry an unfinished one-off into a range that excludes now", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-	const task = makeTask({ assignedAt: atZoned(TIME_ZONE, 2023, 12, 30, 9, 0) });
-
-	const result = buildWeekViewTimeline({
-		now: atZoned(TIME_ZONE, 2024, 2, 3, 12, 0),
-		range,
-		timeZone: TIME_ZONE,
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(0);
-});
-
-test("skips tasks without a preset", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-	const task = makeTask({ preset: null });
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(0);
-	expect(result.timeline).toHaveLength(0);
-});
-
-test("emits a recurring planned entry per cadence period when targets are unmet", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 4, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 1, 0, 0),
-		cadenceIntervalMinutes: 1440,
-		isRecurring: true,
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 1, 3, 10, 0),
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline.every((entry) => entry.type === "planned")).toBe(true);
-	expect(result.timeline[0]).toMatchObject({
-		type: "planned",
-		occurredAt: atZoned(TIME_ZONE, 2024, 1, 3, 0, 0).toISOString(),
-	});
-});
-
-test("finds the current recurring planned entry inside a long custom range", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 2, 10, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 1, 0, 0),
-		cadenceIntervalMinutes: 1440,
-		isRecurring: true,
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 2, 9, 10, 0),
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline[0]).toMatchObject({
-		type: "planned",
-		occurredAt: atZoned(TIME_ZONE, 2024, 2, 9, 0, 0).toISOString(),
-	});
-});
-
-test("keeps the current recurring planned entry when its cadence window overlaps the month boundary", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 5, 1, 0, 0), atZoned(TIME_ZONE, 2024, 6, 1, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 4, 1, 0, 0),
-		cadenceIntervalMinutes: 10080,
-		isRecurring: true,
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 5, 2, 9, 0),
-		completedLogs: [],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline[0]).toMatchObject({
-		type: "planned",
-		occurredAt: atZoned(TIME_ZONE, 2024, 5, 1, 0, 0).toISOString(),
-		canComplete: true,
-	});
-});
-
-test("suppresses a recurring planned entry for a period whose target is already met", () => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 4, 0, 0));
-	const task = makeTask({
-		assignedAt: atZoned(TIME_ZONE, 2024, 1, 1, 0, 0),
-		cadenceIntervalMinutes: 1440,
-		isRecurring: true,
-	});
-
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 1, 3, 10, 0),
-		completedLogs: [
-			makeLog({
-				id: "log-day-2",
-				assignedTaskId: task.id,
-				createdAt: atZoned(TIME_ZONE, 2024, 1, 2, 12, 0),
-			}),
-		],
-		tasks: [task],
-	});
-
-	expect(result.plannedCount).toBe(1);
-	const plannedDays = result.timeline.filter((entry) => entry.type === "planned").map((entry) => entry.occurredAt);
-	expect(plannedDays).not.toContain(atZoned(TIME_ZONE, 2024, 1, 2, 0, 0).toISOString());
-	expect(plannedDays).toEqual([atZoned(TIME_ZONE, 2024, 1, 3, 0, 0).toISOString()]);
-});
-
-test("orders the timeline by latest first and places completed before planned at equal times", () => {
-	const sameMoment = atZoned(TIME_ZONE, 2024, 1, 5, 9, 0);
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1, 0, 0), atZoned(TIME_ZONE, 2024, 1, 8, 0, 0));
-	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		completedLogs: [
-			makeLog({ id: "log-late", createdAt: atZoned(TIME_ZONE, 2024, 1, 6, 8, 0) }),
-			makeLog({ id: "log-tie", createdAt: sameMoment }),
-		],
-		tasks: [makeTask({ assignedAt: sameMoment })],
-	});
-
-	expect(result.timeline.map((entry) => entry.id)).toEqual(["log-late", "log-tie", expect.stringMatching(/^task-1:/)]);
 });
 
 test("starts a new calendar week at the exact household-local Monday boundary", () => {
@@ -607,38 +203,38 @@ test("starts a new calendar week at the exact household-local Monday boundary", 
 	expect(previous.end).toEqual(now);
 });
 
-test.each([8, 9])("omits a one-off assigned at or after the range end (January %s)", (day) => {
-	const range = makeRange(atZoned(TIME_ZONE, 2024, 1, 1), atZoned(TIME_ZONE, 2024, 1, 8));
+test("orders completions latest first with stable IDs at equal times", () => {
+	const sameMoment = atZoned(TIME_ZONE, 2024, 1, 5, 9);
 	const result = buildWeekViewTimeline({
-		range,
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 1, 10),
-		completedLogs: [],
-		tasks: [makeTask({ assignedAt: atZoned(TIME_ZONE, 2024, 1, day) })],
+		completedLogs: [
+			makeLog({ id: "b", createdAt: sameMoment }),
+			makeLog({ id: "latest", createdAt: atZoned(TIME_ZONE, 2024, 1, 6, 8) }),
+			makeLog({ id: "a", createdAt: sameMoment }),
+		],
 	});
-	expect(result.timeline).toEqual([]);
+	expect(result.timeline.map((entry) => entry.id)).toEqual(["latest", "a", "b"]);
 });
 
-test("preserves assignee, Open, and completer details in household timeline entries", () => {
+test("preserves assignee, Open, completer and quick-log details", () => {
 	const assignee = { id: "alex", name: null, email: "alex@example.com" };
 	const completer = { id: "sam", name: "Sam", email: null };
 	const result = buildWeekViewTimeline({
-		range: makeRange(atZoned(TIME_ZONE, 2024, 1, 1), atZoned(TIME_ZONE, 2024, 1, 8)),
-		timeZone: TIME_ZONE,
-		now: atZoned(TIME_ZONE, 2024, 1, 5),
 		completedLogs: [
-			makeLog({
-				assignedTaskId: "completed-task",
-				assignedTask: { assignedTo: assignee },
-				user: completer,
-			}),
+			makeLog({ id: "assigned", assignedTaskId: "task", assignedTask: { assignedTo: assignee }, user: completer }),
+			makeLog({ id: "open", assignedTaskId: "open-task", assignedTask: { assignedTo: null } }),
+			makeLog({ id: "quick-log" }),
 		],
-		tasks: [makeTask({ id: "assigned", assignedTo: assignee }), makeTask({ id: "open" })],
 	});
-	expect(result.timeline.find((entry) => entry.type === "completed")).toMatchObject({
+	expect(result.timeline.find((entry) => entry.id === "assigned")).toMatchObject({
 		assignedTo: assignee,
 		completedBy: completer,
 	});
-	expect(result.timeline.find((entry) => entry.assignedTaskId === "assigned")).toMatchObject({ assignedTo: assignee });
-	expect(result.timeline.find((entry) => entry.assignedTaskId === "open")).toMatchObject({ assignedTo: null });
+	expect(result.timeline.find((entry) => entry.id === "open")).toMatchObject({
+		assignedTaskId: "open-task",
+		assignedTo: null,
+	});
+	expect(result.timeline.find((entry) => entry.id === "quick-log")).toMatchObject({
+		assignedTaskId: null,
+		assignedTo: null,
+	});
 });

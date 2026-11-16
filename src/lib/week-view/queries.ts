@@ -29,7 +29,6 @@ export const getWeekViewHouseholdSettings = async (householdId: string) => {
 };
 
 export const getWeekViewData = async ({
-	now = new Date(),
 	householdId,
 	range,
 	userId,
@@ -37,7 +36,6 @@ export const getWeekViewData = async ({
 	timeFormat,
 	timeZone,
 }: {
-	now?: Date;
 	householdId: string;
 	range: WeekViewRange;
 	userId: string;
@@ -45,74 +43,40 @@ export const getWeekViewData = async ({
 	timeFormat: TimeFormat;
 	timeZone: string;
 }) => {
-	const [completedLogs, tasks] = await Promise.all([
-		prisma.pointLog.findMany({
-			where: {
-				householdId,
-				...(userId === "all" ? {} : { userId }),
-				kind: { in: ["PRESET", "TIMED"] },
-				revertedAt: null,
-				status: { in: [LogStatus.PENDING, LogStatus.APPROVED] },
-				createdAt: {
-					gte: range.start,
-					lt: range.end,
-				},
+	const completedLogs = await prisma.pointLog.findMany({
+		where: {
+			householdId,
+			...(userId === "all" ? {} : { userId }),
+			kind: { in: ["PRESET", "TIMED"] },
+			revertedAt: null,
+			status: { in: [LogStatus.PENDING, LogStatus.APPROVED] },
+			createdAt: {
+				gte: range.start,
+				lt: range.end,
 			},
-			select: {
-				id: true,
-				description: true,
-				points: true,
-				status: true,
-				duration: true,
-				createdAt: true,
-				assignedTaskId: true,
-				assignedTask: {
-					select: { assignedTo: { select: { id: true, name: true, email: true } } },
-				},
-				user: { select: { id: true, name: true, email: true } },
+		},
+		select: {
+			id: true,
+			description: true,
+			points: true,
+			status: true,
+			duration: true,
+			createdAt: true,
+			assignedTaskId: true,
+			assignedTask: {
+				select: { assignedTo: { select: { id: true, name: true, email: true } } },
 			},
-			orderBy: { createdAt: "asc" },
-		}),
-		prisma.assignedTask.findMany({
-			where: {
-				householdId,
-				...(userId === "all" ? {} : { OR: [{ assignedToId: userId }, { assignedToId: null }] }),
-				status: "ACTIVE",
-			},
-			select: {
-				id: true,
-				assignedTo: { select: { id: true, name: true, email: true } },
-				assignedAt: true,
-				cadenceTarget: true,
-				cadenceIntervalMinutes: true,
-				isRecurring: true,
-				logs: {
-					where: { revertedAt: null, status: { in: [LogStatus.PENDING, LogStatus.APPROVED] } },
-					select: { createdAt: true },
-				},
-				preset: {
-					select: {
-						id: true,
-						label: true,
-						bucket: true,
-					},
-				},
-			},
-			orderBy: { assignedAt: "asc" },
-		}),
-	]);
-
+			user: { select: { id: true, name: true, email: true } },
+		},
+		orderBy: { createdAt: "asc" },
+	});
 	return {
 		range,
 		timeZone,
 		dateFormat,
 		timeFormat,
 		...buildWeekViewTimeline({
-			now,
 			completedLogs,
-			range,
-			tasks,
-			timeZone,
 		}),
 	};
 };

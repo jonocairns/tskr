@@ -13,6 +13,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { useTranslation } from "@/lib/i18nClient";
+import { buildTasksHref } from "@/lib/tasks/href";
 
 type Props = {
 	user: {
@@ -58,9 +59,9 @@ export const UserMenu = ({ user, household }: Props) => {
 							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuItem asChild>
-							<Link href={`/${householdId}/week`}>
+							<Link href={buildTasksHref(householdId, { userId: "all" })}>
 								<CalendarDaysIcon className="mr-2 h-4 w-4" />
-								{t("Household tasks")}
+								{t("Tasks")}
 							</Link>
 						</DropdownMenuItem>
 						{currentHouseholdRole && currentHouseholdRole !== "DOER" ? (
