@@ -63,6 +63,7 @@ let root: Root;
 
 const entry = (group: AssignedTaskEntry["group"], overrides: Partial<AssignedTaskEntry> = {}) => ({
 	id: group,
+	assignedToOther: group === "others",
 	group,
 	label: group,
 	assigneeLabel: "Sam",
@@ -246,4 +247,26 @@ test("a selected member's long To do list is expanded", async () => {
 	);
 	expect(container.querySelector("details")).toBeNull();
 	expect(container.querySelectorAll('button[aria-label="Complete others"]')).toHaveLength(6);
+});
+
+test("selected member heading keeps completion confirmation relative to the viewer", async () => {
+	await act(async () =>
+		root.render(
+			createElement(AssignedTaskTable, {
+				householdId: "home",
+				entries: [entry("mine", { assignedToOther: true })],
+				mineLabel: "Sam",
+				timeZone: "UTC",
+				dateFormat: "DMY",
+				timeFormat: "H24",
+			}),
+		),
+	);
+	expect(container.textContent).toContain("Sam");
+	expect(container.textContent).not.toContain("Assigned to");
+	expect(container.textContent).not.toContain("Yours");
+	await click("Complete mine");
+	expect(mockComplete).not.toHaveBeenCalled();
+	expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("assigned to Sam");
+	await click("Cancel");
 });

@@ -10,7 +10,7 @@ Sized for how tskr runs: one container, one Node process (`Dockerfile:70`), one 
 
 ### v1
 
-- Every assigned task is visible to every household member. The dashboard groups them Yours / Open / Everyone else's.
+- Every assigned task is visible to every household member. The dashboard groups them Yours / Open / Everyone else's. To do regroups relative to a selected member, using their name (Yours for the viewer); confirmations remain relative to the signed-in user.
 - The assignee is optional. Only approvers (APPROVER/DICTATOR) create, assign, reassign or unassign tasks.
 - Anyone can complete any task. The completer gets the points.
 - The week view becomes the household's task list, with an Everyone/member filter remembered per browser and a calendar-week default.
@@ -70,7 +70,7 @@ model AssignedTask {
   - `available`: can be completed now.
   - `awaitingApproval`: capacity full with a pending completion, shown as "Awaiting approval, done by X". Today these rows disappear (`assigned.ts:42`).
   - Met-and-approved periods and completed one-offs stay omitted.
-- `AssignedTaskQueue`: Yours, Open, Everyone else's (the last collapsed when long). Move remaining hard-coded strings to `t()`.
+- `AssignedTaskQueue`: Yours, Open, Everyone else's (the last collapsed when long). To do uses the selected member's name and grouping; the dashboard stays viewer-relative. Move remaining hard-coded strings to `t()`.
 - Completing someone else's task asks for confirmation; Open tasks and your own complete in one tap. A stale tap (`BAD_REQUEST`) shows the message and refreshes.
 - Show the board when the household has any active task or N > 0 (`src/app/[householdId]/page.tsx:97`).
 - **Done link:** "N done this week →" to the week view with `?preset=calendarWeek&userId=all`. N counts household PRESET/TIMED, unreverted, PENDING + APPROVED logs since the household week start. Shown whenever N > 0.

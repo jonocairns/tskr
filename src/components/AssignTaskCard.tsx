@@ -277,7 +277,7 @@ export const AssignTaskCard = ({
 								/>
 							</div>
 							<div className="grid gap-2">
-								<Label htmlFor="new-preset-bucket">{t("Bucket")}</Label>
+								<Label htmlFor="new-preset-bucket">{t("Points")}</Label>
 								<PresetBucketSelect
 									id="new-preset-bucket"
 									value={newBucket}
@@ -299,7 +299,7 @@ export const AssignTaskCard = ({
 								/>
 							</div>
 							<div className="grid gap-2 md:col-span-2">
-								<Label htmlFor="new-preset-approval">{t("Approval override")}</Label>
+								<Label htmlFor="new-preset-approval">{t("Approval")}</Label>
 								<PresetApprovalOverrideSelect
 									id="new-preset-approval"
 									value={newApprovalOverride}
@@ -313,7 +313,7 @@ export const AssignTaskCard = ({
 						<div className="flex items-center justify-between gap-2 rounded-md border border-input px-3 py-2 md:col-span-2">
 							<div className="space-y-1">
 								<Label htmlFor="recurring">{t("Recurring")}</Label>
-								<p className="text-xs text-muted-foreground">{t("Reset after each cadence cycle.")}</p>
+								<p className="text-xs text-muted-foreground">{t("Resets at the start of each period.")}</p>
 							</div>
 							<Switch
 								id="recurring"
@@ -331,7 +331,7 @@ export const AssignTaskCard = ({
 						{isRecurring ? (
 							<>
 								<div className="grid gap-2">
-									<Label htmlFor="cadence-interval">{t("Cadence")}</Label>
+									<Label htmlFor="cadence-interval">{t("Repeats")}</Label>
 									<Select
 										value={cadenceInterval}
 										onValueChange={(value) => {
@@ -346,7 +346,7 @@ export const AssignTaskCard = ({
 										disabled={disabled}
 									>
 										<SelectTrigger id="cadence-interval">
-											<SelectValue placeholder={t("Select cadence")} />
+											<SelectValue placeholder={t("Select repeat interval")} />
 										</SelectTrigger>
 										<SelectContent>
 											{CADENCE_OPTIONS.map((option) => (

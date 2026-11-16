@@ -189,3 +189,18 @@ test("uses only the current calendar period, including a week crossing a month b
 	});
 	expect(buildEntries({ ...task, cadenceTarget: 1 }, now)).toEqual([]);
 });
+
+test("selected member grouping is separate from viewer-relative confirmation", () => {
+	const tasks = [
+		makeTask(),
+		makeTask({ id: "sam", assignedTo: { id: "sam", name: "Sam", email: null } }),
+		makeTask({ id: "open", assignedTo: null }),
+	];
+	expect(
+		buildAssignedTaskEntries({ tasks, userId: "viewer", groupRelativeToUserId: "sam", now: NOW, timeZone: TIME_ZONE }),
+	).toMatchObject([
+		{ group: "others", assignedToOther: false },
+		{ group: "mine", assignedToOther: true },
+		{ group: "open", assignedToOther: false },
+	]);
+});

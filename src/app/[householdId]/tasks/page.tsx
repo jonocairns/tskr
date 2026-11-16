@@ -183,6 +183,11 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 						<AssignedTaskTable
 							householdId={householdId}
 							entries={todoEntries}
+							mineLabel={
+								selectedUserId !== "all" && selectedUserId !== userId
+									? members.find((member) => member.id === selectedUserId)?.name
+									: undefined
+							}
 							collapseOthers={selectedUserId === "all"}
 							{...settings}
 						/>

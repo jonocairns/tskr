@@ -18,7 +18,7 @@ PR sequence:
 
 6. PR 6: Quick log taps count towards matching listed tasks. Matching checks current-cycle capacity under the transaction write lock, ordered by oldest assignedAt then id within each tier. No confirmation; the toast names another member's task; revert from History (PR 7 adds Undo to the toast). Personal presets, timed work and built-in preset keys never match. Completion writing and after-commit notifications are shared with To do.
 
-7. PR 7: archive removed Quick log items and their tasks while preserving history; add Undo to the Quick log toast. Follow-up task form labels and member-relative grouping complete this work.
+7. PR 7: archive removed Quick log items and their tasks while preserving history; add Undo to the Quick log toast. Task form labels use Points / Repeats / Approval. On To do with a specific member selected, groups are relative to that member (their name, or Yours for the viewer), then Open, then everyone else's. Completion confirmations stay relative to the signed-in user; the dashboard card is unchanged.
 
 Removing a task sets `AssignedTask.archivedAt` and excludes it from current-task lists. Its completions remain linked in Done, including the assignee; subsequent log status changes never un-archive it. Manage disables live refresh to protect unsaved drafts.
 

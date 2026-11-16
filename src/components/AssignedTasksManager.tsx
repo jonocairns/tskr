@@ -240,7 +240,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 								<TableHead>{t("Task")}</TableHead>
 								<TableHead>{t("Assignee")}</TableHead>
 								<TableHead>{t("Recurring")}</TableHead>
-								<TableHead>{t("Cadence")}</TableHead>
+								<TableHead>{t("Repeats")}</TableHead>
 								<TableHead>{t("Completions")}</TableHead>
 								<TableHead>{t("Progress")}</TableHead>
 								<TableHead className="text-right">{t("Actions")}</TableHead>
@@ -306,8 +306,8 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 											}}
 											disabled={isPending || !task.isRecurring}
 										>
-											<SelectTrigger aria-label={t("Cadence")}>
-												<SelectValue placeholder={t("Select cadence")} />
+											<SelectTrigger aria-label={t("Repeats")}>
+												<SelectValue placeholder={t("Select repeat interval")} />
 											</SelectTrigger>
 											<SelectContent>
 												{CADENCE_OPTIONS.map((option) => (

@@ -310,6 +310,11 @@ test.each(["doer", "approver", "all"])(
 					: [theirLog.id, openLog.id];
 		expect(todos.map((entry) => entry.id).sort()).toEqual(expectedTaskIds.sort());
 		expect(done.map((entry) => entry.id).sort()).toEqual(expectedLogIds.sort());
+		if (userId !== "all")
+			expect(todos.find((entry) => entry.id !== open.id)).toMatchObject({
+				group: "mine",
+				assignedToOther: userId !== "doer",
+			});
 		// Other members' completions still consume capacity when their logs are filtered out.
 		expect(todos.every((entry) => entry.progress === 1 && entry.state === "available")).toBe(true);
 		expect(todos.find((entry) => entry.id === open.id)?.group).toBe("open");

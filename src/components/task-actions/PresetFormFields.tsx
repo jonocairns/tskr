@@ -33,7 +33,7 @@ export const PresetBucketSelect = ({ id, value, onChange, disabled }: PresetBuck
 	return (
 		<Select value={value} onValueChange={(next: DurationKey) => onChange(next)} disabled={disabled}>
 			<SelectTrigger id={id}>
-				<SelectValue placeholder={t("Bucket")} />
+				<SelectValue placeholder={t("Points")} />
 			</SelectTrigger>
 			<SelectContent>
 				{localizedBuckets.map((bucket) => (

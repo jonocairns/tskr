@@ -24,6 +24,7 @@ export const getTasksTodoData = async ({
 	return buildAssignedTaskEntries({
 		tasks: tasks.filter((task) => userId === "all" || task.assignedToId === userId || task.assignedToId === null),
 		userId: actingUserId,
+		groupRelativeToUserId: userId === "all" ? undefined : userId,
 		now,
 		timeZone,
 	});
