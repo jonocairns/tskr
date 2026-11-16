@@ -727,10 +727,29 @@ test("Quick log prioritizes own, then Open, before another member's task", async
 });
 
 test("Quick log chooses the oldest Open task, breaking ties by id", async () => {
-	await makeTask({ id: "later", assignedToId: null, assignedAt: new Date("2024-02-01") });
+	// The later-assigned task has the smallest id, so only assignedAt ordering can pick "a".
+	await makeTask({ id: "0", assignedToId: null, assignedAt: new Date("2024-02-01") });
 	await makeTask({ id: "b", assignedToId: null });
 	const first = await makeTask({ id: "a", assignedToId: null });
 	expect(await quickLog()).toMatchObject({ outcome: "logged", entry: { assignedTaskId: first.id } });
+});
+
+test("Quick log tiers outrank age, and a full own task falls through to Open", async () => {
+	const open = await makeTask({ assignedToId: null, assignedAt: new Date("2023-01-01") });
+	const mine = await makeTask({ assignedAt: new Date("2024-01-01") });
+	expect(await quickLog()).toMatchObject({ outcome: "logged", entry: { assignedTaskId: mine.id } });
+	expect(await quickLog()).toMatchObject({ outcome: "logged", entry: { assignedTaskId: open.id } });
+});
+
+test("a confirmation for a task archived in between is rejected without writing", async () => {
+	const task = await makeTask({ assignedToId: "approver" });
+	expect(await quickLog()).toMatchObject({ outcome: "needsConfirmation" });
+	await manage.delete({ householdId, id: task.id });
+	await expect(quickLog({ assignedTaskId: task.id })).rejects.toMatchObject({
+		code: "BAD_REQUEST",
+		message: "Task is not active",
+	});
+	expect(await prisma.pointLog.count()).toBe(0);
 });
 
 test("another member's match reserves nothing; explicit confirmation and extra are respected", async () => {

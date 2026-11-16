@@ -21,3 +21,5 @@ PR sequence:
 Removing a task sets `AssignedTask.archivedAt` and excludes it from current-task lists. Its completions remain linked in Done, including the assignee; subsequent log status changes never un-archive it. Manage disables live refresh to protect unsaved drafts.
 
 Known limitation: deleting a quick-log preset still cascades to its tasks and clears their completion links. The quick-log deletion dialog lists affected current tasks and expands its title when the task list is affected.
+
+A matched Quick log tap writes the same completion as To do, except that a typed note is kept as the log's description (otherwise the task name is used); the task link and "Assigned to" are unaffected.

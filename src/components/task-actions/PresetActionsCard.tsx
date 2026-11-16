@@ -70,15 +70,14 @@ export const PresetActionsCard = () => {
 			setPendingTaskId(taskId);
 			setConfirmDialogOpen(true);
 		} else {
-			setLastPressedTaskId(taskId);
-			logPreset({ presetId: taskId });
+			logPreset({ presetId: taskId }, undefined, () => setLastPressedTaskId(taskId));
 		}
 	};
 
 	const handleConfirmLog = () => {
 		if (pendingTaskId) {
-			logPreset({ presetId: pendingTaskId });
-			setLastPressedTaskId(pendingTaskId);
+			const taskId = pendingTaskId;
+			logPreset({ presetId: taskId }, undefined, () => setLastPressedTaskId(taskId));
 		}
 		setConfirmDialogOpen(false);
 		setPendingTaskId(null);

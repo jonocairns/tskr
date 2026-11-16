@@ -29,7 +29,7 @@ type TaskActionsContextValue = {
 	isPresetPending: boolean;
 	startTransition: (callback: () => void) => void;
 	startPresetTransition: (callback: () => void) => void;
-	logPreset: (payload: PresetPayload, overrideNote?: string) => void;
+	logPreset: (payload: PresetPayload, overrideNote?: string, onLogged?: () => void) => void;
 };
 
 type TaskActionsProviderProps = {
@@ -55,6 +55,7 @@ export const TaskActionsProvider = ({
 		task: { id: string; label: string; assigneeName: string | null };
 		payload: PresetPayload;
 		note: string;
+		onLogged?: () => void;
 	} | null>(null);
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [isPresetPending, startPresetTransition] = useTransition();
@@ -124,14 +125,26 @@ export const TaskActionsProvider = ({
 		sortOrder: task.sortOrder,
 	}));
 
-	const logPreset = (payload: PresetPayload, overrideNote?: string) => {
+	// onLogged fires only once a log is written, never for a pending confirmation or an error.
+	const logPreset = (payload: PresetPayload, overrideNote?: string, onLogged?: () => void) => {
 		const noteValue = overrideNote ?? note.trim();
-		createLogMutation.mutate({
-			householdId,
-			type: "preset" as const,
-			...payload,
-			description: noteValue || undefined,
-		});
+		createLogMutation.mutate(
+			{
+				householdId,
+				type: "preset" as const,
+				...payload,
+				description: noteValue || undefined,
+			},
+			{
+				onSuccess: (data) => {
+					if (data.outcome === "needsConfirmation") {
+						setConfirmation((current) => (current ? { ...current, onLogged } : current));
+						return;
+					}
+					onLogged?.();
+				},
+			},
+		);
 	};
 
 	const disabled = createLogMutation.isPending || isPresetPending;
@@ -164,10 +177,15 @@ export const TaskActionsProvider = ({
 				onCancel={() => setConfirmation(null)}
 				onCount={() => {
 					if (confirmation)
-						logPreset({ ...confirmation.payload, assignedTaskId: confirmation.task.id }, confirmation.note);
+						logPreset(
+							{ ...confirmation.payload, assignedTaskId: confirmation.task.id },
+							confirmation.note,
+							confirmation.onLogged,
+						);
 				}}
 				onExtra={() => {
-					if (confirmation) logPreset({ ...confirmation.payload, asExtra: true }, confirmation.note);
+					if (confirmation)
+						logPreset({ ...confirmation.payload, asExtra: true }, confirmation.note, confirmation.onLogged);
 				}}
 			/>
 		</TaskActionsContext.Provider>
