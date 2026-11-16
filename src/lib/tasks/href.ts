@@ -18,7 +18,8 @@ export const buildTasksHref = (
 		to,
 	}: {
 		tab?: TasksTab;
-		userId: string;
+		// Omit to let the remembered member cookie decide (e.g. plain navigation entries).
+		userId?: string;
 		preset?: string | null;
 		from?: string | null;
 		to?: string | null;
@@ -26,11 +27,12 @@ export const buildTasksHref = (
 ) => {
 	const params = new URLSearchParams();
 	if (tab !== "todo") params.set("tab", tab);
-	params.set("userId", userId);
+	if (userId) params.set("userId", userId);
 	if (preset != null) params.set("preset", preset);
 	if (from != null) params.set("from", from);
 	if (to != null) params.set("to", to);
-	return `/${householdId}/tasks?${params}`;
+	const query = params.toString();
+	return `/${householdId}/tasks${query ? `?${query}` : ""}`;
 };
 
 export const legacyWeekRedirectHref = (householdId: string, searchParams: TasksSearchParams) => {

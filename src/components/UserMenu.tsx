@@ -59,7 +59,7 @@ export const UserMenu = ({ user, household }: Props) => {
 							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuItem asChild>
-							<Link href={buildTasksHref(householdId, { userId: "all" })}>
+							<Link href={buildTasksHref(householdId, {})}>
 								<CalendarDaysIcon className="mr-2 h-4 w-4" />
 								{t("Tasks")}
 							</Link>

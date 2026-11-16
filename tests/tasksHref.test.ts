@@ -20,6 +20,8 @@ test.each<[TasksSearchParams, TasksTab]>([
 
 test("builds stable Tasks URLs, omitting the default tab and preserving range params", () => {
 	expect(buildTasksHref("home", { userId: "all" })).toBe("/home/tasks?userId=all");
+	// Without userId the remembered member cookie applies, so the menu entry keeps the last selection.
+	expect(buildTasksHref("home", {})).toBe("/home/tasks");
 	expect(buildTasksHref("home", { tab: "todo", userId: "sam" })).toBe("/home/tasks?userId=sam");
 	expect(buildTasksHref("home", { tab: "done", userId: "sam", preset: "calendarWeek" })).toBe(
 		"/home/tasks?tab=done&userId=sam&preset=calendarWeek",
