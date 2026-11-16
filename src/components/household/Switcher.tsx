@@ -51,7 +51,7 @@ export const Switcher = ({ householdId: propsHouseholdId }: Props) => {
 	const buttonContent = (
 		<>
 			{isLoading ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <HomeIcon className="h-4 w-4" />}
-			<span className="max-w-[140px] truncate text-left">{activeHousehold?.name ?? "Household"}</span>
+			<span className="max-w-20 truncate sm:max-w-[140px] text-left">{activeHousehold?.name ?? "Household"}</span>
 			{hasMultipleHouseholds ? <ChevronDownIcon className="h-4 w-4 text-muted-foreground" /> : null}
 		</>
 	);

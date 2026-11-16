@@ -30,6 +30,7 @@ export default async function HouseholdPage({ params }: Props) {
 				description={t("Manage settings, members, and invite codes.")}
 				backHref={`/${householdId}`}
 				backLabel={t("Back to dashboard")}
+				backText={t("Dashboard")}
 				user={session.user}
 				household={{ id: householdId, role: membership.role }}
 			/>

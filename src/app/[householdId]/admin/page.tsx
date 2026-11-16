@@ -56,6 +56,7 @@ export default async function AdminPage({ params }: Props) {
 				description="Generate reset links for user passwords."
 				backHref={`/${householdId}/settings`}
 				backLabel="Back to settings"
+				backText="Settings"
 				user={session.user}
 				household={{ id: householdId, role: membership.role }}
 			/>
