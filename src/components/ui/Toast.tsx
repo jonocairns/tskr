@@ -31,9 +31,13 @@ const toastVariants = cva(
 			variant: {
 				default:
 					"default border-border/90 bg-card/95 text-card-foreground dark:border-foreground/20 dark:bg-muted/80 dark:text-foreground",
-				success: "success border-emerald-500/40 bg-emerald-500/10 text-foreground",
-				warning: "warning border-amber-500/40 bg-amber-500/10 text-foreground",
-				destructive: "destructive border-destructive/50 bg-destructive/15 text-foreground",
+				// Opaque tints keep text legible over busy content; translucency plus blur let controls bleed through.
+				success:
+					"success border-emerald-500/40 bg-[color-mix(in_oklab,var(--color-card)_88%,oklch(69.6%_0.17_162.48))] text-foreground",
+				warning:
+					"warning border-amber-500/40 bg-[color-mix(in_oklab,var(--color-card)_88%,oklch(76.9%_0.188_70.08))] text-foreground",
+				destructive:
+					"destructive border-destructive/50 bg-[color-mix(in_oklab,var(--color-card)_85%,var(--color-destructive))] text-foreground",
 			},
 		},
 		defaultVariants: {

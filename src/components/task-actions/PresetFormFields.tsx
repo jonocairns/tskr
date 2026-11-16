@@ -59,10 +59,10 @@ export const PresetApprovalOverrideSelect = ({ id, value, onChange, disabled }: 
 	return (
 		<Select value={value} onValueChange={(next: ApprovalOverrideOption) => onChange(next)} disabled={disabled}>
 			<SelectTrigger id={id}>
-				<SelectValue placeholder={t("Use member default")} />
+				<SelectValue placeholder={t("Use completer's default")} />
 			</SelectTrigger>
 			<SelectContent>
-				<SelectItem value="DEFAULT">{t("Use member default")}</SelectItem>
+				<SelectItem value="DEFAULT">{t("Use completer's default")}</SelectItem>
 				<SelectItem value="REQUIRE">{t("Require approval")}</SelectItem>
 				<SelectItem value="SKIP">{t("Skip approval")}</SelectItem>
 			</SelectContent>

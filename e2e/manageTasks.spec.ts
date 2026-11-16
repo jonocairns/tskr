@@ -42,13 +42,17 @@ test.describe("as an approver", () => {
 		await page.getByRole("link", { name: "Add task" }).click();
 		await expect(page).toHaveURL(new RegExp(`/${householdId}/tasks[?]tab=manage$`));
 
-		await page.getByRole("combobox", { name: "Task", exact: true }).click();
-		await page.getByRole("option", { name: "New task…" }).click();
+		// New task is the default, so the name field is ready straight away.
+		await expect(page.getByRole("combobox", { name: "Task", exact: true })).toHaveText("New task…");
 		await page.getByLabel("Task name").fill("Water the plants");
 		await page.getByRole("button", { name: "Add task" }).click();
 
-		await expect(page.getByText("Task added").first()).toBeVisible();
-		await expect(page.getByRole("combobox", { name: "Task", exact: true })).toHaveText("Water the plants");
+		// The form resets for the next task and the button confirms in place.
+		await expect(page.getByText("Water the plants added to All tasks.")).toBeVisible();
+		await expect(page.getByRole("button", { name: "Added" })).toBeVisible();
+		await expect(page.getByLabel("Task name")).toHaveValue("");
+		await expect(page.getByLabel("Task name")).toBeFocused();
+		await expect(page.getByRole("combobox", { name: "Task", exact: true })).toHaveText("New task…");
 		await expect(page.getByText("All tasks", { exact: true })).toBeVisible();
 		await expect(page.getByRole("row").filter({ hasText: "Water the plants" })).toBeVisible();
 		await expect(page.getByRole("combobox", { name: "Member", exact: true })).toHaveCount(0);

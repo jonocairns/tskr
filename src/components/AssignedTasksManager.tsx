@@ -1,6 +1,6 @@
 "use client";
 
-import { SaveIcon, Trash2Icon } from "lucide-react";
+import { Loader2Icon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -20,7 +20,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
-import { Switch } from "@/components/ui/Switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -28,9 +27,12 @@ import {
 	CADENCE_OPTIONS,
 	DEFAULT_CADENCE_INTERVAL_MINUTES,
 	DEFAULT_CADENCE_TARGET,
+	formatCadenceOption,
+	formatCadenceTargetLabel,
 } from "@/lib/assignedTasksCadence";
 import { useTranslation } from "@/lib/i18nClient";
 import { trpc } from "@/lib/trpc/react";
+import { cn } from "@/lib/utils";
 
 const UNASSIGNED_VALUE = "unassigned";
 
@@ -54,18 +56,39 @@ type Props = {
 	householdId: string;
 	initialTasks: AssignedTaskRow[];
 	members: Array<{ id: string; name: string | null; email: string | null }>;
+	highlightTaskId?: string | null;
 };
 
-export const AssignedTasksManager = ({ householdId, initialTasks, members }: Props) => {
+export const AssignedTasksManager = ({ householdId, initialTasks, members, highlightTaskId }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
 	const [tasks, setTasks] = useState(initialTasks);
+	// The last saved values, so Save only enables for rows with unsaved changes.
+	const [savedTasks, setSavedTasks] = useState(initialTasks);
 	const [assigneeFilter, setAssigneeFilter] = useState(ASSIGNEE_ALL_VALUE);
 
 	useEffect(() => {
 		setTasks(initialTasks);
+		setSavedTasks(initialTasks);
 	}, [initialTasks]);
+
+	const savedById = useMemo(() => new Map(savedTasks.map((task) => [task.id, task])), [savedTasks]);
+	const isCadenceDirty = (task: AssignedTaskRow) => {
+		const saved = savedById.get(task.id);
+		if (!saved) {
+			return false;
+		}
+		if (saved.isRecurring !== task.isRecurring) {
+			return true;
+		}
+		return (
+			task.isRecurring &&
+			(saved.cadenceIntervalMinutes !== task.cadenceIntervalMinutes || saved.cadenceTarget !== task.cadenceTarget)
+		);
+	};
+	const isDirty = (task: AssignedTaskRow) =>
+		isCadenceDirty(task) || savedById.get(task.id)?.assigneeId !== task.assigneeId;
 
 	const assigneeOptions = useMemo(() => {
 		const map = new Map<string, { id: string; label: string }>();
@@ -135,14 +158,17 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 
 	const updateMutation = trpc.assignedTasks.update.useMutation({
 		onSuccess: (result, variables) => {
-			updateTask(variables.id, {
+			const member = members.find((item) => item.id === result.assignedTask.assignedToId);
+			const updates = {
 				assigneeId: result.assignedTask.assignedToId,
-				assigneeName: members.find((member) => member.id === result.assignedTask.assignedToId)?.name ?? null,
-				assigneeEmail: members.find((member) => member.id === result.assignedTask.assignedToId)?.email ?? null,
+				assigneeName: member?.name ?? null,
+				assigneeEmail: member?.email ?? null,
 				cadenceTarget: result.assignedTask.cadenceTarget,
 				cadenceIntervalMinutes: result.assignedTask.cadenceIntervalMinutes,
 				isRecurring: result.assignedTask.isRecurring,
-			});
+			};
+			updateTask(variables.id, updates);
+			setSavedTasks((prev) => prev.map((task) => (task.id === variables.id ? { ...task, ...updates } : task)));
 			toast({ title: t("Task updated") });
 			router.refresh();
 		},
@@ -203,13 +229,162 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 	};
 
 	const isPending = updateMutation.isPending || deleteMutation.isPending;
+	const savingTaskId = updateMutation.isPending ? updateMutation.variables?.id : undefined;
+
+	// Progress reflects the saved schedule, so an unsaved schedule change would contradict it.
+	const formatProgress = (task: AssignedTaskRow) =>
+		isCadenceDirty(task)
+			? t("Save to update progress")
+			: task.progress.isRecurring
+				? t("{{completed}}/{{target}} this cycle", {
+						completed: task.progress.completed,
+						target: task.progress.target,
+					})
+				: t("{{completed}}/{{target}} completed", {
+						completed: task.progress.completed,
+						target: task.progress.target,
+					});
+
+	const highlightClass = (task: AssignedTaskRow) =>
+		task.id === highlightTaskId
+			? "animate-row-highlight motion-reduce:animate-none motion-reduce:bg-emerald-500/15"
+			: undefined;
+
+	const renderAssignee = (task: AssignedTaskRow, id?: string) => (
+		<Select
+			value={task.assigneeId ?? UNASSIGNED_VALUE}
+			onValueChange={(value) => {
+				// A draft like the cadence fields, saved with the row so neither edit discards the other.
+				const member = members.find((item) => item.id === value);
+				updateTask(task.id, {
+					assigneeId: member?.id ?? null,
+					assigneeName: member?.name ?? null,
+					assigneeEmail: member?.email ?? null,
+				});
+			}}
+			disabled={isPending}
+		>
+			<SelectTrigger id={id} aria-label={id ? undefined : t("Assignee for {{task}}", { task: task.presetLabel })}>
+				<SelectValue>
+					{task.assigneeId === null ? t("Open") : (task.assigneeName ?? task.assigneeEmail ?? t("Unknown"))}
+				</SelectValue>
+			</SelectTrigger>
+			<SelectContent>
+				<SelectItem value={UNASSIGNED_VALUE}>{t("Open")}</SelectItem>
+				{members.map((member) => (
+					<SelectItem key={member.id} value={member.id}>
+						{member.name ?? member.email ?? t("Unknown")}
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
+	);
+
+	const renderRepeats = (task: AssignedTaskRow, id?: string) => (
+		<Select
+			value={task.isRecurring ? String(task.cadenceIntervalMinutes) : CADENCE_NONE_VALUE}
+			onValueChange={(value) => {
+				if (!value) {
+					return;
+				}
+				if (value === CADENCE_NONE_VALUE) {
+					toggleRecurring(task.id, false);
+					return;
+				}
+				updateTask(task.id, {
+					cadenceIntervalMinutes: Number.parseInt(value, 10),
+					isRecurring: true,
+				});
+			}}
+			disabled={isPending}
+		>
+			<SelectTrigger id={id} aria-label={id ? undefined : t("Repeats for {{task}}", { task: task.presetLabel })}>
+				<SelectValue placeholder={t("Select repeat interval")} />
+			</SelectTrigger>
+			<SelectContent>
+				{CADENCE_OPTIONS.map((option) => (
+					<SelectItem key={option.value} value={option.value}>
+						{formatCadenceOption(option.value, t)}
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
+	);
+
+	const renderTarget = (task: AssignedTaskRow, id: string, className?: string) => (
+		<Input
+			id={id}
+			type="number"
+			inputMode="numeric"
+			min={1}
+			className={className}
+			value={task.cadenceTarget}
+			onChange={(event) =>
+				updateTask(task.id, {
+					cadenceTarget: Number.parseInt(event.target.value, 10) || 1,
+				})
+			}
+			disabled={isPending}
+		/>
+	);
+
+	const renderActions = (task: AssignedTaskRow) => {
+		const dirty = isDirty(task);
+		return (
+			<div className="-mr-2 flex items-center justify-end gap-1 md:mr-0">
+				<Button
+					type="button"
+					size="sm"
+					variant={dirty ? "default" : "ghost"}
+					disabled={isPending || !dirty}
+					onClick={() => handleSave(task.id)}
+					aria-label={t("Save {{task}}", { task: task.presetLabel })}
+					className={cn("h-9 w-16", !dirty && "invisible")}
+				>
+					{savingTaskId === task.id ? <Loader2Icon className="h-4 w-4 animate-spin" /> : t("Save")}
+				</Button>
+				<AlertDialog>
+					<AlertDialogTrigger asChild>
+						<Button
+							type="button"
+							size="icon"
+							variant="ghost"
+							disabled={isPending}
+							aria-label={t("Remove {{task}}", { task: task.presetLabel })}
+							className="h-9 w-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+						>
+							<Trash2Icon className="h-4 w-4" />
+						</Button>
+					</AlertDialogTrigger>
+					<AlertDialogContent>
+						<AlertDialogHeader>
+							<AlertDialogTitle>{t("Remove task?")}</AlertDialogTitle>
+							<AlertDialogDescription>
+								{t("This removes the task from the list. Its completions stay in Done.")}
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+							<AlertDialogAction
+								type="button"
+								onClick={() => handleDelete(task.id)}
+								className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							>
+								{t("Remove")}
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
+			</div>
+		);
+	};
 
 	return (
 		<Card>
 			<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div className="space-y-1">
 					<CardTitle className="text-xl">{t("All tasks")}</CardTitle>
-					<CardDescription>{t("Manage tasks across the household.")}</CardDescription>
+					<CardDescription>{t("Change who does a task and how often, then save the row.")}</CardDescription>
 				</div>
 				{sortedTasks.length > 0 ? (
 					<div className="sm:min-w-[220px]">
@@ -230,175 +405,104 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 					</div>
 				) : null}
 			</CardHeader>
-			<CardContent className="overflow-x-auto">
+			<CardContent>
 				{sortedTasks.length === 0 ? (
 					<p className="text-sm text-muted-foreground">{t("No tasks yet.")}</p>
 				) : (
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>{t("Task")}</TableHead>
-								<TableHead>{t("Assignee")}</TableHead>
-								<TableHead>{t("Recurring")}</TableHead>
-								<TableHead>{t("Repeats")}</TableHead>
-								<TableHead>{t("Completions")}</TableHead>
-								<TableHead>{t("Progress")}</TableHead>
-								<TableHead className="text-right">{t("Actions")}</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredTasks.map((task) => (
-								<TableRow key={task.id}>
-									<TableCell>
-										<span className="font-semibold">{task.presetLabel}</span>
-									</TableCell>
-									<TableCell>
-										<Select
-											value={task.assigneeId ?? UNASSIGNED_VALUE}
-											onValueChange={(value) => {
-												// A draft like the cadence fields, saved with the row so neither edit discards the other.
-												const member = members.find((item) => item.id === value);
-												updateTask(task.id, {
-													assigneeId: member?.id ?? null,
-													assigneeName: member?.name ?? null,
-													assigneeEmail: member?.email ?? null,
-												});
-											}}
-											disabled={isPending}
-										>
-											<SelectTrigger aria-label={t("Assignee for {{task}}", { task: task.presetLabel })}>
-												<SelectValue>
-													{task.assigneeId === null
-														? t("Open")
-														: (task.assigneeName ?? task.assigneeEmail ?? t("Unknown"))}
-												</SelectValue>
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value={UNASSIGNED_VALUE}>{t("Open")}</SelectItem>
-												{members.map((member) => (
-													<SelectItem key={member.id} value={member.id}>
-														{member.name ?? member.email ?? t("Unknown")}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</TableCell>
-									<TableCell>
-										<Switch
-											checked={task.isRecurring}
-											onCheckedChange={(value) => toggleRecurring(task.id, value)}
-											disabled={isPending}
-											aria-label={t("Recurring")}
-										/>
-									</TableCell>
-									<TableCell>
-										<Select
-											value={task.isRecurring ? String(task.cadenceIntervalMinutes) : CADENCE_NONE_VALUE}
-											onValueChange={(value) => {
-												if (value === CADENCE_NONE_VALUE) {
-													toggleRecurring(task.id, false);
-													return;
-												}
-												updateTask(task.id, {
-													cadenceIntervalMinutes: Number.parseInt(value, 10),
-													isRecurring: true,
-												});
-											}}
-											disabled={isPending || !task.isRecurring}
-										>
-											<SelectTrigger aria-label={t("Repeats")}>
-												<SelectValue placeholder={t("Select repeat interval")} />
-											</SelectTrigger>
-											<SelectContent>
-												{CADENCE_OPTIONS.map((option) => (
-													<SelectItem key={option.value} value={option.value}>
-														{option.label}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</TableCell>
-									<TableCell>
-										<div className="grid gap-2">
-											<Label className="sr-only" htmlFor={`cadence-${task.id}`}>
-												{t("Completions per cycle")}
-											</Label>
-											<Input
-												id={`cadence-${task.id}`}
-												type="number"
-												min={1}
-												value={task.isRecurring ? task.cadenceTarget : DEFAULT_CADENCE_TARGET}
-												onChange={(event) =>
-													updateTask(task.id, {
-														cadenceTarget: Number.parseInt(event.target.value, 10) || 1,
-													})
-												}
-												disabled={isPending || !task.isRecurring}
-											/>
-										</div>
-									</TableCell>
-									<TableCell className="whitespace-nowrap">
-										{task.progress.isRecurring
-											? t("{{completed}}/{{target}} this cycle", {
-													completed: task.progress.completed,
-													target: task.progress.target,
-												})
-											: t("{{completed}}/{{target}} completed", {
-													completed: task.progress.completed,
-													target: task.progress.target,
-												})}
-									</TableCell>
-									<TableCell className="text-right">
-										<div className="flex justify-end gap-1">
-											<Button
-												type="button"
-												size="icon"
-												variant="ghost"
-												disabled={isPending}
-												onClick={() => handleSave(task.id)}
-												aria-label={t("Save")}
-												className="h-9 w-9"
+					<>
+						<div className="hidden md:block">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>{t("Task")}</TableHead>
+										<TableHead className="w-48">{t("Assignee")}</TableHead>
+										<TableHead className="w-44">{t("Repeats")}</TableHead>
+										<TableHead className="w-24">{t("Per period")}</TableHead>
+										<TableHead className="w-32">{t("Progress")}</TableHead>
+										<TableHead className="w-28 text-right">
+											<span className="sr-only">{t("Actions")}</span>
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								{/* Solid control backgrounds so row hover and highlight tints don't wash them out. */}
+								<TableBody className="[&_button[role=combobox]]:bg-card [&_input]:bg-card">
+									{filteredTasks.map((task) => (
+										<TableRow key={task.id} className={highlightClass(task)}>
+											<TableCell>
+												<span className="font-semibold">{task.presetLabel}</span>
+											</TableCell>
+											<TableCell>{renderAssignee(task)}</TableCell>
+											<TableCell>{renderRepeats(task)}</TableCell>
+											<TableCell>
+												{task.isRecurring ? (
+													<>
+														<Label className="sr-only" htmlFor={`cadence-${task.id}`}>
+															{formatCadenceTargetLabel(task.cadenceIntervalMinutes, t)}
+														</Label>
+														{renderTarget(task, `cadence-${task.id}`, "w-20")}
+													</>
+												) : (
+													<>
+														<span className="text-muted-foreground" aria-hidden="true">
+															—
+														</span>
+														<span className="sr-only">{t("Does not repeat")}</span>
+													</>
+												)}
+											</TableCell>
+											<TableCell
+												className={cn(
+													"text-muted-foreground",
+													isCadenceDirty(task) ? "text-xs leading-tight" : "whitespace-nowrap",
+												)}
 											>
-												<SaveIcon className="h-5 w-5" />
-											</Button>
-											<AlertDialog>
-												<AlertDialogTrigger asChild>
-													<Button
-														type="button"
-														size="icon"
-														variant="ghost"
-														disabled={isPending}
-														aria-label={t("Remove")}
-														className="h-9 w-9"
-													>
-														<Trash2Icon className="h-5 w-5 text-destructive" />
-													</Button>
-												</AlertDialogTrigger>
-												<AlertDialogContent>
-													<AlertDialogHeader>
-														<AlertDialogTitle>{t("Remove task?")}</AlertDialogTitle>
-														<AlertDialogDescription>
-															{t("This removes the task from the list. Its completions stay in Done.")}
-														</AlertDialogDescription>
-													</AlertDialogHeader>
-													<AlertDialogFooter>
-														<AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
-														<AlertDialogAction
-															type="button"
-															onClick={() => handleDelete(task.id)}
-															className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-														>
-															{t("Remove")}
-														</AlertDialogAction>
-													</AlertDialogFooter>
-												</AlertDialogContent>
-											</AlertDialog>
+												{formatProgress(task)}
+											</TableCell>
+											<TableCell>{renderActions(task)}</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
+						<ul className="divide-y md:hidden">
+							{filteredTasks.map((task) => (
+								<li
+									key={task.id}
+									className={cn(
+										"grid gap-3 py-4 [&_button[role=combobox]]:bg-card [&_input]:bg-card",
+										task.id === highlightTaskId && "-mx-2 rounded-md px-2",
+										highlightClass(task),
+									)}
+								>
+									<div className="flex items-start justify-between gap-3">
+										<div className="min-w-0">
+											<p className="font-semibold">{task.presetLabel}</p>
+											<p className="text-sm text-muted-foreground">{formatProgress(task)}</p>
 										</div>
-									</TableCell>
-								</TableRow>
+										{renderActions(task)}
+									</div>
+									<div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-4">
+										<div className="col-span-2 grid gap-2">
+											<Label htmlFor={`m-assignee-${task.id}`}>{t("Assignee")}</Label>
+											{renderAssignee(task, `m-assignee-${task.id}`)}
+										</div>
+										<div className={cn("grid content-start gap-2", !task.isRecurring && "col-span-2")}>
+											<Label htmlFor={`m-repeats-${task.id}`}>{t("Repeats")}</Label>
+											{renderRepeats(task, `m-repeats-${task.id}`)}
+										</div>
+										{task.isRecurring ? (
+											<div className="grid content-start gap-2">
+												<Label htmlFor={`m-cadence-${task.id}`} className="whitespace-nowrap">
+													{formatCadenceTargetLabel(task.cadenceIntervalMinutes, t)}
+												</Label>
+												{renderTarget(task, `m-cadence-${task.id}`)}
+											</div>
+										) : null}
+									</div>
+								</li>
 							))}
-						</TableBody>
-					</Table>
+						</ul>
+					</>
 				)}
 			</CardContent>
 		</Card>

@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 
 jest.mock("@/components/task-actions/PresetIconPicker", () => ({ PresetIconPicker: () => null }));
+jest.mock("@/components/task-actions/presetIcons", () => ({ PresetIconGlyph: () => null }));
 jest.mock("next/navigation", () => ({ useRouter: () => ({ refresh: jest.fn() }) }));
 jest.mock("@/hooks/useToast", () => ({ useToast: () => ({ toast: jest.fn() }) }));
 jest.mock("@/lib/i18nClient", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -36,7 +37,7 @@ const preset = {
 	approvalOverride: null,
 	createdAt: new Date(),
 };
-let mockOptions: { onSuccess: (result: { preset: typeof preset }) => void };
+let mockOptions: { onSuccess: (result: { preset: typeof preset; assignedTask: { id: string } }) => void };
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 Object.defineProperty(globalThis, "ResizeObserver", {
@@ -48,10 +49,11 @@ Object.defineProperty(globalThis, "ResizeObserver", {
 	},
 });
 
-test("an inline task stays selected until server props adopt it, then disappears when removed upstream", async () => {
+test("adding an inline task resets the form, keeps the task selectable until server props adopt it, then drops it when removed upstream", async () => {
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
+	const onTaskAdded = jest.fn();
 	const original = { ...preset, id: "original", label: "Bins" };
 	const render = async (records: (typeof preset)[]) =>
 		act(async () =>
@@ -62,19 +64,28 @@ test("an inline task stays selected until server props adopt it, then disappears
 					members: [{ id: "approver", name: "Alex", email: null }],
 					presets: mapPresetSummaries(records),
 					existingTasks: [],
+					onTaskAdded,
 				}),
 			),
 		);
 	const picker = () => container.querySelector("#preset");
+	const hasOption = (id: string) =>
+		Array.from(container.querySelectorAll("option")).some((option) => option.value === id);
+	const nameInput = () => container.querySelector<HTMLInputElement>("#new-preset-label");
 	try {
 		await render([original]);
-		await act(async () => mockOptions.onSuccess({ preset }));
-		expect(picker()?.textContent).toBe("Water plants");
+		expect(picker()?.textContent).toBe("New task…");
+		await act(async () => mockOptions.onSuccess({ preset, assignedTask: { id: "task-1" } }));
+		expect(onTaskAdded).toHaveBeenCalledWith("task-1");
+		expect(picker()?.textContent).toBe("New task…");
+		expect(nameInput()?.value).toBe("");
+		expect(document.activeElement).toBe(nameInput());
+		expect(container.querySelector("button[type=submit]")?.textContent).toBe("Added");
+		expect(hasOption(preset.id)).toBe(true);
 		await render([original, preset]);
-		expect(picker()?.textContent).toBe("Water plants");
+		expect(hasOption(preset.id)).toBe(true);
 		await render([original]);
-		expect(picker()?.textContent).toBe("Bins");
-		expect(Array.from(container.querySelectorAll("option")).some((option) => option.value === preset.id)).toBe(false);
+		expect(hasOption(preset.id)).toBe(false);
 	} finally {
 		await act(async () => root.unmount());
 		container.remove();
