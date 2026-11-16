@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/jonocairns/tskr/compare/1.4.0...1.5.0) (2026-11-14)
+
+
+### Features
+
+* **board:** shared household task board ([#165](https://github.com/jonocairns/tskr/issues/165)) ([b9a4325](https://github.com/jonocairns/tskr/commit/b9a4325b6e250970b48229afc6e667c5e3a27248))
+
 ## [1.4.0](https://github.com/jonocairns/tskr/compare/1.3.0...1.4.0) (2026-11-01)
 
 
