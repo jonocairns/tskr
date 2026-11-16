@@ -39,14 +39,14 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 		onSuccess: (data) => {
 			setCustomPresetsAction((prev) => [normalizePreset(data.preset), ...prev]);
 			toast({
-				title: t("Preset added"),
-				description: t("Chore added to your presets."),
+				title: t("Added to quick log"),
+				description: t("Added to quick log."),
 				variant: "success",
 			});
 		},
 		onError: (error) => {
 			toast({
-				title: t("Unable to add preset"),
+				title: t("Unable to add to quick log"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
@@ -85,7 +85,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 				setCustomPresetsAction(context.previousPresets);
 			}
 			toast({
-				title: t("Unable to update preset"),
+				title: t("Unable to update quick log task"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
@@ -102,7 +102,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 						: preset,
 				),
 			);
-			toast({ title: t("Preset updated"), variant: "success" });
+			toast({ title: t("Quick log task updated"), variant: "success" });
 		},
 	});
 
@@ -117,13 +117,13 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 				setCustomPresetsAction(context.previousPresets);
 			}
 			toast({
-				title: t("Unable to delete preset"),
+				title: t("Unable to delete from quick log"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: () => {
-			toast({ title: t("Preset deleted"), variant: "success" });
+			toast({ title: t("Deleted from quick log"), variant: "success" });
 		},
 	});
 
@@ -152,7 +152,7 @@ export const usePresetMutations = ({ customPresets, setCustomPresetsAction }: Us
 				setCustomPresetsAction(context.previousPresets);
 			}
 			toast({
-				title: t("Unable to reorder presets"),
+				title: t("Unable to reorder quick log tasks"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});

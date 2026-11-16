@@ -7,8 +7,10 @@ import { createContext, useContext, useEffect, useState, useTransition } from "r
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
-import { DURATION_BUCKETS, type DurationKey, PRESET_TASKS } from "@/lib/points";
+import { DEFAULT_DURATION_BUCKET, type DurationKey, PRESET_TASKS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
+
+type PresetPayload = { presetKey?: string; presetId?: string };
 
 type TaskActionsContextValue = {
 	householdId: string;
@@ -26,7 +28,7 @@ type TaskActionsContextValue = {
 	isPresetPending: boolean;
 	startTransition: (callback: () => void) => void;
 	startPresetTransition: (callback: () => void) => void;
-	logPreset: (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => void;
+	logPreset: (payload: PresetPayload, overrideNote?: string, onLogged?: () => void) => void;
 };
 
 type TaskActionsProviderProps = {
@@ -46,7 +48,7 @@ export const TaskActionsProvider = ({
 	currentUserRole,
 	children,
 }: TaskActionsProviderProps) => {
-	const defaultBucket = DURATION_BUCKETS.find((bucket) => bucket.key === "QUICK")?.key ?? DURATION_BUCKETS[0].key;
+	const defaultBucket = DEFAULT_DURATION_BUCKET;
 	const [note, setNote] = useState("");
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [isPresetPending, startPresetTransition] = useTransition();
@@ -61,14 +63,32 @@ export const TaskActionsProvider = ({
 			const isPending = data.entry.status === "PENDING";
 			setNote("");
 			toast({
-				title: isPending ? t("Submitted for approval") : t("Task logged"),
-				description: isPending ? t("Task logged and waiting for approval.") : t("Task recorded and points added."),
+				title: data.countedTowards
+					? data.countedTowards.assigneeName
+						? t("Counted towards {{name}}'s {{task}}", {
+								name: data.countedTowards.assigneeName,
+								task: data.countedTowards.label,
+							})
+						: t("Counted towards {{task}}", { task: data.countedTowards.label })
+					: isPending
+						? t("Submitted for approval")
+						: t("Task logged"),
+				description: data.countedTowards
+					? isPending
+						? t("Completion logged and waiting on approval.")
+						: t("Completion logged and points added.")
+					: isPending
+						? t("Task logged and waiting for approval.")
+						: t("Task recorded and points added."),
 				variant: isPending ? "warning" : "success",
 			});
 			utils.logs.invalidate();
 			router.refresh();
 		},
 		onError: (error) => {
+			if (error.data?.code === "BAD_REQUEST") {
+				router.refresh();
+			}
 			toast({
 				title: t("Unable to log task"),
 				description: error.message ?? t("Please try again."),
@@ -93,14 +113,22 @@ export const TaskActionsProvider = ({
 		sortOrder: task.sortOrder,
 	}));
 
-	const logPreset = (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => {
+	// onLogged fires only once a log is written, never for an error.
+	const logPreset = (payload: PresetPayload, overrideNote?: string, onLogged?: () => void) => {
 		const noteValue = overrideNote ?? note.trim();
-		createLogMutation.mutate({
-			householdId,
-			type: "preset" as const,
-			...payload,
-			description: noteValue || undefined,
-		});
+		createLogMutation.mutate(
+			{
+				householdId,
+				type: "preset" as const,
+				...payload,
+				description: noteValue || undefined,
+			},
+			{
+				onSuccess: () => {
+					onLogged?.();
+				},
+			},
+		);
 	};
 
 	const disabled = createLogMutation.isPending || isPresetPending;

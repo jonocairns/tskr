@@ -13,6 +13,29 @@ const HISTORY_LIMIT = 10;
 const APPROVALS_LIMIT = 10;
 const STREAK_LIMIT_DAYS = 365;
 
+// Full household history is required for cadence eligibility and Manage progress.
+export const getHouseholdAssignedTasks = (householdId: string) =>
+	prisma.assignedTask.findMany({
+		where: {
+			householdId,
+			status: "ACTIVE",
+			archivedAt: null,
+		},
+		include: {
+			assignedTo: { select: { id: true, name: true, email: true } },
+			preset: { select: { id: true, label: true, bucket: true } },
+			logs: {
+				where: {
+					revertedAt: null,
+					status: { in: [LogStatus.PENDING, LogStatus.APPROVED] },
+				},
+				select: { createdAt: true, status: true, user: { select: { id: true, name: true, email: true } } },
+				orderBy: { createdAt: "asc" },
+			},
+		},
+		orderBy: { assignedAt: "desc" },
+	});
+
 export async function getDashboardData(userId: string, householdId: string) {
 	const now = new Date();
 	const weekStart = new Date(now);
@@ -126,25 +149,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 				sortOrder: true,
 			},
 		}),
-		prisma.assignedTask.findMany({
-			where: {
-				householdId,
-				status: "ACTIVE",
-			},
-			include: {
-				assignedTo: { select: { id: true, name: true, email: true } },
-				preset: { select: { id: true, label: true, bucket: true } },
-				logs: {
-					where: {
-						revertedAt: null,
-						status: { in: [LogStatus.PENDING, LogStatus.APPROVED] },
-					},
-					select: { createdAt: true, status: true, user: { select: { id: true, name: true, email: true } } },
-					orderBy: { createdAt: "asc" },
-				},
-			},
-			orderBy: { assignedAt: "desc" },
-		}),
+		getHouseholdAssignedTasks(householdId),
 		prisma.pointLog.count({
 			where: {
 				...approvedWhere,

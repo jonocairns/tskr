@@ -12,6 +12,7 @@ import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
 import { buildLeaderboardSummary } from "@/lib/dashboard/leaderboard";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { getDashboardData } from "@/lib/dashboard/queries";
+import { shouldShowTaskBoard } from "@/lib/dashboard/taskBoard";
 import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
 import { getServerT } from "@/lib/i18nServer";
 import { getHouseholdContext } from "@/lib/serverAuth";
@@ -96,11 +97,12 @@ export default async function DashboardPage({ params }: Props) {
 				householdId={householdId}
 			/>
 
-			{hasActiveAssignedTasks || householdDoneThisWeek > 0 ? (
+			{shouldShowTaskBoard(membership.role, hasActiveAssignedTasks, householdDoneThisWeek) ? (
 				<AssignedTaskQueue
 					entries={assignedTasks}
 					doneThisWeek={householdDoneThisWeek}
 					householdId={householdId}
+					canManageTasks={membership.role !== "DOER"}
 					timeZone={timeZone}
 					dateFormat={dateFormat}
 					timeFormat={timeFormat}

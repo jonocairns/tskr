@@ -1,4 +1,4 @@
-import type { AssignedTaskEntry } from "@/components/AssignedTaskQueue";
+import type { AssignedTaskEntry } from "@/components/AssignedTaskTable";
 import { computeAssignedTaskState, getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
 import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 
@@ -30,7 +30,7 @@ export const buildAssignedTaskEntries = ({
 	timeZone,
 }: BuildAssignedTaskEntriesInput) => {
 	return tasks.flatMap((task) => {
-		if (task.status !== "ACTIVE" || !task.preset) {
+		if (task.status !== "ACTIVE" || !task.preset || task.assignedAt > now) {
 			return [];
 		}
 

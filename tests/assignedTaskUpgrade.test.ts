@@ -23,13 +23,13 @@ test("nullable-assignee migration preserves seeded tasks, log links, indexes and
 	const unrelatedSchema = (db: PrismaClient) => db.$queryRaw`
 		SELECT type, name, tbl_name, sql FROM sqlite_master
 		WHERE tbl_name != 'AssignedTask' AND name NOT LIKE 'sqlite_%' ORDER BY type, name`;
-	const taskIndexes = (db: PrismaClient) => db.$queryRaw`
+	const taskIndexes = (db: PrismaClient) => db.$queryRaw<Array<{ name: string; sql: string }>>`
 		SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'AssignedTask' ORDER BY name`;
 	try {
 		const oldMigrations = join(directory, "migrations");
 		mkdirSync(oldMigrations);
 		for (const name of readdirSync("prisma/migrations")) {
-			if (name !== "20261114203610_shared_task_board_nullable_assignee") {
+			if (name < "20261114203610_shared_task_board_nullable_assignee" || name === "migration_lock.toml") {
 				cpSync(join("prisma/migrations", name), join(oldMigrations, name), { recursive: true });
 			}
 		}
@@ -66,6 +66,7 @@ test("nullable-assignee migration preserves seeded tasks, log links, indexes and
 					cadenceIntervalMinutes: 1440,
 					isRecurring,
 				},
+				select: { id: true },
 			});
 			await source.pointLog.create({
 				data: {
@@ -79,7 +80,7 @@ test("nullable-assignee migration preserves seeded tasks, log links, indexes and
 				},
 			});
 		}
-		const tasks = await source.assignedTask.findMany({ orderBy: { id: "asc" } });
+		const tasks = await source.assignedTask.findMany({ orderBy: { id: "asc" }, omit: { archivedAt: true } });
 		const logs = await source.pointLog.findMany({ orderBy: { id: "asc" } });
 		const linkedCount = await source.pointLog.count({ where: { assignedTaskId: { not: null } } });
 		const indexes = await taskIndexes(source);
@@ -87,10 +88,16 @@ test("nullable-assignee migration preserves seeded tasks, log links, indexes and
 		await source.$disconnect();
 		cpSync(join(directory, "seed.db"), join(directory, "copy.db"));
 		deploy(copyUrl);
-		expect(await upgraded.assignedTask.findMany({ orderBy: { id: "asc" } })).toEqual(tasks);
+		expect(await upgraded.assignedTask.findMany({ orderBy: { id: "asc" } })).toEqual(
+			tasks.map((task) => ({ ...task, archivedAt: null })),
+		);
 		expect(await upgraded.pointLog.findMany({ orderBy: { id: "asc" } })).toEqual(logs);
 		expect(await upgraded.pointLog.count({ where: { assignedTaskId: { not: null } } })).toBe(linkedCount);
-		expect(await taskIndexes(upgraded)).toEqual(indexes);
+		const upgradedIndexes = await taskIndexes(upgraded);
+		expect(upgradedIndexes.filter((index) => index.name !== "AssignedTask_householdId_archivedAt_status_idx")).toEqual(
+			indexes,
+		);
+		expect(upgradedIndexes).toHaveLength(indexes.length + 1);
 		expect(await unrelatedSchema(upgraded)).toEqual(schema);
 		expect(await upgraded.$queryRaw`PRAGMA foreign_key_check`).toEqual([]);
 	} finally {

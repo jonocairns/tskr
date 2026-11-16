@@ -82,11 +82,11 @@ export const OneOffTaskModal = ({
 			<div
 				role="dialog"
 				aria-modal="true"
-				aria-label={t("Log one off task")}
+				aria-label={t("Log one-off task")}
 				className="absolute inset-0 flex h-dvh w-full flex-col bg-background shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:w-[calc(100%-2rem)] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border"
 			>
 				<div className="flex items-center justify-between gap-2 border-b px-4 py-4">
-					<p className="text-sm font-semibold">{t("Log one off task")}</p>
+					<p className="text-sm font-semibold">{t("Log one-off task")}</p>
 					<Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isSubmitPending}>
 						{t("Close")}
 					</Button>
@@ -145,7 +145,7 @@ export const OneOffTaskModal = ({
 						</Button>
 						<Button type="button" onClick={handleSubmit} disabled={modalDisabled || !canSubmit}>
 							{submitPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-							{t("Log one off task")}
+							{t("Log one-off task")}
 						</Button>
 					</div>
 				</div>

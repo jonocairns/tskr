@@ -6,6 +6,12 @@ import type { ReactNode, SyntheticEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+import {
+	type ApprovalOverrideOption,
+	PresetApprovalOverrideSelect,
+	PresetBucketSelect,
+	resolveApprovalOverride,
+} from "@/components/task-actions/PresetFormFields";
 import { PresetIconPicker } from "@/components/task-actions/PresetIconPicker";
 import { PresetListItem } from "@/components/task-actions/PresetListItem";
 import { TaskButton } from "@/components/task-actions/TaskButton";
@@ -16,7 +22,6 @@ import { BUCKET_WINDOW_SHORT, normalizeText } from "@/components/task-actions/ut
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useTranslation } from "@/lib/i18nClient";
@@ -25,7 +30,6 @@ import { getLocalizedDurationBuckets, getLocalizedPresetTasks } from "@/lib/poin
 import type { PresetIconKey } from "@/lib/presetIcons";
 import { cn } from "@/lib/utils";
 
-type ApprovalOverrideOption = "DEFAULT" | "REQUIRE" | "SKIP";
 type TaskCreateMode = "preset" | "one-off";
 
 type TemplatesByBucket = Array<{
@@ -72,19 +76,6 @@ type Props = {
 	showPresetList?: boolean;
 	showListHeader?: boolean;
 	onLogTimedSuccess?: () => void;
-};
-
-const resolveApprovalOverride = (
-	canEdit: boolean,
-	value: ApprovalOverrideOption,
-): "REQUIRE" | "SKIP" | null | undefined => {
-	if (!canEdit) {
-		return undefined;
-	}
-	if (value === "DEFAULT") {
-		return null;
-	}
-	return value;
 };
 
 type SortableGridItemProps = {
@@ -191,7 +182,7 @@ export const PresetActionsDrawer = ({
 	const canCreate = customLabel.trim().length >= 2;
 	const canUpdate = editLabel.trim().length >= 2;
 	const isPresetMode = allowOneOffMode ? canManagePresets && taskCreateMode === "preset" : true;
-	const primaryActionLabel = isPresetMode ? t("Create new chore") : t("Log one off task");
+	const primaryActionLabel = isPresetMode ? t("Add to quick log") : t("Log one-off task");
 	const primaryActionPending = isPresetMode ? isPresetPending || isCreateActionPending : isPending;
 	const createFormDisabled = disabled || isCreateActionPending;
 	const editActionPending = isPresetPending || isEditActionPending;
@@ -386,22 +377,12 @@ export const PresetActionsDrawer = ({
 				<Label htmlFor={`preset-bucket-${preset.id}`} className="text-xs text-muted-foreground">
 					{t("Bucket")}
 				</Label>
-				<Select
+				<PresetBucketSelect
+					id={`preset-bucket-${preset.id}`}
 					value={editBucket}
-					onValueChange={(value: DurationKey) => setEditBucket(value)}
+					onChange={setEditBucket}
 					disabled={editFormDisabled}
-				>
-					<SelectTrigger id={`preset-bucket-${preset.id}`}>
-						<SelectValue placeholder={t("Bucket")} />
-					</SelectTrigger>
-					<SelectContent>
-						{localizedBuckets.map((bucket) => (
-							<SelectItem key={bucket.key} value={bucket.key}>
-								{bucket.label} ({bucket.points} pts)
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
+				/>
 			</div>
 			<div className="space-y-2">
 				<Label htmlFor={`preset-icon-${preset.id}`} className="text-xs text-muted-foreground">
@@ -435,20 +416,12 @@ export const PresetActionsDrawer = ({
 			{canEditApprovalOverride ? (
 				<div className="space-y-2">
 					<p className="text-xs font-medium text-muted-foreground">{t("Approval override")}</p>
-					<Select
+					<PresetApprovalOverrideSelect
+						id={`preset-approval-${preset.id}`}
 						value={editApprovalOverride}
-						onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setEditApprovalOverride(value)}
+						onChange={setEditApprovalOverride}
 						disabled={editFormDisabled}
-					>
-						<SelectTrigger id={`preset-approval-${preset.id}`}>
-							<SelectValue placeholder={t("Use member default")} />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="DEFAULT">{t("Use member default")}</SelectItem>
-							<SelectItem value="REQUIRE">{t("Require approval")}</SelectItem>
-							<SelectItem value="SKIP">{t("Skip approval")}</SelectItem>
-						</SelectContent>
-					</Select>
+					/>
 				</div>
 			) : null}
 			<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -478,17 +451,17 @@ export const PresetActionsDrawer = ({
 						onValueChange={(value) => setTaskCreateMode(value === "preset" ? "preset" : "one-off")}
 						className="w-full"
 					>
-						<TabsList className="grid w-full grid-cols-2" aria-label={t("Add or log a one off chore")}>
+						<TabsList className="grid w-full grid-cols-2" aria-label={t("Add or log a one-off task")}>
 							<TabsTrigger value="preset" disabled={createFormDisabled}>
-								{t("Create new chore")}
+								{t("Add to quick log")}
 							</TabsTrigger>
 							<TabsTrigger value="one-off" disabled={createFormDisabled}>
-								{t("Log one off task")}
+								{t("Log one-off task")}
 							</TabsTrigger>
 						</TabsList>
 					</Tabs>
 				) : (
-					<p className="text-sm font-medium">{isPresetMode ? t("Create new chore") : t("Log one off task")}</p>
+					<p className="text-sm font-medium">{isPresetMode ? t("Add to quick log") : t("Log one-off task")}</p>
 				)
 			) : null}
 			<div className="space-y-2">
@@ -558,20 +531,11 @@ export const PresetActionsDrawer = ({
 			{isPresetMode && canEditApprovalOverride ? (
 				<div className="space-y-2">
 					<p className="text-xs font-medium text-muted-foreground">{t("Approval override")}</p>
-					<Select
+					<PresetApprovalOverrideSelect
 						value={customApprovalOverride}
-						onValueChange={(value: "DEFAULT" | "REQUIRE" | "SKIP") => setCustomApprovalOverride(value)}
+						onChange={setCustomApprovalOverride}
 						disabled={createFormDisabled}
-					>
-						<SelectTrigger>
-							<SelectValue placeholder={t("Use member default")} />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="DEFAULT">{t("Use member default")}</SelectItem>
-							<SelectItem value="REQUIRE">{t("Require approval")}</SelectItem>
-							<SelectItem value="SKIP">{t("Skip approval")}</SelectItem>
-						</SelectContent>
-					</Select>
+					/>
 				</div>
 			) : null}
 			{isPresetMode && canManagePresets ? (
@@ -642,7 +606,7 @@ export const PresetActionsDrawer = ({
 				<div className="space-y-2">
 					{showListHeader ? (
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-sm font-medium">{t("Tasks")}</p>
+							<p className="text-sm font-medium">{t("Quick log")}</p>
 							<span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
 								{filteredEditablePresets.length}
 							</span>
@@ -662,7 +626,7 @@ export const PresetActionsDrawer = ({
 							<div className="rounded-md bg-white p-1.5 transition-colors group-hover:bg-white/90">
 								<PlusIcon className="h-4 w-4 text-black" />
 							</div>
-							<span className="font-semibold">{t("Create new chore")}</span>
+							<span className="font-semibold">{t("Add to quick log")}</span>
 						</div>
 						<span className="text-xs font-medium leading-tight text-muted-foreground">{t("Open task form")}</span>
 					</Button>
@@ -725,11 +689,11 @@ export const PresetActionsDrawer = ({
 								<div
 									role="dialog"
 									aria-modal="true"
-									aria-label={t("Create new chore")}
+									aria-label={t("Add to quick log")}
 									className="absolute inset-0 flex h-dvh w-full flex-col bg-background shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border"
 								>
 									<div className="flex items-center justify-between gap-2 border-b px-4 py-4">
-										<p className="text-sm font-semibold">{t("Create new chore")}</p>
+										<p className="text-sm font-semibold">{t("Add to quick log")}</p>
 										<Button type="button" variant="ghost" size="sm" onClick={() => setCreateModalOpen(false)}>
 											{t("Close")}
 										</Button>
@@ -784,7 +748,7 @@ export const PresetActionsDrawer = ({
 				<div className="space-y-3">
 					<div className="space-y-2">
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-sm font-medium">{t("Tasks")}</p>
+							<p className="text-sm font-medium">{t("Quick log")}</p>
 							<p className="text-xs text-muted-foreground">{filteredEditablePresets.length}</p>
 						</div>
 						<Input

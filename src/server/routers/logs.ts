@@ -12,7 +12,13 @@ import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
 import { releaseRewardAllocations } from "@/lib/rewardMonthlyAllowances";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
-import { ensureAssignedTaskCapacity, getAssignedTaskStatus } from "@/server/assignedTaskState";
+import {
+	ensureAssignedTaskCapacity,
+	getAssignedTaskStatus,
+	hasAssignedTaskCapacity,
+	lockAssignedTask,
+} from "@/server/assignedTaskState";
+import { notifyTaskCompleted, writePresetCompletion } from "@/server/presetCompletion";
 import { householdProcedure, protectedProcedure, router } from "@/server/trpc";
 
 const presetSchema = z
@@ -135,52 +141,95 @@ export const logsRouter = router({
 			await notifyTask(entry.description, entry.points);
 			const totalPoints = await getTotalPoints();
 
-			return { entry, totalPoints };
+			return { entry, totalPoints, countedTowards: null };
 		};
 
 		try {
 			if (input.type === "preset") {
 				if (input.presetId) {
-					const preset = await prisma.presetTask.findFirst({
-						where: {
-							id: input.presetId,
-							...getVisiblePresetWhere(householdId, userId),
-						},
-						select: {
-							id: true,
-							label: true,
-							bucket: true,
-							approvalOverride: true,
-						},
+					const result = await prisma.$transaction(async (tx) => {
+						await lockAssignedTask(tx, "", householdId);
+						const preset = await tx.presetTask.findFirst({
+							where: { id: input.presetId, ...getVisiblePresetWhere(householdId, userId) },
+						});
+						if (!preset || !DURATION_KEYS.includes(preset.bucket as DurationKey)) {
+							throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown quick log task" });
+						}
+						const at = new Date();
+						const candidates = preset.isShared
+							? await tx.assignedTask.findMany({
+									where: {
+										householdId,
+										presetId: preset.id,
+										status: "ACTIVE",
+										archivedAt: null,
+										assignedAt: { lte: at },
+									},
+									include: {
+										assignedTo: { select: { name: true, email: true } },
+										household: { select: { timeZone: true } },
+									},
+									orderBy: [{ assignedAt: "asc" }, { id: "asc" }],
+								})
+							: [];
+						let target: (typeof candidates)[number] | null = null;
+						const summary = (task: (typeof candidates)[number]) => ({
+							id: task.id,
+							label: preset.label,
+							assigneeName:
+								task.assignedToId !== userId ? (task.assignedTo?.name ?? task.assignedTo?.email ?? null) : null,
+						});
+						const own = candidates.filter((task) => task.assignedToId === userId);
+						const open = candidates.filter((task) => task.assignedToId === null);
+						const others = candidates.filter((task) => task.assignedToId !== null && task.assignedToId !== userId);
+						for (const task of [...own, ...open, ...others]) {
+							if (
+								await hasAssignedTaskCapacity({
+									tx,
+									task,
+									householdId,
+									at,
+									timeZone: task.household.timeZone ?? DEFAULT_TIME_ZONE,
+								})
+							) {
+								target = task;
+								break;
+							}
+						}
+						const entry = await writePresetCompletion(tx, {
+							householdId,
+							userId,
+							preset,
+							task: target,
+							at,
+							description: input.description,
+						});
+						return {
+							entry,
+							target: target ? { ...target, preset } : null,
+							countedTowards: target ? summary(target) : null,
+						};
 					});
-
-					if (!preset) {
-						throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown preset task" });
+					if (result.target) {
+						await notifyTaskCompleted({
+							householdId,
+							user: ctx.session.user,
+							entry: result.entry,
+							task: result.target,
+						});
+					} else {
+						await notifyTask(result.entry.description, result.entry.points);
 					}
-
-					const bucket = DURATION_KEYS.includes(preset.bucket as DurationKey) ? (preset.bucket as DurationKey) : null;
-
-					if (!bucket) {
-						throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown preset task" });
-					}
-
-					const requiresApproval = resolveRequiresApproval(preset.approvalOverride);
-					const status = requiresApproval ? "PENDING" : "APPROVED";
-					return createEntry({
-						householdId,
-						userId,
-						kind: "PRESET",
-						duration: bucket,
-						points: getBucketPoints(bucket),
-						description: input.description?.trim() || preset.label,
-						presetId: preset.id,
-						status,
-					});
+					return {
+						entry: result.entry,
+						totalPoints: await getTotalPoints(),
+						countedTowards: result.countedTowards,
+					};
 				}
 
 				const preset = findPreset(input.presetKey ?? "");
 				if (!preset) {
-					throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown preset task" });
+					throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown quick log task" });
 				}
 
 				const requiresApproval = resolveRequiresApproval(null);
@@ -307,7 +356,8 @@ export const logsRouter = router({
 						where: { id: log.assignedTaskId, householdId: log.householdId },
 						include: { household: { select: { timeZone: true } } },
 					});
-					if (task?.status !== "ACTIVE") {
+					// Archiving removes the task from current lists, not its existing log workflow.
+					if (!task || (!task.archivedAt && task.status !== "ACTIVE")) {
 						throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });
 					}
 					await ensureAssignedTaskCapacity({

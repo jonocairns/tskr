@@ -45,7 +45,7 @@ export const TaskGrid = ({
 						<div className="rounded-md bg-white p-1.5 transition-colors group-hover:bg-white/90">
 							<PlusIcon className="h-4 w-4 text-black" />
 						</div>
-						<span className="font-semibold">{isEditMode ? t("Create new chore") : t("Log one off task")}</span>
+						<span className="font-semibold">{isEditMode ? t("Add to quick log") : t("Log one-off task")}</span>
 					</div>
 					<span className="text-xs font-medium leading-tight text-muted-foreground">
 						{isEditMode ? t("Open task form") : t("Log something not in your saved tasks")}

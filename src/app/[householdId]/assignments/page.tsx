@@ -1,15 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { AssignedTasksManager } from "@/components/AssignedTasksManager";
-import { AssignTaskCard } from "@/components/AssignTaskCard";
-import { PageHeader } from "@/components/PageHeader";
-import { PageShell } from "@/components/PageShell";
-import { mapPresetSummaries } from "@/lib/dashboard/presets";
-import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
-import { getServerT } from "@/lib/i18nServer";
-import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
-import { prisma } from "@/lib/prisma";
 import { getHouseholdContext } from "@/lib/serverAuth";
+import { buildTasksHref } from "@/lib/tasks/href";
 
 export const dynamic = "force-dynamic";
 
@@ -17,86 +9,10 @@ type Props = {
 	params: Promise<{ householdId: string }>;
 };
 
-export default async function AssignmentsPage({ params }: Props) {
+const AssignmentsPage = async ({ params }: Props) => {
 	const { householdId } = await params;
-	const { session, userId, membership } = await getHouseholdContext(householdId);
-	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
+	const { membership } = await getHouseholdContext(householdId);
+	redirect(buildTasksHref(householdId, { tab: membership.role === "DOER" ? "todo" : "manage" }));
+};
 
-	if (membership.role === "DOER") {
-		redirect(`/${householdId}`);
-	}
-
-	const [members, presets, presetOrders, assignedTasks] = await Promise.all([
-		prisma.user.findMany({
-			where: { memberships: { some: { householdId } } },
-			select: { id: true, name: true, email: true },
-			orderBy: { createdAt: "asc" },
-		}),
-		prisma.presetTask.findMany({
-			where: { householdId, isShared: true },
-			orderBy: { createdAt: "asc" },
-			select: {
-				id: true,
-				label: true,
-				bucket: true,
-				templateKey: true,
-				iconKey: true,
-				isShared: true,
-				createdById: true,
-				approvalOverride: true,
-				createdAt: true,
-			},
-		}),
-		prisma.presetTaskOrder.findMany({
-			where: { householdId, userId },
-			select: {
-				presetId: true,
-				sortOrder: true,
-			},
-		}),
-		prisma.assignedTask.findMany({
-			where: {
-				householdId,
-				status: "ACTIVE",
-			},
-			include: {
-				assignedTo: { select: { id: true, name: true, email: true } },
-				preset: { select: { id: true, label: true } },
-			},
-			orderBy: { assignedAt: "desc" },
-		}),
-	]);
-
-	const presetSummaries = mapPresetSummaries(applyUserPresetOrdering(presets, presetOrders));
-	const assignedTaskEntries = assignedTasks
-		.filter((task) => Boolean(task.preset))
-		.map((task) => ({
-			id: task.id,
-			presetLabel: task.preset?.label ?? t("Task"),
-			assigneeId: task.assignedTo?.id ?? null,
-			assigneeName: task.assignedTo?.name ?? null,
-			assigneeEmail: task.assignedTo?.email ?? null,
-			cadenceTarget: task.cadenceTarget,
-			cadenceIntervalMinutes: task.cadenceIntervalMinutes,
-			isRecurring: task.isRecurring,
-			assignedAt: task.assignedAt.toISOString(),
-		}));
-
-	return (
-		<PageShell size="lg">
-			<PageHeader
-				eyebrow={t("tskr")}
-				title={t("Assignments")}
-				description={t("Assign tasks and adjust cadence or recurrence.")}
-				backHref={`/${householdId}`}
-				backLabel={t("Back to dashboard")}
-				user={session.user}
-				household={{ id: householdId, role: membership.role }}
-			/>
-
-			<AssignTaskCard householdId={householdId} members={members} presets={presetSummaries} currentUserId={userId} />
-
-			<AssignedTasksManager householdId={householdId} initialTasks={assignedTaskEntries} members={members} />
-		</PageShell>
-	);
-}
+export default AssignmentsPage;

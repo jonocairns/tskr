@@ -109,8 +109,8 @@ export const PresetActionsManager = ({ showListHeader = true }: PresetActionsMan
 		);
 		if (success) {
 			toast({
-				title: t("Preset added"),
-				description: t("Template added to your presets."),
+				title: t("Added to quick log"),
+				description: t("Added to quick log."),
 				variant: "success",
 			});
 		}

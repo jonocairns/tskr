@@ -9,7 +9,7 @@ test("returns BAD_REQUEST for duplicate preset ids", () => {
 	expect(result).toEqual({
 		ok: false,
 		code: "BAD_REQUEST",
-		message: "Duplicate preset id in reorder payload",
+		message: "Quick log order contains a duplicate task",
 	});
 });
 
@@ -22,7 +22,7 @@ test("returns BAD_REQUEST when there are no visible presets", () => {
 	expect(result).toEqual({
 		ok: false,
 		code: "BAD_REQUEST",
-		message: "No presets available to reorder",
+		message: "No quick log tasks available to reorder",
 	});
 });
 
@@ -35,7 +35,7 @@ test("returns BAD_REQUEST when payload omits visible presets", () => {
 	expect(result).toEqual({
 		ok: false,
 		code: "BAD_REQUEST",
-		message: "Reorder payload must include all visible presets",
+		message: "Quick log order must include all visible tasks",
 	});
 });
 
@@ -48,7 +48,7 @@ test("returns NOT_FOUND when payload includes unknown presets", () => {
 	expect(result).toEqual({
 		ok: false,
 		code: "NOT_FOUND",
-		message: "Preset not found",
+		message: "Quick log task not found",
 	});
 });
 

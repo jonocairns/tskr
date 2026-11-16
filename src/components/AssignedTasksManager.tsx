@@ -38,6 +38,7 @@ const ASSIGNEE_ALL_VALUE = "all";
 
 type AssignedTaskRow = {
 	id: string;
+	presetId: string;
 	presetLabel: string;
 	assigneeId: string | null;
 	assigneeName: string | null;
@@ -46,6 +47,7 @@ type AssignedTaskRow = {
 	cadenceIntervalMinutes: number;
 	isRecurring: boolean;
 	assignedAt: string;
+	progress: { completed: number; target: number; isRecurring: boolean };
 };
 
 type Props = {
@@ -141,7 +143,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 				cadenceIntervalMinutes: result.assignedTask.cadenceIntervalMinutes,
 				isRecurring: result.assignedTask.isRecurring,
 			});
-			toast({ title: t("Assigned task updated") });
+			toast({ title: t("Task updated") });
 			router.refresh();
 		},
 		onError: (error) => {
@@ -164,13 +166,13 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 				setTasks(context.previousTasks);
 			}
 			toast({
-				title: t("Unable to delete task"),
+				title: t("Unable to remove task"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
 		},
 		onSuccess: () => {
-			toast({ title: t("Assigned task deleted") });
+			toast({ title: t("Task removed") });
 			router.refresh();
 		},
 	});
@@ -206,8 +208,8 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 		<Card>
 			<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div className="space-y-1">
-					<CardTitle className="text-xl">{t("Assigned tasks")}</CardTitle>
-					<CardDescription>{t("Manage assigned tasks across the household.")}</CardDescription>
+					<CardTitle className="text-xl">{t("All tasks")}</CardTitle>
+					<CardDescription>{t("Manage tasks across the household.")}</CardDescription>
 				</div>
 				{sortedTasks.length > 0 ? (
 					<div className="sm:min-w-[220px]">
@@ -217,7 +219,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value={ASSIGNEE_ALL_VALUE}>{t("All assignees")}</SelectItem>
-								<SelectItem value={UNASSIGNED_VALUE}>{t("Unassigned")}</SelectItem>
+								<SelectItem value={UNASSIGNED_VALUE}>{t("Open")}</SelectItem>
 								{assigneeOptions.map((option) => (
 									<SelectItem key={option.id} value={option.id}>
 										{option.label}
@@ -230,7 +232,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 			</CardHeader>
 			<CardContent className="overflow-x-auto">
 				{sortedTasks.length === 0 ? (
-					<p className="text-sm text-muted-foreground">{t("No assigned tasks yet.")}</p>
+					<p className="text-sm text-muted-foreground">{t("No tasks yet.")}</p>
 				) : (
 					<Table>
 						<TableHeader>
@@ -240,6 +242,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 								<TableHead>{t("Recurring")}</TableHead>
 								<TableHead>{t("Cadence")}</TableHead>
 								<TableHead>{t("Completions")}</TableHead>
+								<TableHead>{t("Progress")}</TableHead>
 								<TableHead className="text-right">{t("Actions")}</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -266,12 +269,12 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 											<SelectTrigger aria-label={t("Assignee for {{task}}", { task: task.presetLabel })}>
 												<SelectValue>
 													{task.assigneeId === null
-														? t("Unassigned")
+														? t("Open")
 														: (task.assigneeName ?? task.assigneeEmail ?? t("Unknown"))}
 												</SelectValue>
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value={UNASSIGNED_VALUE}>{t("Unassigned")}</SelectItem>
+												<SelectItem value={UNASSIGNED_VALUE}>{t("Open")}</SelectItem>
 												{members.map((member) => (
 													<SelectItem key={member.id} value={member.id}>
 														{member.name ?? member.email ?? t("Unknown")}
@@ -334,6 +337,17 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 											/>
 										</div>
 									</TableCell>
+									<TableCell className="whitespace-nowrap">
+										{task.progress.isRecurring
+											? t("{{completed}}/{{target}} this cycle", {
+													completed: task.progress.completed,
+													target: task.progress.target,
+												})
+											: t("{{completed}}/{{target}} completed", {
+													completed: task.progress.completed,
+													target: task.progress.target,
+												})}
+									</TableCell>
 									<TableCell className="text-right">
 										<div className="flex justify-end gap-1">
 											<Button
@@ -354,7 +368,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 														size="icon"
 														variant="ghost"
 														disabled={isPending}
-														aria-label={t("Delete")}
+														aria-label={t("Remove")}
 														className="h-9 w-9"
 													>
 														<Trash2Icon className="h-5 w-5 text-destructive" />
@@ -362,9 +376,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 												</AlertDialogTrigger>
 												<AlertDialogContent>
 													<AlertDialogHeader>
-														<AlertDialogTitle>{t("Delete assigned task?")}</AlertDialogTitle>
+														<AlertDialogTitle>{t("Remove task?")}</AlertDialogTitle>
 														<AlertDialogDescription>
-															{t("This removes the task from the queue. Existing completions stay in the log.")}
+															{t("This removes the task from the list. Its completions stay in Done.")}
 														</AlertDialogDescription>
 													</AlertDialogHeader>
 													<AlertDialogFooter>
@@ -374,7 +388,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members }: Pro
 															onClick={() => handleDelete(task.id)}
 															className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 														>
-															{t("Delete")}
+															{t("Remove")}
 														</AlertDialogAction>
 													</AlertDialogFooter>
 												</AlertDialogContent>

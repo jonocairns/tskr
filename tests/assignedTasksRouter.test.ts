@@ -5,6 +5,7 @@ import type { AssignedTask, Prisma } from "@prisma/client";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
+import { getTasksManageData, getTasksTodoData } from "@/lib/tasks/queries";
 import { getStartOfWeekInTimeZone } from "@/lib/timeZones";
 import { getWeekViewData } from "@/lib/week-view/queries";
 import { assignedTasksRouter } from "@/server/routers/assignedTasks";
@@ -234,54 +235,43 @@ test("keeps one-off targets normalized on partial updates", async () => {
 });
 
 test.each(["PENDING", "APPROVED"] as const)(
-	"week-view eligibility includes an out-of-range %s completion",
+	"To do eligibility includes every household member's %s completions outside the Done range",
 	async (status) => {
 		const task = await makeTask({ cadenceIntervalMinutes: 10080 });
-		await makeLog(task, { userId: "approver", status, createdAt: new Date("2024-01-07T21:00:00.000Z") }); // Monday 10:00 NZDT
-		const result = await getWeekViewData({
+		await makeLog(task, { userId: "approver", status, createdAt: new Date("2024-01-07T21:00:00.000Z") });
+		const result = await getTasksTodoData({
 			householdId,
+			actingUserId: "doer",
 			userId: "doer",
-			now: new Date("2024-01-08T23:00:00.000Z"), // Tuesday noon NZDT
-			range: {
-				start: new Date("2024-01-08T11:00:00.000Z"),
-				end: new Date("2024-01-09T11:00:00.000Z"),
-				labelKey: "custom",
-			},
+			now: new Date("2024-01-08T23:00:00.000Z"),
 			timeZone: "Pacific/Auckland",
-			dateFormat: "DMY",
-			timeFormat: "H24",
 		});
-		expect(result.timeline).toEqual([]);
-		expect(result.completedCount).toBe(0);
-		expect(result.plannedCount).toBe(0);
+		if (status === "APPROVED") expect(result).toEqual([]);
+		else
+			expect(result).toMatchObject([
+				{ id: task.id, state: "awaitingApproval", progress: 1, pendingCompleters: ["Alex"] },
+			]);
 	},
 );
 
-test("rejected and reverted completions do not suppress week-view planned work", async () => {
+test("rejected and reverted completions do not suppress To do work", async () => {
 	const task = await makeTask({ cadenceIntervalMinutes: 10080, cadenceTarget: 2 });
 	const createdAt = new Date("2024-01-07T21:00:00.000Z");
 	await makeLog(task, { createdAt, status: "REJECTED" });
 	await makeLog(task, { createdAt, revertedAt: new Date() });
 	await makeLog(task, { createdAt, status: "PENDING" });
-	const result = await getWeekViewData({
+	const result = await getTasksTodoData({
 		householdId,
+		actingUserId: "doer",
 		userId: "doer",
 		now: new Date("2024-01-08T23:00:00.000Z"),
-		range: {
-			start: new Date("2024-01-08T11:00:00.000Z"),
-			end: new Date("2024-01-09T11:00:00.000Z"),
-			labelKey: "custom",
-		},
 		timeZone: "Pacific/Auckland",
-		dateFormat: "DMY",
-		timeFormat: "H24",
 	});
-	expect(result.plannedCount).toBe(1);
-	expect(result.timeline[0]).toMatchObject({ type: "planned", remainingCount: 1 });
+	expect(result).toMatchObject([{ id: task.id, state: "available", progress: 1, cadenceTarget: 2 }]);
 });
 
 test.each(["doer", "approver", "all"])(
-	"week-view filter %s includes Open tasks and filters by completer",
+	"Tasks filter %s includes Open tasks in To do and filters Done by completer",
 	async (userId) => {
 		const mine = await makeTask({ cadenceTarget: 2 });
 		const theirs = await makeTask({ assignedToId: "approver", cadenceTarget: 2 });
@@ -293,7 +283,6 @@ test.each(["doer", "approver", "all"])(
 		const result = await getWeekViewData({
 			householdId,
 			userId,
-			now,
 			range: {
 				start: new Date("2024-01-07T11:00:00.000Z"),
 				end: new Date("2024-01-14T11:00:00.000Z"),
@@ -303,7 +292,13 @@ test.each(["doer", "approver", "all"])(
 			dateFormat: "DMY",
 			timeFormat: "H24",
 		});
-		const todos = result.timeline.filter((entry) => entry.type === "planned");
+		const todos = await getTasksTodoData({
+			householdId,
+			actingUserId: "doer",
+			userId,
+			now,
+			timeZone: "Pacific/Auckland",
+		});
 		const done = result.timeline.filter((entry) => entry.type === "completed");
 		const expectedTaskIds =
 			userId === "all" ? [mine.id, theirs.id, open.id] : [userId === "doer" ? mine.id : theirs.id, open.id];
@@ -313,16 +308,14 @@ test.each(["doer", "approver", "all"])(
 				: userId === "doer"
 					? [myLog.id]
 					: [theirLog.id, openLog.id];
-		expect(todos.map((entry) => entry.assignedTaskId).sort()).toEqual(expectedTaskIds.sort());
+		expect(todos.map((entry) => entry.id).sort()).toEqual(expectedTaskIds.sort());
 		expect(done.map((entry) => entry.id).sort()).toEqual(expectedLogIds.sort());
 		// Other members' completions still consume capacity when their logs are filtered out.
-		expect(todos.every((entry) => entry.remainingCount === 1)).toBe(true);
-		expect(todos.find((entry) => entry.assignedTaskId === open.id)?.assignedTo).toBeNull();
+		expect(todos.every((entry) => entry.progress === 1 && entry.state === "available")).toBe(true);
+		expect(todos.find((entry) => entry.id === open.id)?.group).toBe("open");
 		if (userId === "all") {
-			expect(todos.find((entry) => entry.assignedTaskId === mine.id)?.assignedTo).toMatchObject({
-				id: "doer",
-				name: "Sam",
-			});
+			expect(todos.find((entry) => entry.id === mine.id)).toMatchObject({ group: "mine", assigneeLabel: "Sam" });
+			expect(todos.find((entry) => entry.id === theirs.id)?.group).toBe("others");
 			expect(done.find((entry) => entry.id === myLog.id)).toMatchObject({
 				assignedTo: { id: "approver", name: "Alex" },
 				completedBy: { id: "doer", name: "Sam" },
@@ -334,6 +327,46 @@ test.each(["doer", "approver", "all"])(
 		}
 	},
 );
+
+test("Done includes ad-hoc PRESET and TIMED completions with the same range/status rules", async () => {
+	const now = new Date("2024-01-08T23:00:00.000Z");
+	const quickLog = (data: Partial<Prisma.PointLogUncheckedCreateInput>) =>
+		prisma.pointLog.create({
+			data: {
+				householdId,
+				userId: "doer",
+				description: "Quick completion",
+				points: 3,
+				kind: "PRESET",
+				status: "APPROVED",
+				createdAt: now,
+				...data,
+			},
+		});
+	const preset = await quickLog({});
+	const timed = await quickLog({ kind: "TIMED", status: "PENDING" });
+	await quickLog({ status: "REJECTED" });
+	await quickLog({ revertedAt: now });
+	await quickLog({ kind: "REWARD" });
+	await quickLog({ createdAt: new Date("2024-01-07T10:59:59.999Z") });
+	await quickLog({ createdAt: new Date("2024-01-14T11:00:00.000Z") });
+	await quickLog({ userId: "approver" });
+	const result = await getWeekViewData({
+		householdId,
+		userId: "doer",
+		timeZone: "Pacific/Auckland",
+		dateFormat: "DMY",
+		timeFormat: "H24",
+		range: {
+			start: new Date("2024-01-07T11:00:00.000Z"),
+			end: new Date("2024-01-14T11:00:00.000Z"),
+			labelKey: "calendarWeek",
+		},
+	});
+	expect(result.timeline.map((entry) => entry.id).sort()).toEqual([preset.id, timed.id].sort());
+	expect(result.timeline.every((entry) => entry.assignedTaskId === null)).toBe(true);
+	expect(result).toMatchObject({ completedCount: 2, pendingCount: 1, approvedPoints: 3 });
+});
 
 test("retains membership and household checks inside the write transaction", async () => {
 	const task = await makeTask();
@@ -454,7 +487,7 @@ test("rejects personal presets for new tasks while retaining existing task compl
 			cadenceIntervalMinutes: 1440,
 			isRecurring: false,
 		}),
-	).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Assigned tasks require a shared preset" });
+	).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Only shared tasks can be added to the list" });
 	const task = await makeTask();
 	await expect(manage.complete({ householdId, id: task.id })).resolves.toMatchObject({ entry: { userId: "approver" } });
 });
@@ -465,7 +498,7 @@ test("blocks un-sharing while active tasks use a preset and returns only househo
 	await makeTask({ status: "COMPLETED" });
 	await expect(presets.update({ householdId, id: "preset", isShared: false })).rejects.toMatchObject({
 		code: "BAD_REQUEST",
-		message: "Cannot make this preset personal while active assigned tasks use it",
+		message: "Cannot make this task personal while it is on the household task list",
 	});
 	expect((await prisma.presetTask.findUniqueOrThrow({ where: { id: "preset" } })).isShared).toBe(true);
 	const { tasks } = await presets.usage({ householdId, id: "preset" });
@@ -587,4 +620,237 @@ test("dashboard loads every active household task and counts only household task
 			expect.objectContaining({ id: open.id, group: "open", assigneeLabel: null }),
 		]),
 	);
+});
+
+test("removing archives a task, excludes current usage, and preserves Done provenance and weekly counts", async () => {
+	const task = await makeTask({ cadenceTarget: 2 });
+	const log = await makeLog(task);
+	await expect(manage.delete({ householdId, id: task.id })).resolves.toEqual({ ok: true });
+	const saved = await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } });
+	expect(saved.archivedAt).toBeInstanceOf(Date);
+	expect((await prisma.pointLog.findUniqueOrThrow({ where: { id: log.id } })).assignedTaskId).toBe(task.id);
+	const query = { householdId, userId: "all", timeZone: "Pacific/Auckland" };
+	expect(await getTasksTodoData({ ...query, actingUserId: "approver" })).toEqual([]);
+	expect((await getTasksManageData({ ...query, userId: "approver" })).tasks).toEqual([]);
+	const dashboard = await getDashboardData("doer", householdId);
+	expect(dashboard.assignedTasks).toEqual([]);
+	expect(dashboard.hasActiveAssignedTasks).toBe(false);
+	expect(dashboard.householdDoneThisWeek).toBe(1);
+	expect(await presets.usage({ householdId, id: "preset" })).toEqual({ tasks: [] });
+	await expect(presets.update({ householdId, id: "preset", isShared: false })).resolves.toMatchObject({
+		preset: { isShared: false },
+	});
+	const done = await getWeekViewData({
+		...query,
+		range: {
+			start: new Date(log.createdAt.getTime() - 1),
+			end: new Date(log.createdAt.getTime() + 1),
+			labelKey: "calendarWeek",
+		},
+		dateFormat: "DMY",
+		timeFormat: "H24",
+	});
+	expect(done.timeline).toMatchObject([
+		{
+			id: log.id,
+			description: "Vacuum",
+			assignedTaskId: task.id,
+			assignedTo: { id: "doer", name: "Sam" },
+		},
+	]);
+});
+
+test("archived tasks reject completion, edits and repeated removal", async () => {
+	const task = await makeTask();
+	await manage.delete({ householdId, id: task.id });
+	await expect(complete.complete({ householdId, id: task.id })).rejects.toMatchObject({
+		code: "NOT_FOUND",
+		message: "Task not found",
+	});
+	await expect(manage.update({ householdId, id: task.id, cadenceTarget: 3 })).rejects.toMatchObject({
+		code: "NOT_FOUND",
+		message: "Task not found",
+	});
+	await expect(manage.delete({ householdId, id: task.id })).rejects.toMatchObject({
+		code: "NOT_FOUND",
+		message: "Task not found",
+	});
+	expect(await prisma.pointLog.count()).toBe(0);
+});
+
+test.each(["approve", "reject", "revert"] as const)(
+	"%s on an archived task's pending log keeps it archived",
+	async (action) => {
+		const task = await makeTask({ isRecurring: false });
+		const log = await makeLog(task, { status: "PENDING" });
+		await manage.delete({ householdId, id: task.id });
+		const archived = await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } });
+		await approval.updateStatus({ id: log.id, action });
+		if (action === "reject") {
+			await ownLogs.updateStatus({ id: log.id, action: "resubmit" });
+			await approval.updateStatus({ id: log.id, action: "approve" });
+		}
+		if (action !== "revert") await ownLogs.updateStatus({ id: log.id, action: "revert" });
+		expect((await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).archivedAt).toEqual(
+			archived.archivedAt,
+		);
+		expect((await getDashboardData("doer", householdId)).hasActiveAssignedTasks).toBe(false);
+		expect((await prisma.pointLog.findUniqueOrThrow({ where: { id: log.id } })).assignedTaskId).toBe(task.id);
+	},
+);
+
+const quickLog = () => ownLogs.create({ householdId, type: "preset", presetId: "preset" });
+
+test("Quick log uses the same completion fields and approval override as To do", async () => {
+	const task = await makeTask({ cadenceTarget: 2 });
+	const tapped = await quickLog();
+	const completed = await complete.complete({ householdId, id: task.id });
+	expect(tapped.countedTowards).toEqual({ id: task.id, label: "Vacuum", assigneeName: null });
+	for (const key of ["points", "status", "assignedTaskId", "duration", "presetId", "kind", "description"] as const) {
+		expect(tapped.entry[key]).toEqual(completed.entry[key]);
+	}
+	expect(tapped.entry.status).toBe("PENDING");
+});
+
+test("Quick log prioritizes own, then Open, before another member's task", async () => {
+	const other = await makeTask({ assignedToId: "approver" });
+	const open = await makeTask({ assignedToId: null });
+	const mine = await makeTask();
+	const first = await quickLog();
+	const second = await quickLog();
+	expect(first).toMatchObject({ entry: { assignedTaskId: mine.id } });
+	expect(second).toMatchObject({ entry: { assignedTaskId: open.id } });
+	expect(await quickLog()).toMatchObject({
+		entry: { assignedTaskId: other.id },
+		countedTowards: { assigneeName: "Alex" },
+	});
+	expect(await quickLog()).toMatchObject({ entry: { assignedTaskId: null }, countedTowards: null });
+});
+
+test("Quick log chooses the oldest Open task, breaking ties by id", async () => {
+	// The later-assigned task has the smallest id, so only assignedAt ordering can pick "a".
+	await makeTask({ id: "0", assignedToId: null, assignedAt: new Date("2024-02-01") });
+	await makeTask({ id: "b", assignedToId: null });
+	const first = await makeTask({ id: "a", assignedToId: null });
+	expect(await quickLog()).toMatchObject({ entry: { assignedTaskId: first.id } });
+});
+
+test("Quick log tiers outrank age, and a full own task falls through to Open", async () => {
+	const open = await makeTask({ assignedToId: null, assignedAt: new Date("2023-01-01") });
+	const mine = await makeTask({ assignedAt: new Date("2024-01-01") });
+	expect(await quickLog()).toMatchObject({ entry: { assignedTaskId: mine.id } });
+	expect(await quickLog()).toMatchObject({ entry: { assignedTaskId: open.id } });
+});
+
+test("another member's match writes a linked log and names the assignee in the push", async () => {
+	const task = await makeTask({ assignedToId: "approver" });
+	jest.mocked(isPushConfigured).mockReturnValue(true);
+	expect(await quickLog()).toMatchObject({
+		entry: { assignedTaskId: task.id },
+		countedTowards: { assigneeName: "Alex" },
+	});
+	expect(await prisma.pointLog.count()).toBe(1);
+	expect(broadcastPush).toHaveBeenCalledWith(
+		expect.objectContaining({ body: expect.stringContaining("Alex's Vacuum") }),
+		{ householdId, excludeUserId: "doer" },
+	);
+});
+
+test("pending Quick log on another member's task holds capacity until rejected", async () => {
+	const task = await makeTask({ assignedToId: "approver" });
+	const first = await quickLog();
+	expect(first.entry).toMatchObject({ assignedTaskId: task.id, status: "PENDING" });
+	expect(await quickLog()).toMatchObject({ countedTowards: null, entry: { assignedTaskId: null } });
+	await approval.updateStatus({ id: first.entry.id, action: "reject" });
+	expect(await quickLog()).toMatchObject({ entry: { assignedTaskId: task.id, status: "PENDING" } });
+});
+
+test.each(["APPROVED", "PENDING", "archived", "COMPLETED", "future"] as const)(
+	"Quick log falls back to extra for a %s task",
+	async (state) => {
+		const task = await makeTask({
+			...(state === "archived" ? { archivedAt: new Date() } : {}),
+			...(state === "COMPLETED" ? { status: "COMPLETED" } : {}),
+			...(state === "future" ? { assignedAt: new Date("2099-01-01") } : {}),
+		});
+		if (state === "APPROVED" || state === "PENDING") await makeLog(task, { status: state });
+		expect(await quickLog()).toMatchObject({
+			entry: { assignedTaskId: null },
+			countedTowards: null,
+		});
+	},
+);
+
+test("concurrent Quick logs both succeed but only one fills the listed task", async () => {
+	const task = await makeTask();
+	const results = await Promise.all([quickLog(), quickLog()]);
+	expect(results.filter((result) => result.entry.assignedTaskId === task.id)).toHaveLength(1);
+	expect(await qualifyingCount(task.id)).toBe(1);
+	expect(await prisma.pointLog.count()).toBe(2);
+});
+
+test("Quick log and To do serialize their capacity checks", async () => {
+	const task = await makeTask();
+	await Promise.allSettled([quickLog(), complete.complete({ householdId, id: task.id })]);
+	expect(await qualifyingCount(task.id)).toBe(1);
+});
+
+test("approved one-off Quick log completes, undo reopens, and the next tap matches", async () => {
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { approvalOverride: "SKIP" } });
+	const task = await makeTask({ isRecurring: false });
+	const result = await quickLog();
+	expect((await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).status).toBe("COMPLETED");
+	await ownLogs.updateStatus({ id: result.entry.id, action: "revert" });
+	expect((await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).status).toBe("ACTIVE");
+	expect(await quickLog()).toMatchObject({ entry: { assignedTaskId: task.id } });
+});
+
+test("personal presets, timed work, and built-in preset keys never match", async () => {
+	const task = await makeTask();
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { isShared: false, createdById: "doer" } });
+	expect(await quickLog()).toMatchObject({ countedTowards: null, entry: { assignedTaskId: null } });
+	expect(await ownLogs.create({ householdId, type: "timed", bucket: "QUICK", description: "Vacuum" })).toMatchObject({
+		countedTowards: null,
+		entry: { assignedTaskId: null },
+	});
+	const { PRESET_TASKS } = await import("@/lib/points");
+	expect(await ownLogs.create({ householdId, type: "preset", presetKey: PRESET_TASKS[0].key })).toMatchObject({
+		countedTowards: null,
+		entry: { assignedTaskId: null },
+	});
+	expect(await qualifyingCount(task.id)).toBe(0);
+});
+
+test.each([false, true])("Quick log pushes after commit and tolerates push failure (%s)", async (fail) => {
+	const task = await makeTask();
+	jest.mocked(isPushConfigured).mockReturnValue(true);
+	let committedCount: number | undefined;
+	jest.mocked(broadcastPush).mockImplementation(async () => {
+		const { PrismaClient } = jest.requireActual<typeof import("@prisma/client")>("@prisma/client");
+		const { PrismaBetterSqlite3 } = jest.requireActual<typeof import("@prisma/adapter-better-sqlite3")>(
+			"@prisma/adapter-better-sqlite3",
+		);
+		const reader = new PrismaClient({
+			adapter: new PrismaBetterSqlite3({ url: `file:${path.join(directory, "test.db")}` }),
+		});
+		try {
+			committedCount = await reader.pointLog.count({ where: { assignedTaskId: task.id } });
+		} finally {
+			await reader.$disconnect();
+		}
+		if (fail) throw new Error("Push unavailable");
+		return { sent: 1, removed: 0 };
+	});
+	const error = jest.spyOn(console, "error").mockImplementation(() => {});
+	try {
+		expect(await quickLog()).toMatchObject({ entry: { assignedTaskId: task.id } });
+		expect(committedCount).toBe(1);
+		expect(broadcastPush).toHaveBeenCalledWith(expect.objectContaining({ title: "Task completed" }), {
+			householdId,
+			excludeUserId: "doer",
+		});
+		if (fail) expect(error).toHaveBeenCalledWith("[push] notify failed", expect.any(Error));
+	} finally {
+		error.mockRestore();
+	}
 });

@@ -3,7 +3,12 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { DURATION_KEYS } from "@/lib/points";
+import {
+	presetApprovalOverrideSchema,
+	presetBucketSchema,
+	presetIconKeySchema,
+	presetLabelSchema,
+} from "@/lib/presetInput";
 import { validatePresetReorderPayload } from "@/lib/presetReorderValidation";
 import { applyUserPresetOrdering } from "@/lib/presetTaskOrdering";
 import { createPresetWithOrdering } from "@/lib/presetTaskOrderManagement";
@@ -16,27 +21,25 @@ const listPresetsSchema = z.object({
 	householdId: z.string().min(1),
 });
 
-const iconKeySchema = z.string().trim().min(1).max(100).nullish();
-
 const presetSchema = z.object({
 	householdId: z.string().min(1),
-	label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short"),
-	bucket: z.enum(DURATION_KEYS),
+	label: presetLabelSchema,
+	bucket: presetBucketSchema,
 	templateKey: z.string().trim().min(1).max(100).nullish(),
-	iconKey: iconKeySchema,
+	iconKey: presetIconKeySchema,
 	isShared: z.boolean().optional(),
-	approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
+	approvalOverride: presetApprovalOverrideSchema,
 });
 
 const updatePresetSchema = z
 	.object({
 		householdId: z.string().min(1),
 		id: z.string(),
-		label: z.string().trim().min(2, "Name is too short").max(50, "Keep the name short").optional(),
-		bucket: z.enum(DURATION_KEYS).optional(),
-		iconKey: iconKeySchema,
+		label: presetLabelSchema.optional(),
+		bucket: presetBucketSchema.optional(),
+		iconKey: presetIconKeySchema,
 		isShared: z.boolean().optional(),
-		approvalOverride: z.enum(["REQUIRE", "SKIP"]).nullish(),
+		approvalOverride: presetApprovalOverrideSchema,
 	})
 	.refine(
 		(data) =>
@@ -115,7 +118,7 @@ export const presetsRouter = router({
 
 	usage: approverProcedure(deletePresetSchema).query(async ({ ctx, input }) => {
 		const tasks = await prisma.assignedTask.findMany({
-			where: { householdId: ctx.household.id, presetId: input.id, status: "ACTIVE" },
+			where: { householdId: ctx.household.id, presetId: input.id, status: "ACTIVE", archivedAt: null },
 			select: {
 				id: true,
 				preset: { select: { label: true } },
@@ -145,12 +148,12 @@ export const presetsRouter = router({
 		});
 
 		if (!preset) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+			throw new TRPCError({ code: "NOT_FOUND", message: "Quick log task not found" });
 		}
 
 		const isOwner = preset.createdById === userId;
 		if (!preset.isShared && !isOwner) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+			throw new TRPCError({ code: "NOT_FOUND", message: "Quick log task not found" });
 		}
 
 		if (updates.isShared !== undefined && updates.isShared !== preset.isShared && !isOwner) {
@@ -158,13 +161,13 @@ export const presetsRouter = router({
 		}
 		if (updates.isShared === false && preset.isShared) {
 			const activeTask = await prisma.assignedTask.findFirst({
-				where: { householdId, presetId: id, status: "ACTIVE" },
+				where: { householdId, presetId: id, status: "ACTIVE", archivedAt: null },
 				select: { id: true },
 			});
 			if (activeTask) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: "Cannot make this preset personal while active assigned tasks use it",
+					message: "Cannot make this task personal while it is on the household task list",
 				});
 			}
 		}
@@ -225,7 +228,7 @@ export const presetsRouter = router({
 		});
 
 		if (!preset) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+			throw new TRPCError({ code: "NOT_FOUND", message: "Quick log task not found" });
 		}
 
 		await prisma.presetTask.delete({ where: { id: input.id } });

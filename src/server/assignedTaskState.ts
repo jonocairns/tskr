@@ -16,7 +16,7 @@ export const lockAssignedTask = async (tx: TransactionClient, id: string, househ
 	await tx.$executeRaw`UPDATE "AssignedTask" SET "status" = "status" WHERE "id" = ${id} AND "householdId" = ${householdId}`;
 };
 
-export const ensureAssignedTaskCapacity = async ({
+export const hasAssignedTaskCapacity = async ({
 	tx,
 	task,
 	householdId,
@@ -39,7 +39,11 @@ export const ensureAssignedTaskCapacity = async ({
 		select: { createdAt: true },
 	});
 	const state = computeAssignedTaskState({ task, logs, now: at, timeZone });
-	if (!state.isActive) {
+	return state.isActive;
+};
+
+export const ensureAssignedTaskCapacity = async (args: Parameters<typeof hasAssignedTaskCapacity>[0]) => {
+	if (!(await hasAssignedTaskCapacity(args))) {
 		throw new TRPCError({ code: "BAD_REQUEST", message: "Task already completed for this cadence" });
 	}
 };

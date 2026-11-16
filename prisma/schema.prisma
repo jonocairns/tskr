@@ -402,6 +402,7 @@ model AssignedTask {
   assignedBy             User?              @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
   assignedAt             DateTime           @default(now())
   status                 AssignedTaskStatus @default(ACTIVE)
+  archivedAt             DateTime?
   cadenceTarget          Int
   cadenceIntervalMinutes Int
   isRecurring            Boolean            @default(false)
@@ -411,4 +412,5 @@ model AssignedTask {
   @@index([assignedToId])
   @@index([presetId])
   @@index([status])
+  @@index([householdId, archivedAt, status])
 }

@@ -1,5 +1,4 @@
-import { type AssignedTaskLog, getAssignedTaskPeriodBounds } from "@/lib/assignedTasks";
-import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
+import { DURATION_KEYS, type DurationKey } from "@/lib/points";
 import {
 	addDaysInTimeZone,
 	addMonthsInTimeZone,
@@ -58,25 +57,7 @@ export type WeekViewCompletedEntry = {
 	completedBy: WeekViewMember;
 };
 
-export type WeekViewPlannedEntry = {
-	id: string;
-	type: "planned";
-	occurredAt: string;
-	description: string;
-	points: number;
-	bucket: DurationKey;
-	assignedTaskId: string;
-	assignedTo: WeekViewMember | null;
-	isRecurring: boolean;
-	cadenceIntervalMinutes: number | null;
-	cadenceTarget: number;
-	remainingCount: number;
-	canComplete: boolean;
-	// A one-off assigned before the range, shown at the range start rather than at a real time.
-	carriedForward?: boolean;
-};
-
-export type WeekViewTimelineEntry = WeekViewCompletedEntry | WeekViewPlannedEntry;
+export type WeekViewTimelineEntry = WeekViewCompletedEntry;
 
 type CompletedLogRecord = {
 	id: string;
@@ -90,23 +71,8 @@ type CompletedLogRecord = {
 	user: WeekViewMember;
 };
 
-type AssignedTaskRecord = {
-	id: string;
-	assignedTo: WeekViewMember | null;
-	assignedAt: Date;
-	cadenceTarget: number;
-	cadenceIntervalMinutes: number;
-	isRecurring: boolean;
-	preset: { id: string; label: string; bucket: string } | null;
-	logs?: AssignedTaskLog[];
-};
-
 type BuildWeekViewTimelineInput = {
 	completedLogs: CompletedLogRecord[];
-	now?: Date;
-	range: WeekViewRange;
-	tasks: AssignedTaskRecord[];
-	timeZone: string;
 };
 
 const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
@@ -192,169 +158,6 @@ const buildCompletedEntries = (completedLogs: CompletedLogRecord[]) => {
 	}));
 };
 
-const buildTaskLogMap = (completedLogs: CompletedLogRecord[]) => {
-	const logsByTaskId = new Map<string, CompletedLogRecord[]>();
-
-	for (const log of completedLogs) {
-		if (!log.assignedTaskId) {
-			continue;
-		}
-
-		const taskLogs = logsByTaskId.get(log.assignedTaskId) ?? [];
-		taskLogs.push(log);
-		logsByTaskId.set(log.assignedTaskId, taskLogs);
-	}
-
-	return logsByTaskId;
-};
-
-const buildOneOffPlannedEntry = ({
-	now,
-	task,
-	range,
-}: {
-	now: Date;
-	task: AssignedTaskRecord;
-	range: WeekViewRange;
-}) => {
-	if (!task.preset) {
-		return [];
-	}
-
-	if (task.assignedAt >= range.end) {
-		return [];
-	}
-
-	// Only the range containing now carries unfinished one-offs forward; completing one logs today.
-	const carriedForward = task.assignedAt < range.start;
-	if (carriedForward && (now < range.start || now >= range.end)) {
-		return [];
-	}
-
-	const bucket = resolveBucket(task.preset.bucket) ?? "QUICK";
-
-	return [
-		{
-			id: `${task.id}:${task.assignedAt.toISOString()}`,
-			type: "planned" as const,
-			occurredAt: (carriedForward ? range.start : task.assignedAt).toISOString(),
-			description: task.preset.label,
-			points: getBucketPoints(bucket),
-			bucket,
-			assignedTaskId: task.id,
-			assignedTo: task.assignedTo,
-			isRecurring: false,
-			cadenceIntervalMinutes: null,
-			cadenceTarget: 1,
-			remainingCount: 1,
-			canComplete: task.assignedAt <= now,
-			carriedForward,
-		},
-	];
-};
-
-const buildRecurringPlannedEntries = ({
-	logs,
-	now,
-	range,
-	task,
-	timeZone,
-}: {
-	logs: AssignedTaskLog[];
-	now: Date;
-	range: WeekViewRange;
-	task: AssignedTaskRecord;
-	timeZone: string;
-}) => {
-	if (!task.preset) {
-		return [];
-	}
-
-	const bucket = resolveBucket(task.preset.bucket) ?? "QUICK";
-	const target = Math.max(task.cadenceTarget, 1);
-	const entries: WeekViewPlannedEntry[] = [];
-	if (task.assignedAt >= range.end) {
-		return entries;
-	}
-	const currentPeriod = getAssignedTaskPeriodBounds(now, task.cadenceIntervalMinutes, timeZone);
-
-	let { periodStart } = getAssignedTaskPeriodBounds(range.start, task.cadenceIntervalMinutes, timeZone);
-
-	while (periodStart < range.end) {
-		const { periodEnd } = getAssignedTaskPeriodBounds(periodStart, task.cadenceIntervalMinutes, timeZone);
-		if (periodEnd.getTime() <= periodStart.getTime()) {
-			break;
-		}
-		const occurrenceAt = periodStart > task.assignedAt ? periodStart : task.assignedAt;
-		const displayAt = occurrenceAt < range.start ? range.start : occurrenceAt;
-		const overlapsRange = periodEnd > range.start && periodStart < range.end;
-
-		if (periodEnd > task.assignedAt && overlapsRange && displayAt < range.end) {
-			const periodLogCount = logs.filter((log) => log.createdAt >= periodStart && log.createdAt < periodEnd).length;
-			const remainingCount = Math.max(target - periodLogCount, 0);
-
-			if (remainingCount > 0) {
-				entries.push({
-					id: `${task.id}:${periodStart.toISOString()}`,
-					type: "planned",
-					occurredAt: displayAt.toISOString(),
-					description: task.preset.label,
-					points: getBucketPoints(bucket),
-					bucket,
-					assignedTaskId: task.id,
-					assignedTo: task.assignedTo,
-					isRecurring: true,
-					cadenceIntervalMinutes: task.cadenceIntervalMinutes,
-					cadenceTarget: target,
-					remainingCount,
-					canComplete:
-						now >= periodStart &&
-						now < periodEnd &&
-						periodStart.getTime() === currentPeriod.periodStart.getTime() &&
-						periodEnd.getTime() === currentPeriod.periodEnd.getTime(),
-				});
-			}
-		}
-
-		periodStart = periodEnd;
-	}
-
-	return entries;
-};
-
-const buildPlannedEntries = ({
-	completedLogs,
-	now = new Date(),
-	range,
-	tasks,
-	timeZone,
-}: BuildWeekViewTimelineInput) => {
-	const logsByTaskId = buildTaskLogMap(completedLogs);
-
-	return tasks.flatMap((task) => {
-		if (!task.preset) {
-			return [];
-		}
-
-		// Eligibility needs the full cadence, even when history is displayed over a narrower range.
-		const taskLogs = task.logs ?? logsByTaskId.get(task.id) ?? [];
-
-		const entries = task.isRecurring
-			? buildRecurringPlannedEntries({
-					task,
-					logs: taskLogs,
-					now,
-					range,
-					timeZone,
-				})
-			: taskLogs.length > 0
-				? []
-				: buildOneOffPlannedEntry({ now, task, range });
-
-		return entries.filter((entry) => entry.canComplete);
-	});
-};
-
 const compareTimelineEntries = (left: WeekViewTimelineEntry, right: WeekViewTimelineEntry) => {
 	const leftTime = new Date(left.occurredAt).getTime();
 	const rightTime = new Date(right.occurredAt).getTime();
@@ -363,29 +166,12 @@ const compareTimelineEntries = (left: WeekViewTimelineEntry, right: WeekViewTime
 		return rightTime - leftTime;
 	}
 
-	if (left.type !== right.type) {
-		return left.type === "completed" ? -1 : 1;
-	}
-
 	return left.id.localeCompare(right.id);
 };
 
-const buildWeekViewTimeline = ({
-	completedLogs,
-	now = new Date(),
-	range,
-	tasks,
-	timeZone,
-}: BuildWeekViewTimelineInput) => {
+const buildWeekViewTimeline = ({ completedLogs }: BuildWeekViewTimelineInput) => {
 	const completedEntries = buildCompletedEntries(completedLogs);
-	const plannedEntries = buildPlannedEntries({
-		completedLogs,
-		now,
-		range,
-		tasks,
-		timeZone,
-	});
-	const timeline = [...completedEntries, ...plannedEntries].sort(compareTimelineEntries);
+	const timeline = completedEntries.sort(compareTimelineEntries);
 	const pendingCount = completedEntries.filter((entry) => entry.status === "PENDING").length;
 	const approvedPoints = completedEntries
 		.filter((entry) => entry.status === "APPROVED")
@@ -395,7 +181,6 @@ const buildWeekViewTimeline = ({
 		completedCount: completedEntries.length,
 		pendingCount,
 		approvedPoints,
-		plannedCount: plannedEntries.length,
 		timeline,
 	};
 };
