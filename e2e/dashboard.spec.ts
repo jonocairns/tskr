@@ -5,12 +5,13 @@ import { AUTH_STATE } from "./support/env";
 
 test.use({ storageState: AUTH_STATE.member });
 
-test("logs a preset task from the Tasks grid", async ({ page }) => {
+test("logs a task from the Quick log grid", async ({ page }) => {
 	const { householdId, userIds } = await createHousehold([{ user: "member", role: "DICTATOR" }]);
 	await createPreset({ householdId, createdById: userIds.member, label: "Water the plants", bucket: "ROUTINE" });
 
 	await openDashboard(page, householdId);
 	await expectBalance(page, 0);
+	await expect(page.getByText("Quick log", { exact: true })).toBeVisible();
 
 	await taskTile(page, "Water the plants").click();
 

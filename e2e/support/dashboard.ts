@@ -26,5 +26,5 @@ export const expectBalance = async (page: Page, points: number) => {
 	await expect(balance(page).getByText(`${points} pts`, { exact: true })).toBeVisible();
 };
 
-// Preset tiles are role="button" with the label, points and bucket as their name.
+// Quick log tiles are role="button" with the label, points and bucket as their name.
 export const taskTile = (page: Page, label: string) => page.getByRole("button", { name: new RegExp(`^${label}\\b`) });

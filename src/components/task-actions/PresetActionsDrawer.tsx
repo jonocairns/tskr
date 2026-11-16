@@ -182,7 +182,7 @@ export const PresetActionsDrawer = ({
 	const canCreate = customLabel.trim().length >= 2;
 	const canUpdate = editLabel.trim().length >= 2;
 	const isPresetMode = allowOneOffMode ? canManagePresets && taskCreateMode === "preset" : true;
-	const primaryActionLabel = isPresetMode ? t("Create new chore") : t("Log one off task");
+	const primaryActionLabel = isPresetMode ? t("Add to quick log") : t("Log one-off task");
 	const primaryActionPending = isPresetMode ? isPresetPending || isCreateActionPending : isPending;
 	const createFormDisabled = disabled || isCreateActionPending;
 	const editActionPending = isPresetPending || isEditActionPending;
@@ -451,17 +451,17 @@ export const PresetActionsDrawer = ({
 						onValueChange={(value) => setTaskCreateMode(value === "preset" ? "preset" : "one-off")}
 						className="w-full"
 					>
-						<TabsList className="grid w-full grid-cols-2" aria-label={t("Add or log a one off chore")}>
+						<TabsList className="grid w-full grid-cols-2" aria-label={t("Add or log a one-off task")}>
 							<TabsTrigger value="preset" disabled={createFormDisabled}>
-								{t("Create new chore")}
+								{t("Add to quick log")}
 							</TabsTrigger>
 							<TabsTrigger value="one-off" disabled={createFormDisabled}>
-								{t("Log one off task")}
+								{t("Log one-off task")}
 							</TabsTrigger>
 						</TabsList>
 					</Tabs>
 				) : (
-					<p className="text-sm font-medium">{isPresetMode ? t("Create new chore") : t("Log one off task")}</p>
+					<p className="text-sm font-medium">{isPresetMode ? t("Add to quick log") : t("Log one-off task")}</p>
 				)
 			) : null}
 			<div className="space-y-2">
@@ -606,7 +606,7 @@ export const PresetActionsDrawer = ({
 				<div className="space-y-2">
 					{showListHeader ? (
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-sm font-medium">{t("Tasks")}</p>
+							<p className="text-sm font-medium">{t("Quick log")}</p>
 							<span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
 								{filteredEditablePresets.length}
 							</span>
@@ -626,7 +626,7 @@ export const PresetActionsDrawer = ({
 							<div className="rounded-md bg-white p-1.5 transition-colors group-hover:bg-white/90">
 								<PlusIcon className="h-4 w-4 text-black" />
 							</div>
-							<span className="font-semibold">{t("Create new chore")}</span>
+							<span className="font-semibold">{t("Add to quick log")}</span>
 						</div>
 						<span className="text-xs font-medium leading-tight text-muted-foreground">{t("Open task form")}</span>
 					</Button>
@@ -689,11 +689,11 @@ export const PresetActionsDrawer = ({
 								<div
 									role="dialog"
 									aria-modal="true"
-									aria-label={t("Create new chore")}
+									aria-label={t("Add to quick log")}
 									className="absolute inset-0 flex h-dvh w-full flex-col bg-background shadow-xl sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border"
 								>
 									<div className="flex items-center justify-between gap-2 border-b px-4 py-4">
-										<p className="text-sm font-semibold">{t("Create new chore")}</p>
+										<p className="text-sm font-semibold">{t("Add to quick log")}</p>
 										<Button type="button" variant="ghost" size="sm" onClick={() => setCreateModalOpen(false)}>
 											{t("Close")}
 										</Button>
@@ -748,7 +748,7 @@ export const PresetActionsDrawer = ({
 				<div className="space-y-3">
 					<div className="space-y-2">
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-sm font-medium">{t("Tasks")}</p>
+							<p className="text-sm font-medium">{t("Quick log")}</p>
 							<p className="text-xs text-muted-foreground">{filteredEditablePresets.length}</p>
 						</div>
 						<Input

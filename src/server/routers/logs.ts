@@ -155,13 +155,13 @@ export const logsRouter = router({
 					});
 
 					if (!preset) {
-						throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown preset task" });
+						throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown quick log task" });
 					}
 
 					const bucket = DURATION_KEYS.includes(preset.bucket as DurationKey) ? (preset.bucket as DurationKey) : null;
 
 					if (!bucket) {
-						throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown preset task" });
+						throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown quick log task" });
 					}
 
 					const requiresApproval = resolveRequiresApproval(preset.approvalOverride);
@@ -180,7 +180,7 @@ export const logsRouter = router({
 
 				const preset = findPreset(input.presetKey ?? "");
 				if (!preset) {
-					throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown preset task" });
+					throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown quick log task" });
 				}
 
 				const requiresApproval = resolveRequiresApproval(null);

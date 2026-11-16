@@ -43,7 +43,7 @@ export const PresetDeleteDialog = ({ presetId, label, onDelete, children }: Prop
 			<AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>{t("Delete task preset?")}</AlertDialogTitle>
+					<AlertDialogTitle>{t("Delete from quick log?")}</AlertDialogTitle>
 					<AlertDialogDescription>
 						{t('This will delete "{{label}}" and cannot be undone.', { label })}
 						{isApprover && usage.isFetching ? <span className="mt-2 block">{t("Loading assigned tasks…")}</span> : null}

@@ -24,7 +24,7 @@ export const validatePresetReorderPayload = ({
 		return {
 			ok: false,
 			code: "BAD_REQUEST",
-			message: "Duplicate preset id in reorder payload",
+			message: "Quick log order contains a duplicate task",
 		};
 	}
 
@@ -32,7 +32,7 @@ export const validatePresetReorderPayload = ({
 		return {
 			ok: false,
 			code: "BAD_REQUEST",
-			message: "No presets available to reorder",
+			message: "No quick log tasks available to reorder",
 		};
 	}
 
@@ -40,7 +40,7 @@ export const validatePresetReorderPayload = ({
 		return {
 			ok: false,
 			code: "BAD_REQUEST",
-			message: "Reorder payload must include all visible presets",
+			message: "Quick log order must include all visible tasks",
 		};
 	}
 
@@ -50,7 +50,7 @@ export const validatePresetReorderPayload = ({
 		return {
 			ok: false,
 			code: "NOT_FOUND",
-			message: "Preset not found",
+			message: "Quick log task not found",
 		};
 	}
 

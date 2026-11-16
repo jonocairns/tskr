@@ -148,12 +148,12 @@ export const presetsRouter = router({
 		});
 
 		if (!preset) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+			throw new TRPCError({ code: "NOT_FOUND", message: "Quick log task not found" });
 		}
 
 		const isOwner = preset.createdById === userId;
 		if (!preset.isShared && !isOwner) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+			throw new TRPCError({ code: "NOT_FOUND", message: "Quick log task not found" });
 		}
 
 		if (updates.isShared !== undefined && updates.isShared !== preset.isShared && !isOwner) {
@@ -167,7 +167,7 @@ export const presetsRouter = router({
 			if (activeTask) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: "Cannot make this preset personal while active assigned tasks use it",
+					message: "Cannot make this task personal while it is on the household task list",
 				});
 			}
 		}
@@ -228,7 +228,7 @@ export const presetsRouter = router({
 		});
 
 		if (!preset) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+			throw new TRPCError({ code: "NOT_FOUND", message: "Quick log task not found" });
 		}
 
 		await prisma.presetTask.delete({ where: { id: input.id } });

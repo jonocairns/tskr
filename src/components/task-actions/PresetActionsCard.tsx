@@ -127,7 +127,7 @@ export const PresetActionsCard = () => {
 					<div className="flex items-start justify-between gap-2">
 						<div className="space-y-1">
 							<div className="flex h-7 items-center gap-2">
-								<CardTitle className="text-xl">{t("Tasks")}</CardTitle>
+								<CardTitle className="text-xl">{t("Quick log")}</CardTitle>
 								<Badge
 									variant="secondary"
 									className={cn(
@@ -147,7 +147,9 @@ export const PresetActionsCard = () => {
 								</Badge>
 							</div>
 							<CardDescription className="min-h-5 leading-5">
-								{isEditMode ? t("Add or edit tasks") : t("Tap a task once you've completed it.")}
+								{isEditMode
+									? t("Add or edit tasks")
+									: t("Log extra work in one tap. Complete listed tasks from To do.")}
 							</CardDescription>
 						</div>
 						<div className="flex items-center gap-1">
@@ -156,7 +158,7 @@ export const PresetActionsCard = () => {
 									type="button"
 									variant="ghost"
 									size="icon"
-									aria-label={isEditMode ? t("Close") : t("Manage tasks")}
+									aria-label={isEditMode ? t("Close") : t("Manage quick log")}
 									onClick={handleToggleEditMode}
 									className={cn(
 										"border border-transparent",

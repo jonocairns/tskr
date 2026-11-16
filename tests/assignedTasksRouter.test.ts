@@ -498,7 +498,7 @@ test("blocks un-sharing while active tasks use a preset and returns only househo
 	await makeTask({ status: "COMPLETED" });
 	await expect(presets.update({ householdId, id: "preset", isShared: false })).rejects.toMatchObject({
 		code: "BAD_REQUEST",
-		message: "Cannot make this preset personal while active assigned tasks use it",
+		message: "Cannot make this task personal while it is on the household task list",
 	});
 	expect((await prisma.presetTask.findUniqueOrThrow({ where: { id: "preset" } })).isShared).toBe(true);
 	const { tasks } = await presets.usage({ householdId, id: "preset" });

@@ -13,4 +13,4 @@ PR sequence:
 1. #168: task wording and inline preset creation.
 2. #169: Tasks page with To do and Done tabs.
 3. Implemented in this branch: Manage tab, `/assignments` redirect, and empty-household visibility.
-4. Rename the dashboard preset grid to Quick log.
+4. Implemented in this branch: dashboard Quick log grid, task wording in its controls and toasts, and listed-task guidance.
