@@ -147,9 +147,7 @@ export const PresetActionsCard = () => {
 								</Badge>
 							</div>
 							<CardDescription className="min-h-5 leading-5">
-								{isEditMode
-									? t("Add or edit tasks")
-									: t("Log extra work in one tap. Complete listed tasks from To do.")}
+								{isEditMode ? t("Add or edit tasks") : t("Log work in one tap. Taps count towards your listed tasks.")}
 							</CardDescription>
 						</div>
 						<div className="flex items-center gap-1">

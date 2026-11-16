@@ -3,8 +3,6 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { getServerT } from "@/lib/i18nServer";
-import { DURATION_KEYS, type DurationKey, getBucketPoints } from "@/lib/points";
 import {
 	presetApprovalOverrideSchema,
 	presetBucketSchema,
@@ -13,9 +11,9 @@ import {
 } from "@/lib/presetInput";
 import { createPresetWithOrdering } from "@/lib/presetTaskOrderManagement";
 import { prisma } from "@/lib/prisma";
-import { broadcastPush, isPushConfigured } from "@/lib/push";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { ensureAssignedTaskCapacity, getAssignedTaskStatus, lockAssignedTask } from "@/server/assignedTaskState";
+import { notifyTaskCompleted, writePresetCompletion } from "@/server/presetCompletion";
 import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
 const assignmentFieldsSchema = z.object({
@@ -66,8 +64,6 @@ const deleteAssignedTaskSchema = z.object({
 	householdId: z.string().min(1),
 	id: z.string(),
 });
-
-const isDurationKey = (bucket: string): bucket is DurationKey => DURATION_KEYS.includes(bucket as DurationKey);
 
 type AssignmentFields = z.infer<typeof assignmentFieldsSchema>;
 
@@ -246,14 +242,6 @@ export const assignedTasksRouter = router({
 				throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });
 			}
 
-			const membership = await tx.householdMember.findUnique({
-				where: { householdId_userId: { householdId, userId } },
-				select: { requiresApprovalDefault: true },
-			});
-			if (!membership) {
-				throw new TRPCError({ code: "FORBIDDEN", message: "Household membership not found" });
-			}
-
 			// Use the same instant for the eligibility check and the saved completion,
 			// even if the request crosses a household-local cadence boundary.
 			const completedAt = new Date();
@@ -265,54 +253,17 @@ export const assignedTasksRouter = router({
 				timeZone: task.household.timeZone ?? DEFAULT_TIME_ZONE,
 			});
 
-			const bucket = isDurationKey(task.preset.bucket) ? task.preset.bucket : "QUICK";
-			const override = task.preset.approvalOverride;
-			const requiresApproval = override === "REQUIRE" || (override !== "SKIP" && membership.requiresApprovalDefault);
-			const status = requiresApproval ? "PENDING" : "APPROVED";
-			const entry = await tx.pointLog.create({
-				data: {
-					householdId,
-					userId,
-					kind: "PRESET",
-					duration: bucket,
-					points: getBucketPoints(bucket),
-					description: task.preset.label,
-					presetId: task.preset.id,
-					status,
-					assignedTaskId: task.id,
-					createdAt: completedAt,
-				},
+			const entry = await writePresetCompletion(tx, {
+				householdId,
+				userId,
+				preset: task.preset,
+				task,
+				at: completedAt,
 			});
-			if (!task.isRecurring && status === "APPROVED") {
-				await tx.assignedTask.update({
-					where: { id: task.id },
-					data: { status: await getAssignedTaskStatus(tx, task, householdId) },
-				});
-			}
 			return { entry, task };
 		});
 
-		if (isPushConfigured()) {
-			try {
-				const t = await getServerT(ctx.session.user.language);
-				const actor = ctx.session.user.name ?? ctx.session.user.email ?? t("Someone");
-				const params = { actor, task: task.preset.label, assignee: task.assignedTo?.name ?? task.assignedTo?.email };
-				const body =
-					task.assignedToId !== userId && params.assignee
-						? entry.status === "PENDING"
-							? t("{{actor}} completed {{assignee}}'s {{task}}, awaiting approval", params)
-							: t("{{actor}} completed {{assignee}}'s {{task}}", params)
-						: entry.status === "PENDING"
-							? t("{{actor}} completed {{task}}, awaiting approval", params)
-							: t("{{actor}} completed {{task}}", params);
-				await broadcastPush(
-					{ title: t("Task completed"), body, url: "/", icon: "/icon-192.png", badge: "/icon-192.png" },
-					{ householdId, excludeUserId: userId },
-				);
-			} catch (error) {
-				console.error("[push] notify failed", error);
-			}
-		}
+		await notifyTaskCompleted({ householdId, user: ctx.session.user, entry, task });
 		return { entry };
 	}),
 });

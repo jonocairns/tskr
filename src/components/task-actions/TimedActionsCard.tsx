@@ -32,6 +32,7 @@ export const TimedActionsCard = () => {
 
 	const createLogMutation = trpc.logs.create.useMutation({
 		onSuccess: (data) => {
+			if (data.outcome !== "logged") return;
 			const isPending = data.entry.status === "PENDING";
 			setDescription("");
 			setDurationMinutes("");

@@ -12,7 +12,13 @@ import { prisma } from "@/lib/prisma";
 import { broadcastPush, isPushConfigured } from "@/lib/push";
 import { releaseRewardAllocations } from "@/lib/rewardMonthlyAllowances";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
-import { ensureAssignedTaskCapacity, getAssignedTaskStatus } from "@/server/assignedTaskState";
+import {
+	ensureAssignedTaskCapacity,
+	getAssignedTaskStatus,
+	hasAssignedTaskCapacity,
+	lockAssignedTask,
+} from "@/server/assignedTaskState";
+import { notifyTaskCompleted, writePresetCompletion } from "@/server/presetCompletion";
 import { householdProcedure, protectedProcedure, router } from "@/server/trpc";
 
 const presetSchema = z
@@ -21,12 +27,20 @@ const presetSchema = z
 		type: z.literal("preset"),
 		presetKey: z.string().min(1).optional(),
 		presetId: z.string().min(1).optional(),
+		assignedTaskId: z.string().min(1).optional(),
+		asExtra: z.boolean().optional(),
 		description: z.string().max(120).optional(),
 	})
 	.refine((data) => Boolean(data.presetKey) !== Boolean(data.presetId), {
 		message: "Provide presetKey or presetId",
 		path: ["presetKey"],
-	});
+	})
+	.refine(
+		(data) =>
+			!(data.assignedTaskId && data.asExtra !== undefined) &&
+			(!(data.assignedTaskId || data.asExtra !== undefined) || !!data.presetId),
+		{ message: "Matching options require presetId and cannot be combined" },
+	);
 
 const timedSchema = z.object({
 	householdId: z.string().min(1),
@@ -135,47 +149,111 @@ export const logsRouter = router({
 			await notifyTask(entry.description, entry.points);
 			const totalPoints = await getTotalPoints();
 
-			return { entry, totalPoints };
+			return { outcome: "logged" as const, entry, totalPoints, countedTowards: null };
 		};
 
 		try {
 			if (input.type === "preset") {
 				if (input.presetId) {
-					const preset = await prisma.presetTask.findFirst({
-						where: {
-							id: input.presetId,
-							...getVisiblePresetWhere(householdId, userId),
-						},
-						select: {
-							id: true,
-							label: true,
-							bucket: true,
-							approvalOverride: true,
-						},
+					const result = await prisma.$transaction(async (tx) => {
+						await lockAssignedTask(tx, "", householdId);
+						const preset = await tx.presetTask.findFirst({
+							where: { id: input.presetId, ...getVisiblePresetWhere(householdId, userId) },
+						});
+						if (!preset || !DURATION_KEYS.includes(preset.bucket as DurationKey)) {
+							throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown quick log task" });
+						}
+						const at = new Date();
+						const candidates =
+							preset.isShared && !input.asExtra
+								? await tx.assignedTask.findMany({
+										where: {
+											householdId,
+											presetId: preset.id,
+											status: "ACTIVE",
+											archivedAt: null,
+											assignedAt: { lte: at },
+										},
+										include: {
+											assignedTo: { select: { name: true, email: true } },
+											household: { select: { timeZone: true } },
+										},
+										orderBy: [{ assignedAt: "asc" }, { id: "asc" }],
+									})
+								: [];
+						let target: (typeof candidates)[number] | null = null;
+						const summary = (task: (typeof candidates)[number]) => ({
+							id: task.id,
+							label: preset.label,
+							assigneeName: task.assignedTo?.name ?? task.assignedTo?.email ?? null,
+						});
+						if (input.assignedTaskId) {
+							target = candidates.find((task) => task.id === input.assignedTaskId) ?? null;
+							if (!target) throw new TRPCError({ code: "BAD_REQUEST", message: "Task is not active" });
+							await ensureAssignedTaskCapacity({
+								tx,
+								task: target,
+								householdId,
+								at,
+								timeZone: target.household.timeZone ?? DEFAULT_TIME_ZONE,
+							});
+						} else {
+							const tiers = [
+								candidates.filter((task) => task.assignedToId === userId),
+								candidates.filter((task) => task.assignedToId === null),
+								candidates.filter((task) => task.assignedToId !== null && task.assignedToId !== userId),
+							];
+							for (const [tier, tasks] of tiers.entries()) {
+								for (const task of tasks) {
+									if (
+										await hasAssignedTaskCapacity({
+											tx,
+											task,
+											householdId,
+											at,
+											timeZone: task.household.timeZone ?? DEFAULT_TIME_ZONE,
+										})
+									) {
+										target = task;
+										break;
+									}
+								}
+								if (target && tier === 2) return { outcome: "needsConfirmation" as const, task: summary(target) };
+								if (target) break;
+							}
+						}
+						const entry = await writePresetCompletion(tx, {
+							householdId,
+							userId,
+							preset,
+							task: target,
+							at,
+							description: input.description,
+						});
+						return {
+							outcome: "logged" as const,
+							entry,
+							target: target ? { ...target, preset } : null,
+							countedTowards: target ? summary(target) : null,
+						};
 					});
-
-					if (!preset) {
-						throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown quick log task" });
+					if (result.outcome === "needsConfirmation") return result;
+					if (result.target) {
+						await notifyTaskCompleted({
+							householdId,
+							user: ctx.session.user,
+							entry: result.entry,
+							task: result.target,
+						});
+					} else {
+						await notifyTask(result.entry.description, result.entry.points);
 					}
-
-					const bucket = DURATION_KEYS.includes(preset.bucket as DurationKey) ? (preset.bucket as DurationKey) : null;
-
-					if (!bucket) {
-						throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown quick log task" });
-					}
-
-					const requiresApproval = resolveRequiresApproval(preset.approvalOverride);
-					const status = requiresApproval ? "PENDING" : "APPROVED";
-					return createEntry({
-						householdId,
-						userId,
-						kind: "PRESET",
-						duration: bucket,
-						points: getBucketPoints(bucket),
-						description: input.description?.trim() || preset.label,
-						presetId: preset.id,
-						status,
-					});
+					return {
+						outcome: "logged" as const,
+						entry: result.entry,
+						totalPoints: await getTotalPoints(),
+						countedTowards: result.countedTowards,
+					};
 				}
 
 				const preset = findPreset(input.presetKey ?? "");

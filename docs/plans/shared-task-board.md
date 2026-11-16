@@ -20,7 +20,7 @@ Sized for how tskr runs: one container, one Node process (`Dockerfile:70`), one 
 
 - Claiming, holds or locks; bounties.
 - Free-text items, lists or big cleans, templates. Tasks created by DOERs. Changes to personal presets.
-- Matching ordinary preset logs to board tasks.
+- Reversed by Tasks hub PR 6: shared Quick log preset taps match listed tasks (own, then Open, then another member's after confirmation).
 - A shared "outstanding work" helper for the dashboard and week view.
 
 ## 2. Already on main (#156)
@@ -142,7 +142,7 @@ Commit order inside it: schema and migration; server and harness tests; dashboar
 
 - A task's assignee cannot undo someone else's completion of it; the completer or an approver can.
 - A sole approver cannot approve their own completion of a preset set to REQUIRE, as today.
-- Ordinary preset logging does not advance board tasks.
+- Resolved in Tasks hub PR 6: shared Quick log taps advance matching listed tasks; unmatched taps remain extra work.
 - Deleting a preset removes its tasks (with a warning). Existing tasks on personal presets show their labels to everyone (settled).
 - Lowering a recurring target below progress, or changing the cadence interval, can leave a period above target; the task reads as met.
 - Audit entries do not show which task or assignee a completion belonged to.

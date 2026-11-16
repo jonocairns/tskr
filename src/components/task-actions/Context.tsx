@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState, useTransition } from "react";
 
+import { CountTowardsDialog } from "@/components/task-actions/CountTowardsDialog";
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
 import { DEFAULT_DURATION_BUCKET, type DurationKey, PRESET_TASKS } from "@/lib/points";
 import { trpc } from "@/lib/trpc/react";
+
+type PresetPayload = { presetKey?: string; presetId?: string; assignedTaskId?: string; asExtra?: boolean };
 
 type TaskActionsContextValue = {
 	householdId: string;
@@ -26,7 +29,7 @@ type TaskActionsContextValue = {
 	isPresetPending: boolean;
 	startTransition: (callback: () => void) => void;
 	startPresetTransition: (callback: () => void) => void;
-	logPreset: (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => void;
+	logPreset: (payload: PresetPayload, overrideNote?: string) => void;
 };
 
 type TaskActionsProviderProps = {
@@ -48,6 +51,11 @@ export const TaskActionsProvider = ({
 }: TaskActionsProviderProps) => {
 	const defaultBucket = DEFAULT_DURATION_BUCKET;
 	const [note, setNote] = useState("");
+	const [confirmation, setConfirmation] = useState<{
+		task: { id: string; label: string; assigneeName: string | null };
+		payload: PresetPayload;
+		note: string;
+	} | null>(null);
 	const [customPresets, setCustomPresets] = useState(presets);
 	const [isPresetPending, startPresetTransition] = useTransition();
 
@@ -57,18 +65,41 @@ export const TaskActionsProvider = ({
 	const utils = trpc.useUtils();
 
 	const createLogMutation = trpc.logs.create.useMutation({
-		onSuccess: (data) => {
+		onSuccess: (data, variables) => {
+			if (data.outcome === "needsConfirmation") {
+				setConfirmation({
+					task: data.task,
+					payload: { presetId: variables.type === "preset" ? variables.presetId : undefined },
+					note: variables.description ?? "",
+				});
+				return;
+			}
+			setConfirmation(null);
 			const isPending = data.entry.status === "PENDING";
 			setNote("");
 			toast({
-				title: isPending ? t("Submitted for approval") : t("Task logged"),
-				description: isPending ? t("Task logged and waiting for approval.") : t("Task recorded and points added."),
+				title: data.countedTowards
+					? t("Counted towards {{task}}", { task: data.countedTowards.label })
+					: isPending
+						? t("Submitted for approval")
+						: t("Task logged"),
+				description: data.countedTowards
+					? isPending
+						? t("Completion logged and waiting on approval.")
+						: t("Completion logged and points added.")
+					: isPending
+						? t("Task logged and waiting for approval.")
+						: t("Task recorded and points added."),
 				variant: isPending ? "warning" : "success",
 			});
 			utils.logs.invalidate();
 			router.refresh();
 		},
 		onError: (error) => {
+			if (error.data?.code === "BAD_REQUEST") {
+				setConfirmation(null);
+				router.refresh();
+			}
 			toast({
 				title: t("Unable to log task"),
 				description: error.message ?? t("Please try again."),
@@ -93,7 +124,7 @@ export const TaskActionsProvider = ({
 		sortOrder: task.sortOrder,
 	}));
 
-	const logPreset = (payload: { presetKey?: string; presetId?: string }, overrideNote?: string) => {
+	const logPreset = (payload: PresetPayload, overrideNote?: string) => {
 		const noteValue = overrideNote ?? note.trim();
 		createLogMutation.mutate({
 			householdId,
@@ -127,6 +158,18 @@ export const TaskActionsProvider = ({
 			}}
 		>
 			{children}
+			<CountTowardsDialog
+				task={confirmation?.task ?? null}
+				disabled={createLogMutation.isPending}
+				onCancel={() => setConfirmation(null)}
+				onCount={() => {
+					if (confirmation)
+						logPreset({ ...confirmation.payload, assignedTaskId: confirmation.task.id }, confirmation.note);
+				}}
+				onExtra={() => {
+					if (confirmation) logPreset({ ...confirmation.payload, asExtra: true }, confirmation.note);
+				}}
+			/>
 		</TaskActionsContext.Provider>
 	);
 };

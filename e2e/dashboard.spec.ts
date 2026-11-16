@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { expectBalance, history, openDashboard, taskTile } from "./support/dashboard";
-import { createApprovedLog, createHousehold, createPreset } from "./support/db";
+import { expectBalance, history, openDashboard, openTasks, taskTile } from "./support/dashboard";
+import { createApprovedLog, createAssignment, createHousehold, createPreset } from "./support/db";
 import { AUTH_STATE } from "./support/env";
 
 test.use({ storageState: AUTH_STATE.member });
@@ -52,4 +52,20 @@ test("claims a reward once the balance reaches the threshold", async ({ page }) 
 	await expect(history(page).getByRole("row", { name: /Reward claimed/ })).toContainText("-50");
 	await expectBalance(page, 0);
 	await expect(page.getByRole("button", { name: "Keep earning" })).toBeDisabled();
+});
+
+test("Quick log counts towards a DOER's listed task without an extra badge", async ({ page }) => {
+	const { householdId, userIds } = await createHousehold([
+		{ user: "approver", role: "APPROVER" },
+		{ user: "member", role: "DOER" },
+	]);
+	const label = "Water the listed plants";
+	const { presetId } = await createPreset({ householdId, createdById: userIds.approver, label, bucket: "QUICK" });
+	await createAssignment({ householdId, presetId, assignedToId: userIds.member, assignedById: userIds.approver });
+	await openDashboard(page, householdId);
+	await taskTile(page, label).click();
+	await expect(page.getByText(`Counted towards ${label}`, { exact: true })).toBeVisible();
+	await openTasks(page, householdId, "tab=done&userId=all");
+	await expect(page.getByRole("listitem").filter({ hasText: label })).toBeVisible();
+	await expect(page.getByText("Quick log", { exact: true })).toHaveCount(0);
 });

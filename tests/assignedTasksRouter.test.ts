@@ -698,3 +698,171 @@ test.each(["approve", "reject", "revert"] as const)(
 		expect((await prisma.pointLog.findUniqueOrThrow({ where: { id: log.id } })).assignedTaskId).toBe(task.id);
 	},
 );
+
+const quickLog = (options: { assignedTaskId?: string; asExtra?: boolean } = {}) =>
+	ownLogs.create({ householdId, type: "preset", presetId: "preset", ...options });
+
+test("Quick log uses the same completion fields and approval override as To do", async () => {
+	const task = await makeTask({ cadenceTarget: 2 });
+	const tapped = await quickLog();
+	const completed = await complete.complete({ householdId, id: task.id });
+	expect(tapped.outcome).toBe("logged");
+	if (tapped.outcome !== "logged") throw new Error("Expected log");
+	expect(tapped.countedTowards).toEqual({ id: task.id, label: "Vacuum", assigneeName: "Sam" });
+	for (const key of ["points", "status", "assignedTaskId", "duration", "presetId", "kind", "description"] as const) {
+		expect(tapped.entry[key]).toEqual(completed.entry[key]);
+	}
+	expect(tapped.entry.status).toBe("PENDING");
+});
+
+test("Quick log prioritizes own, then Open, before another member's task", async () => {
+	await makeTask({ assignedToId: "approver" });
+	const open = await makeTask({ assignedToId: null });
+	const mine = await makeTask();
+	const first = await quickLog();
+	const second = await quickLog();
+	expect(first).toMatchObject({ outcome: "logged", entry: { assignedTaskId: mine.id } });
+	expect(second).toMatchObject({ outcome: "logged", entry: { assignedTaskId: open.id } });
+	expect(await quickLog()).toMatchObject({ outcome: "needsConfirmation" });
+});
+
+test("Quick log chooses the oldest Open task, breaking ties by id", async () => {
+	await makeTask({ id: "later", assignedToId: null, assignedAt: new Date("2024-02-01") });
+	await makeTask({ id: "b", assignedToId: null });
+	const first = await makeTask({ id: "a", assignedToId: null });
+	expect(await quickLog()).toMatchObject({ outcome: "logged", entry: { assignedTaskId: first.id } });
+});
+
+test("another member's match reserves nothing; explicit confirmation and extra are respected", async () => {
+	const task = await makeTask({ assignedToId: "approver" });
+	jest.mocked(isPushConfigured).mockReturnValue(true);
+	expect(await quickLog()).toEqual({
+		outcome: "needsConfirmation",
+		task: { id: task.id, label: "Vacuum", assigneeName: "Alex" },
+	});
+	expect(await prisma.pointLog.count()).toBe(0);
+	expect(broadcastPush).not.toHaveBeenCalled();
+	expect(await quickLog({ asExtra: true })).toMatchObject({
+		outcome: "logged",
+		entry: { assignedTaskId: null },
+		countedTowards: null,
+	});
+	expect(await quickLog({ assignedTaskId: task.id })).toMatchObject({
+		outcome: "logged",
+		entry: { assignedTaskId: task.id },
+	});
+});
+
+test.each(["APPROVED", "PENDING", "archived", "COMPLETED", "future"] as const)(
+	"Quick log falls back to extra for a %s task",
+	async (state) => {
+		const task = await makeTask({
+			...(state === "archived" ? { archivedAt: new Date() } : {}),
+			...(state === "COMPLETED" ? { status: "COMPLETED" } : {}),
+			...(state === "future" ? { assignedAt: new Date("2099-01-01") } : {}),
+		});
+		if (state === "APPROVED" || state === "PENDING") await makeLog(task, { status: state });
+		expect(await quickLog()).toMatchObject({
+			outcome: "logged",
+			entry: { assignedTaskId: null },
+			countedTowards: null,
+		});
+	},
+);
+
+test("concurrent Quick logs both succeed but only one fills the listed task", async () => {
+	const task = await makeTask();
+	const results = await Promise.all([quickLog(), quickLog()]);
+	expect(
+		results.filter((result) => result.outcome === "logged" && result.entry.assignedTaskId === task.id),
+	).toHaveLength(1);
+	expect(await qualifyingCount(task.id)).toBe(1);
+	expect(await prisma.pointLog.count()).toBe(2);
+});
+
+test("Quick log and To do serialize their capacity checks", async () => {
+	const task = await makeTask();
+	await Promise.allSettled([quickLog(), complete.complete({ householdId, id: task.id })]);
+	expect(await qualifyingCount(task.id)).toBe(1);
+});
+
+test("stale explicit confirmation never silently falls back to extra", async () => {
+	const task = await makeTask({ assignedToId: "approver" });
+	await quickLog();
+	await complete.complete({ householdId, id: task.id });
+	const written = await prisma.pointLog.count();
+	await expect(quickLog({ assignedTaskId: task.id })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	expect(await prisma.pointLog.count()).toBe(written);
+});
+
+test("approved one-off Quick log completes, undo reopens, and the next tap matches", async () => {
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { approvalOverride: "SKIP" } });
+	const task = await makeTask({ isRecurring: false });
+	const result = await quickLog();
+	if (result.outcome !== "logged") throw new Error("Expected log");
+	expect((await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).status).toBe("COMPLETED");
+	await ownLogs.updateStatus({ id: result.entry.id, action: "revert" });
+	expect((await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).status).toBe("ACTIVE");
+	expect(await quickLog()).toMatchObject({ outcome: "logged", entry: { assignedTaskId: task.id } });
+});
+
+test("personal presets, timed work, and built-in preset keys never match", async () => {
+	const task = await makeTask();
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { isShared: false, createdById: "doer" } });
+	expect(await quickLog()).toMatchObject({ outcome: "logged", countedTowards: null, entry: { assignedTaskId: null } });
+	expect(await ownLogs.create({ householdId, type: "timed", bucket: "QUICK", description: "Vacuum" })).toMatchObject({
+		outcome: "logged",
+		countedTowards: null,
+		entry: { assignedTaskId: null },
+	});
+	const { PRESET_TASKS } = await import("@/lib/points");
+	expect(await ownLogs.create({ householdId, type: "preset", presetKey: PRESET_TASKS[0].key })).toMatchObject({
+		outcome: "logged",
+		countedTowards: null,
+		entry: { assignedTaskId: null },
+	});
+	expect(await qualifyingCount(task.id)).toBe(0);
+	await expect(quickLog({ assignedTaskId: task.id })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+});
+
+test.each([false, true])("Quick log pushes after commit and tolerates push failure (%s)", async (fail) => {
+	const task = await makeTask();
+	jest.mocked(isPushConfigured).mockReturnValue(true);
+	let committedCount: number | undefined;
+	jest.mocked(broadcastPush).mockImplementation(async () => {
+		const { PrismaClient } = jest.requireActual<typeof import("@prisma/client")>("@prisma/client");
+		const { PrismaBetterSqlite3 } = jest.requireActual<typeof import("@prisma/adapter-better-sqlite3")>(
+			"@prisma/adapter-better-sqlite3",
+		);
+		const reader = new PrismaClient({
+			adapter: new PrismaBetterSqlite3({ url: `file:${path.join(directory, "test.db")}` }),
+		});
+		try {
+			committedCount = await reader.pointLog.count({ where: { assignedTaskId: task.id } });
+		} finally {
+			await reader.$disconnect();
+		}
+		if (fail) throw new Error("Push unavailable");
+		return { sent: 1, removed: 0 };
+	});
+	const error = jest.spyOn(console, "error").mockImplementation(() => {});
+	try {
+		expect(await quickLog()).toMatchObject({ outcome: "logged", entry: { assignedTaskId: task.id } });
+		expect(committedCount).toBe(1);
+		expect(broadcastPush).toHaveBeenCalledWith(expect.objectContaining({ title: "Task completed" }), {
+			householdId,
+			excludeUserId: "doer",
+		});
+		if (fail) expect(error).toHaveBeenCalledWith("[push] notify failed", expect.any(Error));
+	} finally {
+		error.mockRestore();
+	}
+});
+
+test("matching options require presetId and reject conflicting instructions", async () => {
+	await expect(quickLog({ asExtra: true, assignedTaskId: "task" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	await expect(ownLogs.create({ householdId, type: "preset", presetKey: "bins", asExtra: true })).rejects.toMatchObject(
+		{ code: "BAD_REQUEST" },
+	);
+	expect(await prisma.pointLog.count()).toBe(0);
+});
