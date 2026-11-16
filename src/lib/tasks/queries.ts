@@ -48,7 +48,7 @@ export const getTasksManageData = async ({
 			orderBy: { createdAt: "asc" },
 		}),
 		prisma.presetTask.findMany({
-			where: { householdId, isShared: true },
+			where: { householdId, isShared: true, archivedAt: null },
 			orderBy: { createdAt: "asc" },
 			select: {
 				id: true,

@@ -15,8 +15,13 @@ test("logs a task from the Quick log grid", async ({ page }) => {
 
 	await taskTile(page, "Water the plants").click();
 
+	// Undo from the toast before its timer runs out; History has its own Undo button.
+	const toastUndo = page.getByRole("region", { name: /Notifications/ }).getByRole("button", { name: "Undo" });
+	await expect(toastUndo).toBeVisible();
 	await expect(history(page).getByRole("row", { name: /Water the plants/ })).toContainText("+6");
-	await expectBalance(page, 6);
+	await toastUndo.click();
+	await expect(history(page).getByRole("row", { name: /Water the plants/ })).toContainText("Reverted");
+	await expectBalance(page, 0);
 });
 
 test("undoes a logged task", async ({ page }) => {

@@ -28,9 +28,10 @@ last completion and next reset dates.
 
 Pending submissions count toward assignment progress while awaiting approval;
 points are added after approval. Rejected or reverted submissions do not count.
-Use the assignment's Complete action to record its progress: logging the same
-preset separately does not complete the assignment. Changing recurrence preserves
-existing completion history.
+Use a task's Complete action or tap its shared Quick log item to record progress.
+Quick log matches your task first, then Open, then another member's task;
+unmatched taps record extra work. Undo from the Quick log toast or History.
+Changing recurrence preserves existing completion history.
 
 ## Reward claim limits
 

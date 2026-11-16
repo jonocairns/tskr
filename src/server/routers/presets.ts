@@ -15,6 +15,7 @@ import { createPresetWithOrdering } from "@/lib/presetTaskOrderManagement";
 import { shouldClearTemplateKeyOnPresetUpdate } from "@/lib/presetTemplateKey";
 import { getVisiblePresetWhere } from "@/lib/presetVisibility";
 import { prisma } from "@/lib/prisma";
+import { lockAssignedTask } from "@/server/assignedTaskState";
 import { approverProcedure, householdProcedure, router } from "@/server/trpc";
 
 const listPresetsSchema = z.object({
@@ -135,7 +136,7 @@ export const presetsRouter = router({
 		const userId = ctx.session.user.id;
 
 		const preset = await prisma.presetTask.findFirst({
-			where: { id, householdId },
+			where: { id, householdId, archivedAt: null },
 			select: {
 				id: true,
 				createdById: true,
@@ -222,18 +223,24 @@ export const presetsRouter = router({
 		const householdId = ctx.household.id;
 		const userId = ctx.session.user.id;
 
-		const preset = await prisma.presetTask.findFirst({
-			where: { id: input.id, createdById: userId, householdId },
-			select: { id: true },
+		return prisma.$transaction(async (tx) => {
+			// A no-match update still acquires SQLite's write lock before any reads.
+			await lockAssignedTask(tx, "", householdId);
+			const preset = await tx.presetTask.findFirst({
+				where: { id: input.id, createdById: userId, householdId, archivedAt: null },
+				select: { id: true },
+			});
+			if (!preset) throw new TRPCError({ code: "NOT_FOUND", message: "Quick log task not found" });
+			const archivedAt = new Date();
+			await tx.presetTask.update({ where: { id: preset.id }, data: { archivedAt } });
+			// Any status: reverting an approved one-off must not resurface an archived item's task.
+			await tx.assignedTask.updateMany({
+				where: { householdId, presetId: preset.id, archivedAt: null },
+				data: { archivedAt },
+			});
+			await tx.presetTaskOrder.deleteMany({ where: { presetId: preset.id } });
+			return { ok: true };
 		});
-
-		if (!preset) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Quick log task not found" });
-		}
-
-		await prisma.presetTask.delete({ where: { id: input.id } });
-
-		return { ok: true };
 	}),
 
 	reorder: approverProcedure(reorderPresetsSchema).mutation(async ({ ctx, input }) => {

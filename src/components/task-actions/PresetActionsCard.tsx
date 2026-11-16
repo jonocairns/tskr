@@ -65,19 +65,27 @@ export const PresetActionsCard = () => {
 			? sortedLocalizedPresets.filter((preset) => normalizeText(preset.label).includes(normalizedQuery))
 			: sortedLocalizedPresets;
 
+	const logTask = (taskId: string) =>
+		logPreset(
+			{ presetId: taskId },
+			undefined,
+			() => setLastPressedTaskId(taskId),
+			() => setLastPressedTaskId((current) => (current === taskId ? null : current)),
+		);
+
 	const handleTaskClick = (taskId: string) => {
 		if (lastPressedTaskId === taskId) {
 			setPendingTaskId(taskId);
 			setConfirmDialogOpen(true);
 		} else {
-			logPreset({ presetId: taskId }, undefined, () => setLastPressedTaskId(taskId));
+			logTask(taskId);
 		}
 	};
 
 	const handleConfirmLog = () => {
 		if (pendingTaskId) {
 			const taskId = pendingTaskId;
-			logPreset({ presetId: taskId }, undefined, () => setLastPressedTaskId(taskId));
+			logTask(taskId);
 		}
 		setConfirmDialogOpen(false);
 		setPendingTaskId(null);

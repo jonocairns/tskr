@@ -361,6 +361,7 @@ model PresetTask {
   iconKey     String?
   isShared    Boolean   @default(false)
   approvalOverride ApprovalOverride?
+  archivedAt DateTime?
   logs        PointLog[]
   orderEntries PresetTaskOrder[]
   assignedTasks AssignedTask[]

@@ -854,3 +854,160 @@ test.each([false, true])("Quick log pushes after commit and tolerates push failu
 		error.mockRestore();
 	}
 });
+
+test("archiving a Quick log item preserves provenance and archives tasks of every status", async () => {
+	const active = await makeTask();
+	const completed = await makeTask({ isRecurring: false, status: "COMPLETED" });
+	const log = await makeLog(active);
+	await makeLog(completed);
+	await prisma.presetTaskOrder.create({ data: { householdId, userId: "approver", presetId: "preset", sortOrder: 0 } });
+	await presets.delete({ householdId, id: "preset" });
+	const item = await prisma.presetTask.findUniqueOrThrow({ where: { id: "preset" } });
+	expect(item.archivedAt).toBeInstanceOf(Date);
+	for (const id of [active.id, completed.id]) {
+		expect(await prisma.assignedTask.findUniqueOrThrow({ where: { id } })).toMatchObject({
+			archivedAt: item.archivedAt,
+		});
+	}
+	expect(await prisma.pointLog.findUniqueOrThrow({ where: { id: log.id } })).toMatchObject({
+		presetId: "preset",
+		assignedTaskId: active.id,
+	});
+	expect(await prisma.presetTaskOrder.count()).toBe(0);
+	expect(await presets.list({ householdId })).toEqual({ presets: [] });
+	const dashboard = await getDashboardData("doer", householdId);
+	expect(dashboard).toMatchObject({ presets: [], assignedTasks: [], hasActiveAssignedTasks: false });
+	expect(await getTasksManageData({ householdId, userId: "approver", timeZone: "Pacific/Auckland" })).toMatchObject({
+		presets: [],
+		tasks: [],
+	});
+	const done = await getWeekViewData({
+		householdId,
+		userId: "all",
+		timeZone: "Pacific/Auckland",
+		range: { start: new Date(log.createdAt.getTime() - 1), end: new Date(Date.now() + 1000), labelKey: "calendarWeek" },
+		dateFormat: "DMY",
+		timeFormat: "H24",
+	});
+	expect(done.timeline).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				id: log.id,
+				assignedTaskId: active.id,
+				assignedTo: expect.objectContaining({ id: "doer" }),
+			}),
+		]),
+	);
+});
+
+test("archived items reject stale taps, creates, edits, deletes and reorder", async () => {
+	await presets.delete({ householdId, id: "preset" });
+	await expect(quickLog()).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Unknown quick log task" });
+	await expect(
+		manage.create({
+			householdId,
+			presetId: "preset",
+			assigneeId: "doer",
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 1440,
+			isRecurring: true,
+		}),
+	).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	await expect(presets.update({ householdId, id: "preset", label: "New" })).rejects.toMatchObject({
+		code: "NOT_FOUND",
+	});
+	await expect(presets.delete({ householdId, id: "preset" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+	await expect(presets.reorder({ householdId, orderedPresetIds: ["preset"] })).rejects.toBeDefined();
+	expect(await prisma.pointLog.count()).toBe(0);
+	expect(await prisma.assignedTask.count()).toBe(0);
+});
+
+test("Undo cannot resurface an archived completed one-off", async () => {
+	await prisma.presetTask.update({ where: { id: "preset" }, data: { approvalOverride: "SKIP" } });
+	const task = await makeTask({ isRecurring: false });
+	const { entry } = await quickLog();
+	await presets.delete({ householdId, id: "preset" });
+	await ownLogs.updateStatus({ id: entry.id, action: "revert" });
+	expect(await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
+		status: "ACTIVE",
+		archivedAt: expect.any(Date),
+	});
+	expect((await getDashboardData("doer", householdId)).hasActiveAssignedTasks).toBe(false);
+	expect(
+		await getTasksTodoData({ householdId, actingUserId: "doer", userId: "all", timeZone: "Pacific/Auckland" }),
+	).toEqual([]);
+});
+
+test("re-creating a same-named item starts fresh without changing old logs", async () => {
+	const old = await quickLog();
+	await presets.delete({ householdId, id: "preset" });
+	const fresh = await manage.createWithPreset({
+		householdId,
+		preset: { label: "Vacuum", bucket: "QUICK" },
+		assigneeId: "doer",
+		cadenceTarget: 1,
+		cadenceIntervalMinutes: 1440,
+		isRecurring: true,
+	});
+	expect(fresh.preset.id).not.toBe("preset");
+	expect(await prisma.presetTask.findUniqueOrThrow({ where: { id: "preset" } })).toMatchObject({
+		archivedAt: expect.any(Date),
+	});
+	expect(await ownLogs.create({ householdId, type: "preset", presetId: fresh.preset.id })).toMatchObject({
+		entry: { assignedTaskId: fresh.assignedTask.id },
+	});
+	expect(await prisma.pointLog.findUniqueOrThrow({ where: { id: old.entry.id } })).toEqual(old.entry);
+});
+
+test("only the creator can archive a Quick log item", async () => {
+	await expect(presetsRouter.createCaller(context("doer")).delete({ householdId, id: "preset" })).rejects.toMatchObject(
+		{ code: "NOT_FOUND" },
+	);
+	expect(await prisma.presetTask.findUniqueOrThrow({ where: { id: "preset" } })).toMatchObject({ archivedAt: null });
+});
+
+const unarchivedTasksOnArchivedItems = () =>
+	prisma.assignedTask.count({ where: { archivedAt: null, preset: { archivedAt: { not: null } } } });
+
+test("a Quick log tap racing an archive keeps its link or is rejected", async () => {
+	const task = await makeTask();
+	const [tap] = await Promise.allSettled([quickLog(), presets.delete({ householdId, id: "preset" })]);
+	expect(await prisma.assignedTask.findUniqueOrThrow({ where: { id: task.id } })).toMatchObject({
+		archivedAt: expect.any(Date),
+	});
+	expect(await unarchivedTasksOnArchivedItems()).toBe(0);
+	if (tap.status === "fulfilled") expect(tap.value.entry.assignedTaskId).toBe(task.id);
+	else expect(tap.reason).toMatchObject({ code: "BAD_REQUEST" });
+});
+
+test("adding a task while its Quick log item is archived never leaves it on an archived item", async () => {
+	const [created] = await Promise.allSettled([
+		manage.create({
+			householdId,
+			presetId: "preset",
+			assigneeId: "doer",
+			cadenceTarget: 1,
+			cadenceIntervalMinutes: 1440,
+			isRecurring: true,
+		}),
+		presets.delete({ householdId, id: "preset" }),
+	]);
+	expect(await unarchivedTasksOnArchivedItems()).toBe(0);
+	if (created.status === "rejected") expect(created.reason).toMatchObject({ code: "BAD_REQUEST" });
+});
+
+test("tap Undo frees pending capacity and remains allowed after approval, but excludes other doers", async () => {
+	const task = await makeTask();
+	const first = await quickLog();
+	await ownLogs.updateStatus({ id: first.entry.id, action: "revert" });
+	expect(await qualifyingCount(task.id)).toBe(0);
+	const second = await quickLog();
+	expect(second.entry.assignedTaskId).toBe(task.id);
+	await approval.updateStatus({ id: second.entry.id, action: "approve" });
+	await prisma.householdMember.create({ data: { householdId, userId: "outsider", role: "DOER" } });
+	await expect(
+		logsRouter.createCaller(context("outsider")).updateStatus({ id: second.entry.id, action: "revert" }),
+	).rejects.toMatchObject({ code: "FORBIDDEN" });
+	await ownLogs.updateStatus({ id: second.entry.id, action: "revert" });
+	expect(await qualifyingCount(task.id)).toBe(0);
+});

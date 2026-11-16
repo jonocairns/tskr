@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useTransition } from "react";
 
 import type { PresetOption, PresetSummary, PresetTemplate } from "@/components/task-actions/types";
+import { ToastAction } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { useTranslation } from "@/lib/i18nClient";
 import { DEFAULT_DURATION_BUCKET, type DurationKey, PRESET_TASKS } from "@/lib/points";
@@ -28,7 +29,7 @@ type TaskActionsContextValue = {
 	isPresetPending: boolean;
 	startTransition: (callback: () => void) => void;
 	startPresetTransition: (callback: () => void) => void;
-	logPreset: (payload: PresetPayload, overrideNote?: string, onLogged?: () => void) => void;
+	logPreset: (payload: PresetPayload, overrideNote?: string, onLogged?: () => void, onUndone?: () => void) => void;
 };
 
 type TaskActionsProviderProps = {
@@ -57,10 +58,30 @@ export const TaskActionsProvider = ({
 	const { toast } = useToast();
 	const { t } = useTranslation();
 	const utils = trpc.useUtils();
+	const onUndoneRef = useRef<(() => void) | undefined>(undefined);
+
+	const revertLogMutation = trpc.logs.updateStatus.useMutation({
+		onSuccess: () => {
+			toast({ title: t("Entry reverted"), description: t("The points from this entry were removed.") });
+			utils.logs.invalidate();
+			router.refresh();
+		},
+		onError: (error) => {
+			toast({
+				title: t("Unable to undo"),
+				description: error.message ?? t("Try again shortly."),
+				variant: "destructive",
+			});
+			router.refresh();
+		},
+	});
 
 	const createLogMutation = trpc.logs.create.useMutation({
 		onSuccess: (data) => {
 			const isPending = data.entry.status === "PENDING";
+			// The toast stays clickable during its exit animation; send one revert per tap.
+			let undoRequested = false;
+			const onUndone = onUndoneRef.current;
 			setNote("");
 			toast({
 				title: data.countedTowards
@@ -81,6 +102,19 @@ export const TaskActionsProvider = ({
 						? t("Task logged and waiting for approval.")
 						: t("Task recorded and points added."),
 				variant: isPending ? "warning" : "success",
+				duration: 8000,
+				action: (
+					<ToastAction
+						altText={t("Undo from History")}
+						onClick={() => {
+							if (undoRequested) return;
+							undoRequested = true;
+							revertLogMutation.mutate({ id: data.entry.id, action: "revert" }, { onSuccess: () => onUndone?.() });
+						}}
+					>
+						{t("Undo")}
+					</ToastAction>
+				),
 			});
 			utils.logs.invalidate();
 			router.refresh();
@@ -113,9 +147,11 @@ export const TaskActionsProvider = ({
 		sortOrder: task.sortOrder,
 	}));
 
-	// onLogged fires only once a log is written, never for an error.
-	const logPreset = (payload: PresetPayload, overrideNote?: string, onLogged?: () => void) => {
+	// onLogged fires only once a log is written, never for an error; onUndone after its toast Undo succeeds.
+	const logPreset = (payload: PresetPayload, overrideNote?: string, onLogged?: () => void, onUndone?: () => void) => {
 		const noteValue = overrideNote ?? note.trim();
+		// Logging is disabled while a log is pending, so one callback is in flight at a time.
+		onUndoneRef.current = onUndone;
 		createLogMutation.mutate(
 			{
 				householdId,

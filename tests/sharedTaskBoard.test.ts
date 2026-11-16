@@ -197,10 +197,10 @@ test("preset deletion loads usage only when opened by an approver and names assi
 	await click("Delete preset");
 	expect(mockUsageQuery).toHaveBeenLastCalledWith({ householdId: "home", id: "preset" }, { enabled: true });
 	expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
-		"This will also remove: Bins (Sam), Vacuum lounge (Open)",
+		"Tasks using it are removed from the list: Bins (Sam), Vacuum lounge (Open)",
 	);
 	expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe(
-		"Delete from quick log and the task list?",
+		"Delete from Quick log and the task list?",
 	);
 	await click("Delete");
 	expect(mockDelete).toHaveBeenCalledTimes(1);
@@ -228,7 +228,7 @@ test("quick-log deletion keeps its short title when there are no current tasks",
 	mockUsage = { ...mockUsage, data: { tasks: [] } };
 	await renderDelete();
 	await click("Delete preset");
-	expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe("Delete from quick log?");
+	expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe("Delete from Quick log?");
 });
 
 test("a selected member's long To do list is expanded", async () => {
