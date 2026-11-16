@@ -26,6 +26,7 @@ export default async function SettingsPage({ params }: Props) {
 				description={t("Manage your account preferences and settings.")}
 				backHref={`/${householdId}`}
 				backLabel={t("Back to dashboard")}
+				backText={t("Dashboard")}
 				user={session.user}
 				household={{ id: householdId, role: membership.role }}
 			/>

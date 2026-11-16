@@ -123,6 +123,7 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 				description={t("To-do tasks and recent completions for your household.")}
 				backHref={`/${householdId}`}
 				backLabel={t("Back to dashboard")}
+				backText={t("Dashboard")}
 				user={session.user}
 				household={{ id: householdId, role: membership.role }}
 			/>
