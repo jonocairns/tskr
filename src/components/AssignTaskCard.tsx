@@ -91,14 +91,14 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 	const createMutation = trpc.assignedTasks.create.useMutation({
 		onSuccess: () => {
 			toast({
-				title: t("Assigned task created"),
+				title: t("Task added"),
 				description: t("The task is now in the queue."),
 			});
 			router.refresh();
 		},
 		onError: (error) => {
 			toast({
-				title: t("Unable to assign task"),
+				title: t("Unable to add task"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
@@ -116,8 +116,8 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 			setNewIconKey(null);
 			setNewApprovalOverride("DEFAULT");
 			toast({
-				title: t("Task created and assigned"),
-				description: t("{{label}} was added to shared presets and the queue.", { label: summary.label }),
+				title: t("Task added"),
+				description: t("{{label}} was created and added to the queue.", { label: summary.label }),
 				variant: "success",
 			});
 			void utils.presets.invalidate();
@@ -125,7 +125,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 		},
 		onError: (error) => {
 			toast({
-				title: t("Unable to assign task"),
+				title: t("Unable to add task"),
 				description: error.message ?? t("Please try again."),
 				variant: "destructive",
 			});
@@ -146,7 +146,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 		if (!presetId) {
 			toast({
 				title: t("Missing details"),
-				description: t("Pick a shared preset to assign."),
+				description: t("Pick a task to add."),
 				variant: "destructive",
 			});
 			return;
@@ -195,8 +195,8 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle className="text-xl">{t("Assign task")}</CardTitle>
-				<CardDescription>{t("Add a shared preset task to the household board, or create a new one.")}</CardDescription>
+				<CardTitle className="text-xl">{t("Add task")}</CardTitle>
+				<CardDescription>{t("Pick an existing shared task or create a new one.")}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<form className="grid gap-4" onSubmit={handleSubmit}>
@@ -208,7 +208,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 									<SelectValue placeholder={t("Select member")} />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value={UNASSIGNED_VALUE}>{t("Unassigned")}</SelectItem>
+									<SelectItem value={UNASSIGNED_VALUE}>{t("Open")}</SelectItem>
 									{sortedMembers.map((member) => (
 										<SelectItem key={member.id} value={member.id}>
 											{member.name ?? member.email ?? t("Unknown")}
@@ -218,10 +218,10 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 							</Select>
 						</div>
 						<div className="grid gap-2">
-							<Label htmlFor="preset">{t("Preset")}</Label>
+							<Label htmlFor="preset">{t("Task")}</Label>
 							<Select value={presetId} onValueChange={handlePresetChange} disabled={disabled}>
 								<SelectTrigger id="preset">
-									<SelectValue placeholder={t("Select preset")} />
+									<SelectValue placeholder={t("Select task")} />
 								</SelectTrigger>
 								<SelectContent>
 									{sortedPresets.map((preset) => (
@@ -238,7 +238,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 						<fieldset className="grid gap-4 rounded-md border border-input p-3 md:grid-cols-2">
 							<legend className="px-1 text-sm font-medium">{t("New shared task")}</legend>
 							<p className="text-xs text-muted-foreground md:col-span-2">
-								{t("Creates a shared preset everyone in the household can use.")}
+								{t("Everyone in the household can see and use this task.")}
 							</p>
 							<div className="grid gap-2 md:col-span-2">
 								<Label htmlFor="new-preset-label">{t("Task name")}</Label>
@@ -348,7 +348,7 @@ export const AssignTaskCard = ({ householdId, members, presets, currentUserId }:
 					</div>
 					<Button type="submit" disabled={disabled}>
 						{disabled ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-						{isCreatingPreset ? t("Create and assign") : t("Assign task")}
+						{t("Add task")}
 					</Button>
 				</form>
 			</CardContent>

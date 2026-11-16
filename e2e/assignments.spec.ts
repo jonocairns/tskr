@@ -49,13 +49,13 @@ test.describe("as an approver", () => {
 		await page.getByRole("link", { name: "Add task" }).click();
 		await expect(page).toHaveURL(new RegExp(`/${householdId}/assignments$`));
 
-		await page.getByRole("combobox", { name: "Preset" }).click();
+		await page.getByRole("combobox", { name: "Task" }).click();
 		await page.getByRole("option", { name: "New task…" }).click();
 		await page.getByLabel("Task name").fill("Water the plants");
-		await page.getByRole("button", { name: "Create and assign" }).click();
+		await page.getByRole("button", { name: "Add task" }).click();
 
-		await expect(page.getByText("Task created and assigned").first()).toBeVisible();
-		await expect(page.getByRole("combobox", { name: "Preset" })).toHaveText("Water the plants");
+		await expect(page.getByText("Task added").first()).toBeVisible();
+		await expect(page.getByRole("combobox", { name: "Task" })).toHaveText("Water the plants");
 
 		// The new task is on the approver's own board, ready to complete.
 		await openDashboard(page, householdId);
