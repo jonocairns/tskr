@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/jonocairns/tskr/compare/1.6.0...1.7.0) (2026-11-16)
+
+
+### Features
+
+* **board:** archive Quick log items, toast Undo, clearer task labels and member-relative To do grouping ([#175](https://github.com/jonocairns/tskr/issues/175)) ([cf48e2b](https://github.com/jonocairns/tskr/commit/cf48e2b157cf1d7b76c2feb5fdedb57a8ca56321))
+* **header:** move back link onto the eyebrow row ([#177](https://github.com/jonocairns/tskr/issues/177)) ([695b601](https://github.com/jonocairns/tskr/commit/695b601d505027605976cbff2d9fbd0a301672d6))
+
 ## [1.6.0](https://github.com/jonocairns/tskr/compare/1.5.0...1.6.0) (2026-11-16)
 
 
