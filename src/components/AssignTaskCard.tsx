@@ -49,7 +49,7 @@ type AssignTaskCardProps = {
 	householdId: string;
 	members: MemberOption[];
 	presets: PresetSummary[];
-	existingTasks: DuplicateTask[];
+	existingTasks: Array<DuplicateTask & { id: string }>;
 	currentUserId: string;
 	onTaskAdded?: (assignedTaskId: string) => void;
 	onViewTask?: (assignedTaskId: string) => void;
@@ -122,6 +122,19 @@ export const AssignTaskCard = ({
 		return () => clearTimeout(confirmation);
 	}, [addCount]);
 
+	// The status's View action would go nowhere once the added task has been removed from the list.
+	const addedSeenRef = useRef(false);
+	useEffect(() => {
+		if (!added) {
+			return;
+		}
+		if (existingTasks.some((task) => task.id === added.id)) {
+			addedSeenRef.current = true;
+		} else if (addedSeenRef.current) {
+			setAdded(null);
+		}
+	}, [added, existingTasks]);
+
 	// Any edit starts the next task, so the previous confirmation no longer applies.
 	const markEdited = () => setAdded(null);
 
@@ -137,6 +150,7 @@ export const AssignTaskCard = ({
 		setCadenceInterval(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
 		setNameError(null);
 		setJustAdded(true);
+		addedSeenRef.current = false;
 		setAdded({ id: assignedTaskId, label });
 		setAddCount((count) => count + 1);
 		setFocusTarget("name");

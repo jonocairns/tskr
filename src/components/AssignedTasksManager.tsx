@@ -2,7 +2,7 @@
 
 import { CheckIcon, Loader2Icon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
 	AlertDialog,
@@ -103,7 +103,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 	const [assigneeFilter, setAssigneeFilter] = useState(ASSIGNEE_ALL_VALUE);
 	const [savedConfirmation, setSavedConfirmation] = useState<{ id: string; count: number } | null>(null);
 	// Screen readers don't reliably announce a focused button's label change, so outcomes are also announced here.
-	const [announcement, setAnnouncement] = useState("");
+	// Keyed by count so an identical message (e.g. saving the same row twice) is re-announced.
+	const [announcement, setAnnouncement] = useState({ text: "", count: 0 });
+	const showAllRef = useRef<HTMLButtonElement>(null);
 	const headingRef = useRef<HTMLDivElement>(null);
 	// After a removal, focus goes to a neighbouring row (or the heading), since the dialog and its trigger unmount.
 	const [focusAfterRemove, setFocusAfterRemove] = useState<{ removedId: string; targetId: string } | null>(null);
@@ -154,8 +156,14 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			const label = task.assigneeName ?? task.assigneeEmail ?? t("Unknown");
 			map.set(task.assigneeId, { id: task.assigneeId, label });
 		}
+		// The selected assignee stays available after their last task is reassigned, so the filter doesn't
+		// silently jump to everyone; the empty state offers the way out instead.
+		const selected = members.find((member) => member.id === assigneeFilter);
+		if (selected && !map.has(selected.id)) {
+			map.set(selected.id, { id: selected.id, label: selected.name ?? selected.email ?? t("Unknown") });
+		}
 		return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-	}, [savedTasks, t]);
+	}, [assigneeFilter, members, savedTasks, t]);
 
 	useEffect(() => {
 		if (assigneeFilter === ASSIGNEE_ALL_VALUE || assigneeFilter === UNASSIGNED_VALUE) {
@@ -174,12 +182,35 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 	const matchesFilter = (task: AssignedTaskRow) =>
 		assigneeFilter === ASSIGNEE_ALL_VALUE ||
 		((savedById.get(task.id) ?? task).assigneeId ?? UNASSIGNED_VALUE) === assigneeFilter;
-	// A row that no longer matches after saving stays until its "Saved" confirmation ends.
-	const filteredTasks = sortedTasks.filter((task) => matchesFilter(task) || task.id === savedConfirmation?.id);
-	const latestFilterRef = useRef({ filteredTasks, matchesFilter });
+	// A row saved out of the current filter stays until the user is done with it: its confirmation has ended,
+	// focus has left it (popups and dialogs it opened count as inside), and it has no new unsaved edits.
+	const [stickyRowId, setStickyRowId] = useState<string | null>(null);
+	const filteredTasks = sortedTasks.filter((task) => matchesFilter(task) || task.id === stickyRowId);
+	const latestRef = useRef({ tasks, isDirty, savedConfirmation });
 	useEffect(() => {
-		latestFilterRef.current = { filteredTasks, matchesFilter };
+		latestRef.current = { tasks, isDirty, savedConfirmation };
 	});
+	const releaseStickyRow = useCallback((taskId: string) => {
+		const { tasks: current, isDirty: dirty, savedConfirmation: confirming } = latestRef.current;
+		const row = current.find((task) => task.id === taskId);
+		if (confirming?.id === taskId || (row && dirty(row))) {
+			return;
+		}
+		setStickyRowId((sticky) => (sticky === taskId ? null : sticky));
+	}, []);
+	const handleRowBlur = (taskId: string) => {
+		// Wait for focus to land, then keep the row if focus is still within it or in a popup it opened.
+		setTimeout(() => {
+			const active = document.activeElement;
+			if (
+				findVisible(`[data-task-id="${taskId}"]`)?.contains(active) ||
+				active?.closest("[data-radix-popper-content-wrapper], [role=alertdialog], [role=dialog]")
+			) {
+				return;
+			}
+			releaseStickyRow(taskId);
+		}, 0);
+	};
 
 	// A just-added row hidden by the assignee filter would make the confirmation point at nothing. This runs
 	// once per added row, so a filter chosen afterwards still applies.
@@ -195,7 +226,10 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		autoRevealedIdRef.current = highlightTaskId;
 		if (!filteredTasks.some((task) => task.id === highlightTaskId)) {
 			setAssigneeFilter(ASSIGNEE_ALL_VALUE);
-			setAnnouncement(t("Showing all assignees so the new task is visible."));
+			setAnnouncement((previous) => ({
+				text: t("Showing all assignees so the new task is visible."),
+				count: previous.count + 1,
+			}));
 		}
 	}, [filteredTasks, highlightTaskId, t, tasks]);
 
@@ -220,33 +254,29 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		});
 	}, [pendingRevealId, tasks]);
 
-	// "Saved" holds the button in place briefly, then hands focus to the row so keyboard users keep their place,
-	// or to a neighbour if the save moved the row out of the current filter.
+	// "Saved" holds the button in place briefly, then hands focus to the row so keyboard users keep their place.
+	// A row saved out of the filter is released here only if the user has already moved on.
 	useEffect(() => {
 		if (!savedConfirmation) {
 			return;
 		}
 		const timeout = setTimeout(() => {
-			const button = document.activeElement;
-			if (button instanceof HTMLElement && button.dataset.saveFor === savedConfirmation.id) {
-				const { filteredTasks: visible, matchesFilter: matches } = latestFilterRef.current;
-				const index = visible.findIndex((task) => task.id === savedConfirmation.id);
-				const row = visible[index];
-				if (row && matches(row)) {
-					focusTaskRow(row.id);
-				} else {
-					const neighbour = visible[index + 1] ?? visible[index - 1];
-					if (neighbour) {
-						focusTaskRow(neighbour.id);
-					} else {
-						headingRef.current?.focus();
-					}
-				}
-			}
+			const { id } = savedConfirmation;
+			const row = findVisible(`[data-task-id="${id}"]`);
+			const active = document.activeElement;
+			latestRef.current = { ...latestRef.current, savedConfirmation: null };
 			setSavedConfirmation(null);
+			// Save reverts to hidden, so focus on it moves to the row's first control and the row stays.
+			if (active instanceof HTMLElement && active.dataset.saveFor === id) {
+				focusTaskRow(id);
+				return;
+			}
+			if (!row?.contains(active)) {
+				releaseStickyRow(id);
+			}
 		}, SAVED_CONFIRMATION_MS);
 		return () => clearTimeout(timeout);
-	}, [savedConfirmation]);
+	}, [releaseStickyRow, savedConfirmation]);
 
 	const updateTask = (
 		id: string,
@@ -292,14 +322,16 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			updateTask(variables.id, updates);
 			setSavedTasks((prev) => prev.map((task) => (task.id === variables.id ? { ...task, ...updates } : task)));
 			setSavedConfirmation((previous) => ({ id: variables.id, count: (previous?.count ?? 0) + 1 }));
+			setStickyRowId(variables.id);
 			const label = tasks.find((task) => task.id === variables.id)?.presetLabel ?? t("Task");
 			const leavesFilter =
 				assigneeFilter !== ASSIGNEE_ALL_VALUE && (updates.assigneeId ?? UNASSIGNED_VALUE) !== assigneeFilter;
-			setAnnouncement(
-				leavesFilter
+			setAnnouncement((previous) => ({
+				text: leavesFilter
 					? t("{{task}} saved. It no longer matches the assignee filter.", { task: label })
 					: t("{{task}} saved.", { task: label }),
-			);
+				count: previous.count + 1,
+			}));
 			router.refresh();
 		},
 		onError: (error) => {
@@ -375,7 +407,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		const { targetId } = focusAfterRemove;
 		requestAnimationFrame(() => {
 			if (targetId === FOCUS_HEADING) {
-				headingRef.current?.focus();
+				(showAllRef.current ?? headingRef.current)?.focus();
 			} else {
 				focusTaskRow(targetId);
 			}
@@ -573,7 +605,14 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 				</div>
 				{sortedTasks.length > 0 ? (
 					<div className="sm:min-w-[220px]">
-						<Select value={assigneeFilter} onValueChange={setAssigneeFilter} disabled={isPending}>
+						<Select
+							value={assigneeFilter}
+							onValueChange={(value) => {
+								setAssigneeFilter(value);
+								setStickyRowId(null);
+							}}
+							disabled={isPending}
+						>
 							<SelectTrigger aria-label={t("Filter by assignee")}>
 								<SelectValue placeholder={t("All assignees")} />
 							</SelectTrigger>
@@ -592,10 +631,29 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			</CardHeader>
 			<CardContent>
 				<p role="status" aria-live="polite" className="sr-only">
-					{announcement}
+					<span key={announcement.count}>{announcement.text}</span>
 				</p>
 				{sortedTasks.length === 0 ? (
 					<p className="text-sm text-muted-foreground">{t("No tasks yet.")}</p>
+				) : filteredTasks.length === 0 ? (
+					<div className="flex flex-col items-start gap-3 py-4 sm:flex-row sm:items-center">
+						<p className="text-sm text-muted-foreground">{t("No tasks match this filter.")}</p>
+						<Button
+							ref={showAllRef}
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								setAssigneeFilter(ASSIGNEE_ALL_VALUE);
+								const firstId = sortedTasks[0]?.id;
+								if (firstId) {
+									requestAnimationFrame(() => focusTaskRow(firstId));
+								}
+							}}
+						>
+							{t("Show all assignees")}
+						</Button>
+					</div>
 				) : (
 					<>
 						<div className="hidden md:block">
@@ -615,7 +673,12 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 								{/* Solid control backgrounds so row hover and highlight tints don't wash them out. */}
 								<TableBody className="[&_button[role=combobox]]:bg-card [&_input]:bg-card">
 									{filteredTasks.map((task) => (
-										<TableRow key={task.id} data-task-id={task.id} className={highlightClass(task)}>
+										<TableRow
+											key={task.id}
+											data-task-id={task.id}
+											className={highlightClass(task)}
+											onBlur={() => handleRowBlur(task.id)}
+										>
 											<TableCell>
 												<span className="font-semibold">{task.presetLabel}</span>
 											</TableCell>
@@ -662,6 +725,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 								<li
 									key={task.id}
 									data-task-id={task.id}
+									onBlur={() => handleRowBlur(task.id)}
 									className={cn(
 										// Every item shares the same inset, so the highlight never changes an item's bounds.
 										"-mx-3 grid gap-3 px-3 py-4 [&_button[role=combobox]]:bg-card [&_input]:bg-card",
