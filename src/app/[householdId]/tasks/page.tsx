@@ -1,10 +1,8 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-
-import { AssignedTasksManager } from "@/components/AssignedTasksManager";
 import { AssignedTaskTable } from "@/components/AssignedTaskTable";
-import { AssignTaskCard } from "@/components/AssignTaskCard";
 import { LiveRefresh } from "@/components/LiveRefresh";
+import { ManageTasksPanel } from "@/components/ManageTasksPanel";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -120,7 +118,11 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 			<PageHeader
 				eyebrow={t("tskr")}
 				title={t("Tasks")}
-				description={t("To-do tasks and recent completions for your household.")}
+				description={
+					tab === "manage"
+						? t("Add tasks and choose who does them and how often.")
+						: t("To-do tasks and recent completions for your household.")
+				}
 				backHref={`/${householdId}`}
 				backLabel={t("Back to dashboard")}
 				backText={t("Dashboard")}
@@ -149,20 +151,13 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 				))}
 			</nav>
 			{manageData ? (
-				<>
-					<AssignTaskCard
-						householdId={householdId}
-						members={manageData.members}
-						presets={manageData.presets}
-						existingTasks={manageData.tasks}
-						currentUserId={userId}
-					/>
-					<AssignedTasksManager
-						householdId={householdId}
-						initialTasks={manageData.tasks}
-						members={manageData.members}
-					/>
-				</>
+				<ManageTasksPanel
+					householdId={householdId}
+					members={manageData.members}
+					presets={manageData.presets}
+					tasks={manageData.tasks}
+					currentUserId={userId}
+				/>
 			) : doneData ? (
 				<WeekViewTimeline
 					header={controls}

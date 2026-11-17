@@ -44,6 +44,29 @@ export const formatCadenceInterval = (minutes: number, t: Translate) => {
 	}
 };
 
+export const formatCadenceOption = (value: string, t: Translate) =>
+	value === CADENCE_NONE_VALUE ? t("Does not repeat") : formatCadenceInterval(Number.parseInt(value, 10), t);
+
+// Labels the per-period target with the selected interval, e.g. "Times per week".
+export const formatCadenceTargetLabel = (minutes: number, t: Translate) => {
+	switch (minutes) {
+		case 1440:
+			return t("Times per day");
+		case 10080:
+			return t("Times per week");
+		case 20160:
+			return t("Times per fortnight");
+		case 43200:
+			return t("Times per month");
+		case 129600:
+			return t("Times per quarter");
+		case 525600:
+			return t("Times per year");
+		default:
+			return t("Times per period");
+	}
+};
+
 export const getBucketLabels = (t: Translate) => ({
 	TINY: t("Tiny"),
 	QUICK: t("Quick"),

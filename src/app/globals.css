@@ -38,6 +38,7 @@
 	--animate-accordion-up: accordion-up 0.2s ease-out;
 	--animate-edit-border-pulse: edit-border-pulse 1s ease-in-out infinite;
 	--animate-edit-mode-rainbow-pulse: edit-mode-rainbow-pulse 3s linear infinite;
+	--animate-row-highlight: row-highlight 2.5s ease-out;
 }
 
 @layer base {
@@ -92,6 +93,18 @@
 	}
 	to {
 		height: 0;
+	}
+}
+
+/* A light tint plus an inset edge bar; box-shadow keeps the bar out of layout. */
+@keyframes row-highlight {
+	0% {
+		background-color: oklch(69.6% 0.17 162.48 / 0.1);
+		box-shadow: inset 3px 0 0 oklch(69.6% 0.17 162.48);
+	}
+	100% {
+		background-color: transparent;
+		box-shadow: inset 3px 0 0 transparent;
 	}
 }
 

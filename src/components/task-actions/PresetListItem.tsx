@@ -128,10 +128,10 @@ export function PresetListItem({
 							disabled={disabled}
 						>
 							<SelectTrigger id={`preset-approval-${preset.id}`}>
-								<SelectValue placeholder="Use member default" />
+								<SelectValue placeholder="Use completer's default" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="DEFAULT">Use member default</SelectItem>
+								<SelectItem value="DEFAULT">Use completer's default</SelectItem>
 								<SelectItem value="REQUIRE">Require approval</SelectItem>
 								<SelectItem value="SKIP">Skip approval</SelectItem>
 							</SelectContent>

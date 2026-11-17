@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ChevronsUpDownIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	getPresetIconLabel,
@@ -22,6 +22,9 @@ type PresetIconPickerProps = {
 	searchPlaceholder?: string;
 	noneLabel?: string;
 	noResultsLabel?: string;
+	// A square, icon-only trigger for placing beside a name field.
+	compact?: boolean;
+	"aria-label"?: string;
 };
 
 const ROW_HEIGHT = 36;
@@ -37,6 +40,8 @@ export const PresetIconPicker = ({
 	searchPlaceholder = "Search icons...",
 	noneLabel = "No icon",
 	noResultsLabel = "No icon found.",
+	compact = false,
+	"aria-label": ariaLabel,
 }: PresetIconPickerProps) => {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
@@ -110,21 +115,39 @@ export const PresetIconPicker = ({
 					id={id}
 					role="combobox"
 					aria-expanded={open}
+					aria-label={compact ? `${ariaLabel ?? placeholder}: ${value ? triggerLabel : noneLabel}` : ariaLabel}
+					title={compact ? (value ? triggerLabel : placeholder) : undefined}
 					disabled={disabled}
 					className={cn(
-						"flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+						"flex h-9 items-center whitespace-nowrap rounded-md border border-input bg-transparent text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+						compact ? "w-14 shrink-0 justify-center gap-1 hover:bg-accent" : "w-full justify-between px-3 py-2",
 					)}
 				>
-					<span className="flex min-w-0 items-center gap-2">
-						<PresetIconGlyph iconKey={value} className="h-4 w-4 shrink-0 text-muted-foreground" />
-						<span className="truncate">{triggerLabel}</span>
-					</span>
-					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+					{compact ? (
+						<>
+							<PresetIconGlyph
+								iconKey={value}
+								className={cn("h-4 w-4 shrink-0", value ? "text-foreground" : "text-muted-foreground")}
+							/>
+							<ChevronDownIcon className="h-3 w-3 shrink-0 opacity-50" aria-hidden="true" />
+						</>
+					) : (
+						<>
+							<span className="flex min-w-0 items-center gap-2">
+								<PresetIconGlyph iconKey={value} className="h-4 w-4 shrink-0 text-muted-foreground" />
+								<span className="truncate">{triggerLabel}</span>
+							</span>
+							<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+						</>
+					)}
 				</button>
 			</PopoverTrigger>
 			<PopoverContent
 				align="start"
-				className="min-w-[var(--radix-popper-anchor-width)] w-[var(--radix-popper-anchor-width)] p-0"
+				className={cn(
+					"p-0",
+					compact ? "w-64" : "min-w-[var(--radix-popper-anchor-width)] w-[var(--radix-popper-anchor-width)]",
+				)}
 			>
 				<Command shouldFilter={false}>
 					<CommandInput placeholder={searchPlaceholder} value={query} onValueChange={handleQueryChange} />

@@ -42,13 +42,17 @@ test.describe("as an approver", () => {
 		await page.getByRole("link", { name: "Add task" }).click();
 		await expect(page).toHaveURL(new RegExp(`/${householdId}/tasks[?]tab=manage$`));
 
-		await page.getByRole("combobox", { name: "Task", exact: true }).click();
-		await page.getByRole("option", { name: "New task…" }).click();
+		// New task is the default, so the name field is ready straight away.
+		await expect(page.getByRole("combobox", { name: "Task", exact: true })).toHaveText("New task…");
 		await page.getByLabel("Task name").fill("Water the plants");
 		await page.getByRole("button", { name: "Add task" }).click();
 
-		await expect(page.getByText("Task added").first()).toBeVisible();
-		await expect(page.getByRole("combobox", { name: "Task", exact: true })).toHaveText("Water the plants");
+		// The form resets for the next task and the button confirms in place.
+		await expect(page.getByText("Water the plants added to All tasks.")).toBeVisible();
+		await expect(page.getByRole("button", { name: "Added" })).toBeVisible();
+		await expect(page.getByLabel("Task name")).toHaveValue("");
+		await expect(page.getByLabel("Task name")).toBeFocused();
+		await expect(page.getByRole("combobox", { name: "Task", exact: true })).toHaveText("New task…");
 		await expect(page.getByText("All tasks", { exact: true })).toBeVisible();
 		await expect(page.getByRole("row").filter({ hasText: "Water the plants" })).toBeVisible();
 		await expect(page.getByRole("combobox", { name: "Member", exact: true })).toHaveCount(0);
@@ -84,5 +88,78 @@ test.describe("as an approver", () => {
 			page.getByText("Assigned to Avery Approver", { exact: false }).filter({ visible: true }),
 		).toBeVisible();
 		await expect(page.getByText("Quick log", { exact: true })).toHaveCount(0);
+	});
+
+	test("keeps a task saved out of the filter until you move on", async ({ page }) => {
+		const { householdId, userIds } = await createHousehold([
+			{ user: "approver", role: "APPROVER" },
+			{ user: "member", role: "DOER" },
+		]);
+		// Newest first: Vacuum lists above Dishes, so removing Vacuum would shift the row being clicked.
+		for (const [label, assignedToId] of [
+			["Feed the cat", null],
+			["Mop the floor", userIds.approver],
+			["Do the dishes", userIds.approver],
+			["Vacuum the lounge", userIds.approver],
+		] as const) {
+			const { presetId } = await createPreset({ householdId, createdById: userIds.approver, label, bucket: "QUICK" });
+			await createAssignment({ householdId, presetId, assignedToId, assignedById: userIds.approver });
+		}
+		await openTasks(page, householdId, "tab=manage");
+		const filter = page.getByRole("combobox", { name: "Filter by assignee" });
+		const row = (label: string) => page.getByRole("row").filter({ hasText: label });
+
+		await filter.click();
+		await page.getByRole("option", { name: "Avery Approver" }).click();
+		await row("Vacuum the lounge")
+			.getByRole("combobox", { name: /Assignee/ })
+			.click();
+		await page.getByRole("option", { name: "Morgan Member" }).click();
+		await row("Vacuum the lounge").getByRole("button", { name: /^Save/ }).click();
+		await expect(row("Vacuum the lounge").getByRole("button", { name: /saved$/ })).toBeVisible();
+		await expect(row("Vacuum the lounge")).toContainText("Not in this filter");
+
+		// It stays after the confirmation, until the next click elsewhere. Remove acts on a full click, so the
+		// dialog opening proves the row below didn't shift between pointerdown and pointerup.
+		await expect(row("Vacuum the lounge").getByRole("button", { name: /^Save/ })).toBeHidden();
+		await expect(row("Vacuum the lounge")).toBeVisible();
+		await row("Do the dishes")
+			.getByRole("button", { name: /^Remove/ })
+			.click();
+		await expect(page.getByRole("alertdialog")).toBeVisible();
+		await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
+		await expect(row("Vacuum the lounge")).toHaveCount(0);
+		await expect(row("Do the dishes")).toBeVisible();
+
+		// Two quick saves out of the filter: neither row is left behind once you move on.
+		for (const label of ["Do the dishes", "Mop the floor"]) {
+			await row(label)
+				.getByRole("combobox", { name: /Assignee/ })
+				.click();
+			await page.getByRole("option", { name: "Morgan Member" }).click();
+		}
+		await row("Do the dishes").getByRole("button", { name: /^Save/ }).click();
+		await expect(row("Do the dishes").getByRole("button", { name: /saved$/ })).toBeVisible();
+		await row("Mop the floor").getByRole("button", { name: /^Save/ }).click();
+		await expect(row("Mop the floor").getByRole("button", { name: /saved$/ })).toBeVisible();
+		await page.mouse.click(5, 5);
+		await expect(row("Do the dishes")).toHaveCount(0);
+		await expect(row("Mop the floor")).toHaveCount(0);
+
+		// Emptying a filter offers a way back to everything.
+		await filter.click();
+		await page.getByRole("option", { name: "Open" }).click();
+		await row("Feed the cat")
+			.getByRole("combobox", { name: /Assignee/ })
+			.click();
+		await page.getByRole("option", { name: "Avery Approver" }).click();
+		await row("Feed the cat").getByRole("button", { name: /^Save/ }).click();
+		await expect(row("Feed the cat").getByRole("button", { name: /saved$/ })).toBeVisible();
+		await page.mouse.click(5, 5);
+		await expect(page.getByText("No tasks match this filter.")).toBeVisible();
+		await page.getByRole("button", { name: "Show all assignees" }).click();
+		await expect(row("Feed the cat")).toBeVisible();
+		await expect(row("Vacuum the lounge")).toBeVisible();
+		await expect(row("Mop the floor")).toBeVisible();
 	});
 });

@@ -1,8 +1,8 @@
 "use client";
 
-import { Loader2Icon } from "lucide-react";
+import { CheckIcon, Loader2Icon, TriangleAlertIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
+import { type SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
 	type ApprovalOverrideOption,
@@ -11,27 +11,30 @@ import {
 	resolveApprovalOverride,
 } from "@/components/task-actions/PresetFormFields";
 import { PresetIconPicker } from "@/components/task-actions/PresetIconPicker";
+import { PresetIconGlyph } from "@/components/task-actions/presetIcons";
 import type { PresetSummary } from "@/components/task-actions/types";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/Select";
-import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/hooks/useToast";
 import {
 	CADENCE_NONE_VALUE,
 	CADENCE_OPTIONS,
 	DEFAULT_CADENCE_INTERVAL_MINUTES,
 	DEFAULT_CADENCE_TARGET,
+	formatCadenceOption,
+	formatCadenceTargetLabel,
 } from "@/lib/assignedTasksCadence";
 import { mapPresetSummaries } from "@/lib/dashboard/presets";
 import { useTranslation } from "@/lib/i18nClient";
-import { DEFAULT_DURATION_BUCKET, type DurationKey } from "@/lib/points";
+import { DEFAULT_DURATION_BUCKET, type DurationKey, getLocalizedDurationBuckets } from "@/lib/points";
 import type { PresetIconKey } from "@/lib/presetIcons";
 import { PRESET_LABEL_MIN_LENGTH } from "@/lib/presetInput";
 import { type DuplicateTask, findDuplicateTask } from "@/lib/tasks/duplicates";
 import { trpc } from "@/lib/trpc/react";
+import { cn } from "@/lib/utils";
 
 const UNASSIGNED_VALUE = "unassigned";
 const NEW_PRESET_VALUE = "__new__";
@@ -46,9 +49,13 @@ type AssignTaskCardProps = {
 	householdId: string;
 	members: MemberOption[];
 	presets: PresetSummary[];
-	existingTasks: DuplicateTask[];
+	existingTasks: Array<DuplicateTask & { id: string }>;
 	currentUserId: string;
+	onTaskAdded?: (assignedTaskId: string) => void;
+	onViewTask?: (assignedTaskId: string) => void;
 };
+
+const ADDED_CONFIRMATION_MS = 1500;
 
 export const AssignTaskCard = ({
 	householdId,
@@ -56,6 +63,8 @@ export const AssignTaskCard = ({
 	presets,
 	currentUserId,
 	existingTasks,
+	onTaskAdded,
+	onViewTask,
 }: AssignTaskCardProps) => {
 	const router = useRouter();
 	const { toast } = useToast();
@@ -85,7 +94,7 @@ export const AssignTaskCard = ({
 	}, [createdPresets, presets]);
 
 	const [assigneeId, setAssigneeId] = useState(currentUserId);
-	const [presetId, setPresetId] = useState(sortedPresets[0]?.id ?? NEW_PRESET_VALUE);
+	const [presetId, setPresetId] = useState(NEW_PRESET_VALUE);
 	const [newLabel, setNewLabel] = useState("");
 	const [newBucket, setNewBucket] = useState<DurationKey>(DEFAULT_DURATION_BUCKET);
 	const [newIconKey, setNewIconKey] = useState<PresetIconKey | null>(null);
@@ -93,6 +102,60 @@ export const AssignTaskCard = ({
 	const [cadenceTarget, setCadenceTarget] = useState(DEFAULT_CADENCE_TARGET);
 	const [cadenceInterval, setCadenceInterval] = useState(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
 	const [isRecurring, setIsRecurring] = useState(true);
+	const [justAdded, setJustAdded] = useState(false);
+	const [added, setAdded] = useState<{ id: string; label: string } | null>(null);
+	// Bumped on every add so confirmation timers restart when tasks are added in quick succession.
+	const [addCount, setAddCount] = useState(0);
+	const [nameError, setNameError] = useState<string | null>(null);
+	const [focusTarget, setFocusTarget] = useState<"name" | "submit" | null>(null);
+	const formRef = useRef<HTMLFormElement>(null);
+	const nameInputRef = useRef<HTMLInputElement>(null);
+	const submitRef = useRef<HTMLButtonElement>(null);
+
+	useEffect(() => {
+		if (addCount === 0) {
+			return;
+		}
+		// The status line (with its View action) has no timeout: it stays until the next edit, so it can't
+		// disappear while someone is reaching it.
+		const confirmation = setTimeout(() => setJustAdded(false), ADDED_CONFIRMATION_MS);
+		return () => clearTimeout(confirmation);
+	}, [addCount]);
+
+	// The status's View action would go nowhere once the added task has been removed from the list.
+	const addedSeenRef = useRef(false);
+	useEffect(() => {
+		if (!added) {
+			return;
+		}
+		if (existingTasks.some((task) => task.id === added.id)) {
+			addedSeenRef.current = true;
+		} else if (addedSeenRef.current) {
+			setAdded(null);
+		}
+	}, [added, existingTasks]);
+
+	// Any edit starts the next task, so the previous confirmation no longer applies.
+	const markEdited = () => setAdded(null);
+
+	// The assignee stays put so several tasks can be added for the same person in a row.
+	const resetAfterAdd = (assignedTaskId: string, label: string) => {
+		setPresetId(NEW_PRESET_VALUE);
+		setNewLabel("");
+		setNewBucket(DEFAULT_DURATION_BUCKET);
+		setNewIconKey(null);
+		setNewApprovalOverride("DEFAULT");
+		setIsRecurring(true);
+		setCadenceTarget(DEFAULT_CADENCE_TARGET);
+		setCadenceInterval(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
+		setNameError(null);
+		setJustAdded(true);
+		addedSeenRef.current = false;
+		setAdded({ id: assignedTaskId, label });
+		setAddCount((count) => count + 1);
+		setFocusTarget("name");
+		onTaskAdded?.(assignedTaskId);
+	};
 
 	useEffect(() => {
 		if (presetId !== NEW_PRESET_VALUE && !sortedPresets.find((preset) => preset.id === presetId)) {
@@ -107,14 +170,13 @@ export const AssignTaskCard = ({
 	}, [assigneeId, currentUserId, sortedMembers]);
 
 	const createMutation = trpc.assignedTasks.create.useMutation({
-		onSuccess: () => {
-			toast({
-				title: t("Task added"),
-				description: t("The task is now on the list."),
-			});
+		onSuccess: ({ assignedTask }, { presetId: addedPresetId }) => {
+			const label = sortedPresets.find((preset) => preset.id === addedPresetId)?.label ?? t("Task");
+			resetAfterAdd(assignedTask.id, label);
 			router.refresh();
 		},
 		onError: (error) => {
+			setFocusTarget("submit");
 			toast({
 				title: t("Unable to add task"),
 				description: error.message ?? t("Please try again."),
@@ -125,23 +187,15 @@ export const AssignTaskCard = ({
 
 	const utils = trpc.useUtils();
 	const createWithPresetMutation = trpc.assignedTasks.createWithPreset.useMutation({
-		onSuccess: ({ preset }) => {
+		onSuccess: ({ preset, assignedTask }) => {
 			const [summary] = mapPresetSummaries([preset]);
 			setCreatedPresets((prev) => [...prev, summary]);
-			setPresetId(summary.id);
-			setNewLabel("");
-			setNewBucket(DEFAULT_DURATION_BUCKET);
-			setNewIconKey(null);
-			setNewApprovalOverride("DEFAULT");
-			toast({
-				title: t("Task added"),
-				description: t("{{label}} was created and added to the list.", { label: summary.label }),
-				variant: "success",
-			});
+			resetAfterAdd(assignedTask.id, summary.label);
 			void utils.presets.invalidate();
 			router.refresh();
 		},
 		onError: (error) => {
+			setFocusTarget("submit");
 			toast({
 				title: t("Unable to add task"),
 				description: error.message ?? t("Please try again."),
@@ -158,11 +212,23 @@ export const AssignTaskCard = ({
 		assigneeId: assigneeId === UNASSIGNED_VALUE ? null : assigneeId,
 	});
 	const assignee = members.find((member) => member.id === assigneeId);
+	const selectedPreset = isCreatingPreset ? null : sortedPresets.find((preset) => preset.id === presetId);
+	const bucketOptions = useMemo(() => getLocalizedDurationBuckets(t), [t]);
+	const selectedBucket = bucketOptions.find((bucket) => bucket.key === selectedPreset?.bucket);
+	const approvalSummary =
+		selectedPreset?.approvalOverride === "REQUIRE"
+			? t("Needs approval")
+			: selectedPreset?.approvalOverride === "SKIP"
+				? t("No approval needed")
+				: t("Uses the completer's approval setting");
+	const cadenceIntervalMinutes = Number.parseInt(cadenceInterval, 10) || DEFAULT_CADENCE_INTERVAL_MINUTES;
 
 	// Radix's hidden native select reports "" when the value and its newly added option arrive in the same render.
 	const handlePresetChange = (value: string) => {
 		if (value) {
 			setPresetId(value);
+			setNameError(null);
+			markEdited();
 		}
 	};
 
@@ -178,24 +244,18 @@ export const AssignTaskCard = ({
 		}
 		const trimmedLabel = newLabel.trim();
 		if (isCreatingPreset && trimmedLabel.length < PRESET_LABEL_MIN_LENGTH) {
-			toast({
-				title: t("Missing details"),
-				description: t("Name the new task (at least {{min}} characters).", { min: PRESET_LABEL_MIN_LENGTH }),
-				variant: "destructive",
-			});
+			setNameError(t("Name the new task (at least {{min}} characters).", { min: PRESET_LABEL_MIN_LENGTH }));
+			markEdited();
+			nameInputRef.current?.focus();
 			return;
 		}
 
 		const cadenceTargetValue = isRecurring ? Math.max(1, Math.floor(cadenceTarget || 1)) : DEFAULT_CADENCE_TARGET;
-		const cadenceIntervalMinutes = isRecurring
-			? Math.max(1, Number.parseInt(cadenceInterval, 10) || 1)
-			: DEFAULT_CADENCE_INTERVAL_MINUTES;
-
 		const assignment = {
 			householdId,
 			assigneeId: assigneeId === UNASSIGNED_VALUE ? null : assigneeId,
 			cadenceTarget: cadenceTargetValue,
-			cadenceIntervalMinutes,
+			cadenceIntervalMinutes: isRecurring ? Math.max(1, cadenceIntervalMinutes) : DEFAULT_CADENCE_INTERVAL_MINUTES,
 			isRecurring,
 		};
 
@@ -217,32 +277,28 @@ export const AssignTaskCard = ({
 
 	const disabled = !hydrated || createMutation.isPending || createWithPresetMutation.isPending;
 
+	// Inputs stay disabled until the mutation settles, so focus waits for them to re-enable. Focus only
+	// moves if it was lost to the disabled controls, not if the user has since moved elsewhere.
+	useEffect(() => {
+		if (!focusTarget || disabled) {
+			return;
+		}
+		const active = document.activeElement;
+		if (!active || active === document.body || formRef.current?.contains(active)) {
+			(focusTarget === "name" ? nameInputRef.current : submitRef.current)?.focus({ preventScroll: true });
+		}
+		setFocusTarget(null);
+	}, [disabled, focusTarget]);
+
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle className="text-xl">{t("Add task")}</CardTitle>
-				<CardDescription>{t("Pick an existing shared task or create a new one.")}</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<form className="grid gap-4" onSubmit={handleSubmit}>
-					<div className="grid gap-4 md:grid-cols-2">
-						<div className="grid gap-2">
-							<Label htmlFor="assignee">{t("Assignee")}</Label>
-							<Select value={assigneeId} onValueChange={setAssigneeId} disabled={disabled}>
-								<SelectTrigger id="assignee">
-									<SelectValue placeholder={t("Select member")} />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={UNASSIGNED_VALUE}>{t("Open")}</SelectItem>
-									{sortedMembers.map((member) => (
-										<SelectItem key={member.id} value={member.id}>
-											{member.name ?? member.email ?? t("Unknown")}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						<div className="grid gap-2">
+				<form ref={formRef} className="grid gap-6" onSubmit={handleSubmit} noValidate>
+					<div className="grid gap-4">
+						<div className="grid content-start gap-2">
 							<Label htmlFor="preset">{t("Task")}</Label>
 							<Select value={presetId} onValueChange={handlePresetChange} disabled={disabled}>
 								<SelectTrigger id="preset">
@@ -257,122 +313,171 @@ export const AssignTaskCard = ({
 									<SelectItem value={NEW_PRESET_VALUE}>{t("New task…")}</SelectItem>
 								</SelectContent>
 							</Select>
+							{selectedPreset ? (
+								<p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+									<PresetIconGlyph iconKey={selectedPreset.iconKey} className="h-3.5 w-3.5" />
+									<span>
+										{selectedBucket ? `${selectedBucket.label} (${selectedBucket.points} pts)` : selectedPreset.bucket}
+									</span>
+									<span aria-hidden="true">·</span>
+									<span>{approvalSummary}</span>
+								</p>
+							) : null}
 						</div>
-					</div>
-					{isCreatingPreset ? (
-						<fieldset className="grid gap-4 rounded-md border border-input p-3 md:grid-cols-2">
-							<legend className="px-1 text-sm font-medium">{t("New shared task")}</legend>
-							<p className="text-xs text-muted-foreground md:col-span-2">
-								{t("Everyone in the household can see and use this task.")}
-							</p>
-							<div className="grid gap-2 md:col-span-2">
-								<Label htmlFor="new-preset-label">{t("Task name")}</Label>
-								<Input
-									id="new-preset-label"
-									placeholder={t("Name your task")}
-									value={newLabel}
-									maxLength={50}
-									onChange={(event) => setNewLabel(event.target.value)}
-									disabled={disabled}
-								/>
-							</div>
-							<div className="grid gap-2">
-								<Label htmlFor="new-preset-bucket">{t("Points")}</Label>
-								<PresetBucketSelect
-									id="new-preset-bucket"
-									value={newBucket}
-									onChange={setNewBucket}
-									disabled={disabled}
-								/>
-							</div>
-							<div className="grid gap-2">
-								<Label htmlFor="new-preset-icon">{t("Icon")}</Label>
-								<PresetIconPicker
-									id="new-preset-icon"
-									value={newIconKey}
-									onChange={setNewIconKey}
-									disabled={disabled}
-									placeholder={t("Pick an icon")}
-									searchPlaceholder={t("Search icons...")}
-									noneLabel={t("No icon")}
-									noResultsLabel={t("No icon found.")}
-								/>
-							</div>
-							<div className="grid gap-2 md:col-span-2">
-								<Label htmlFor="new-preset-approval">{t("Approval")}</Label>
-								<PresetApprovalOverrideSelect
-									id="new-preset-approval"
-									value={newApprovalOverride}
-									onChange={setNewApprovalOverride}
-									disabled={disabled}
-								/>
-							</div>
-						</fieldset>
-					) : null}
-					<div className="grid gap-4 md:grid-cols-2">
-						<div className="flex items-center justify-between gap-2 rounded-md border border-input px-3 py-2 md:col-span-2">
-							<div className="space-y-1">
-								<Label htmlFor="recurring">{t("Recurring")}</Label>
-								<p className="text-xs text-muted-foreground">{t("Resets at the start of each period.")}</p>
-							</div>
-							<Switch
-								id="recurring"
-								checked={isRecurring}
-								onCheckedChange={(value) => {
-									setIsRecurring(value);
-									if (!value) {
-										setCadenceTarget(DEFAULT_CADENCE_TARGET);
-										setCadenceInterval(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
-									}
-								}}
-								disabled={disabled}
-							/>
-						</div>
-						{isRecurring ? (
-							<>
-								<div className="grid gap-2">
-									<Label htmlFor="cadence-interval">{t("Repeats")}</Label>
-									<Select
-										value={cadenceInterval}
-										onValueChange={(value) => {
-											if (value === CADENCE_NONE_VALUE) {
-												setIsRecurring(false);
-												setCadenceTarget(DEFAULT_CADENCE_TARGET);
-												setCadenceInterval(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
-												return;
-											}
-											setCadenceInterval(value);
-										}}
-										disabled={disabled}
-									>
-										<SelectTrigger id="cadence-interval">
-											<SelectValue placeholder={t("Select repeat interval")} />
-										</SelectTrigger>
-										<SelectContent>
-											{CADENCE_OPTIONS.map((option) => (
-												<SelectItem key={option.value} value={option.value}>
-													{option.label}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+						{isCreatingPreset ? (
+							<div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_9rem]">
+								<div className="grid content-start gap-2 md:col-span-3">
+									<Label htmlFor="new-preset-label">{t("Task name")}</Label>
+									<div className="flex gap-2">
+										<PresetIconPicker
+											id="new-preset-icon"
+											compact
+											aria-label={t("Icon")}
+											value={newIconKey}
+											onChange={(value) => {
+												setNewIconKey(value);
+												markEdited();
+											}}
+											disabled={disabled}
+											placeholder={t("Pick an icon")}
+											searchPlaceholder={t("Search icons...")}
+											noneLabel={t("No icon")}
+											noResultsLabel={t("No icon found.")}
+										/>
+										<Input
+											id="new-preset-label"
+											ref={nameInputRef}
+											className="flex-1"
+											placeholder={t("e.g. Water the plants")}
+											value={newLabel}
+											maxLength={50}
+											aria-invalid={nameError ? true : undefined}
+											aria-describedby={nameError ? "new-preset-label-error" : "new-preset-label-hint"}
+											onChange={(event) => {
+												setNewLabel(event.target.value);
+												setNameError(null);
+												markEdited();
+											}}
+											disabled={disabled}
+										/>
+									</div>
+									{nameError ? (
+										<p id="new-preset-label-error" role="alert" className="text-sm text-red-700 dark:text-red-400">
+											{nameError}
+										</p>
+									) : (
+										<p id="new-preset-label-hint" className="text-xs text-muted-foreground">
+											{t("Everyone in the household can see and use this task.")}
+										</p>
+									)}
 								</div>
-								<div className="grid gap-2">
-									<Label htmlFor="cadence-target">{t("Completions per cycle")}</Label>
-									<Input
-										id="cadence-target"
-										type="number"
-										min={1}
-										value={cadenceTarget}
-										onChange={(event) => setCadenceTarget(Number.parseInt(event.target.value, 10) || 1)}
+								<div className="grid content-start gap-2">
+									<Label htmlFor="new-preset-bucket">{t("Points")}</Label>
+									<PresetBucketSelect
+										id="new-preset-bucket"
+										value={newBucket}
+										onChange={(value) => {
+											setNewBucket(value);
+											markEdited();
+										}}
 										disabled={disabled}
 									/>
 								</div>
-							</>
+								<div className="grid content-start gap-2 md:col-span-2">
+									<Label htmlFor="new-preset-approval">{t("Approval")}</Label>
+									<PresetApprovalOverrideSelect
+										id="new-preset-approval"
+										value={newApprovalOverride}
+										onChange={(value) => {
+											setNewApprovalOverride(value);
+											markEdited();
+										}}
+										disabled={disabled}
+									/>
+								</div>
+							</div>
+						) : null}
+					</div>
+					<div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-4 border-t pt-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_9rem]">
+						<div className="col-span-2 grid content-start gap-2 md:col-span-1">
+							<Label htmlFor="assignee">{t("Assignee")}</Label>
+							<Select
+								value={assigneeId}
+								onValueChange={(value) => {
+									setAssigneeId(value);
+									markEdited();
+								}}
+								disabled={disabled}
+							>
+								<SelectTrigger id="assignee">
+									<SelectValue placeholder={t("Select member")} />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={UNASSIGNED_VALUE}>{t("Open – anyone can do it")}</SelectItem>
+									{sortedMembers.map((member) => (
+										<SelectItem key={member.id} value={member.id}>
+											{member.name ?? member.email ?? t("Unknown")}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className={cn("grid content-start gap-2", !isRecurring && "col-span-2 md:col-span-1")}>
+							<Label htmlFor="cadence-interval">{t("Repeats")}</Label>
+							<Select
+								value={isRecurring ? cadenceInterval : CADENCE_NONE_VALUE}
+								onValueChange={(value) => {
+									if (!value) {
+										return;
+									}
+									markEdited();
+									if (value === CADENCE_NONE_VALUE) {
+										setIsRecurring(false);
+										return;
+									}
+									setIsRecurring(true);
+									setCadenceInterval(value);
+								}}
+								disabled={disabled}
+							>
+								<SelectTrigger id="cadence-interval">
+									<SelectValue placeholder={t("Select repeat interval")} />
+								</SelectTrigger>
+								<SelectContent>
+									{CADENCE_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{formatCadenceOption(option.value, t)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{isRecurring ? null : (
+								<p className="text-xs text-muted-foreground">{t("Stays on the list until it's done once.")}</p>
+							)}
+						</div>
+						{isRecurring ? (
+							<div className="grid content-start gap-2">
+								<Label htmlFor="cadence-target">{formatCadenceTargetLabel(cadenceIntervalMinutes, t)}</Label>
+								<Input
+									id="cadence-target"
+									type="number"
+									inputMode="numeric"
+									min={1}
+									value={cadenceTarget || ""}
+									onChange={(event) => {
+										// Empty while retyping; clamped on blur and submit.
+										setCadenceTarget(Number.parseInt(event.target.value, 10) || 0);
+										markEdited();
+									}}
+									onBlur={() => setCadenceTarget((value) => Math.max(1, value || 1))}
+									disabled={disabled}
+								/>
+							</div>
 						) : null}
 					</div>
 					{duplicate ? (
-						<p role="status" className="text-sm text-amber-700 dark:text-amber-400">
+						<p role="status" className="flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-400">
+							<TriangleAlertIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
 							{duplicate.assigneeId === null
 								? t("{{task}} is already on the list as Open. Adding it again creates a second copy.", {
 										task: duplicate.presetLabel,
@@ -383,10 +488,37 @@ export const AssignTaskCard = ({
 									})}
 						</p>
 					) : null}
-					<Button type="submit" disabled={disabled}>
-						{disabled ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-						{t("Add task")}
-					</Button>
+					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+						<p
+							role="status"
+							aria-live="polite"
+							className="pb-3 text-sm text-muted-foreground empty:pb-0 sm:mr-auto sm:min-h-5 sm:pb-0"
+						>
+							{added ? (
+								<span className="inline-flex flex-wrap items-center gap-x-1.5">
+									<CheckIcon className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+									{t("{{label}} added to All tasks.", { label: added.label })}
+									{onViewTask ? (
+										<button
+											type="button"
+											className="rounded-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+											onClick={() => onViewTask(added.id)}
+										>
+											{t("View")}
+										</button>
+									) : null}
+								</span>
+							) : null}
+						</p>
+						<Button ref={submitRef} type="submit" disabled={disabled} className="w-full sm:w-auto sm:min-w-36">
+							{disabled ? (
+								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+							) : justAdded ? (
+								<CheckIcon className="mr-2 h-4 w-4" />
+							) : null}
+							{justAdded && !disabled ? t("Added") : t("Add task")}
+						</Button>
+					</div>
 				</form>
 			</CardContent>
 		</Card>
