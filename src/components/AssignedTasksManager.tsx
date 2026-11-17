@@ -83,6 +83,23 @@ const focusTaskRow = (taskId: string) =>
 		?.querySelector<HTMLElement>("button[role=combobox]")
 		?.focus({ preventScroll: true });
 
+// Focus is "in" a row when it is inside the row or inside a popup (select list, dialog) opened by one of the
+// row's own controls, which Radix portals elsewhere but links through aria-controls.
+const isRowInUse = (taskId: string) => {
+	const row = findVisible(`[data-task-id="${taskId}"]`);
+	const active = document.activeElement;
+	if (!row || !active || active === document.body) {
+		return false;
+	}
+	if (row.contains(active)) {
+		return true;
+	}
+	return Array.from(row.querySelectorAll<HTMLElement>("[aria-controls]")).some((trigger) => {
+		const controlled = trigger.getAttribute("aria-controls");
+		return controlled ? document.getElementById(controlled)?.contains(active) : false;
+	});
+};
+
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 type Props = {
@@ -184,8 +201,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		((savedById.get(task.id) ?? task).assigneeId ?? UNASSIGNED_VALUE) === assigneeFilter;
 	// A row saved out of the current filter stays until the user is done with it: its confirmation has ended,
 	// focus has left it (popups and dialogs it opened count as inside), and it has no new unsaved edits.
-	const [stickyRowId, setStickyRowId] = useState<string | null>(null);
-	const filteredTasks = sortedTasks.filter((task) => matchesFilter(task) || task.id === stickyRowId);
+	// Several rows can be retained at once (e.g. one still has edits while another is saved).
+	const [stickyRowIds, setStickyRowIds] = useState<ReadonlySet<string>>(() => new Set());
+	const filteredTasks = sortedTasks.filter((task) => matchesFilter(task) || stickyRowIds.has(task.id));
 	const latestRef = useRef({ tasks, isDirty, savedConfirmation });
 	useEffect(() => {
 		latestRef.current = { tasks, isDirty, savedConfirmation };
@@ -196,20 +214,59 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		if (confirming?.id === taskId || (row && dirty(row))) {
 			return;
 		}
-		setStickyRowId((sticky) => (sticky === taskId ? null : sticky));
+		setStickyRowIds((sticky) => {
+			if (!sticky.has(taskId)) {
+				return sticky;
+			}
+			const next = new Set(sticky);
+			next.delete(taskId);
+			return next;
+		});
 	}, []);
-	const handleRowBlur = (taskId: string) => {
-		// Wait for focus to land, then keep the row if focus is still within it or in a popup it opened.
-		setTimeout(() => {
-			const active = document.activeElement;
-			if (
-				findVisible(`[data-task-id="${taskId}"]`)?.contains(active) ||
-				active?.closest("[data-radix-popper-content-wrapper], [role=alertdialog], [role=dialog]")
-			) {
+	// Removing a row mid-click would shift the rows below between pointerdown and pointerup, so the click
+	// would miss its target. Release waits for any pressed pointer to be let go.
+	const pointerDownRef = useRef(false);
+	useEffect(() => {
+		const down = () => {
+			pointerDownRef.current = true;
+		};
+		const up = () => {
+			pointerDownRef.current = false;
+		};
+		document.addEventListener("pointerdown", down, true);
+		document.addEventListener("pointerup", up, true);
+		document.addEventListener("pointercancel", up, true);
+		return () => {
+			document.removeEventListener("pointerdown", down, true);
+			document.removeEventListener("pointerup", up, true);
+			document.removeEventListener("pointercancel", up, true);
+		};
+	}, []);
+	const releaseWhenIdle = useCallback(
+		(taskId: string) => {
+			const attempt = () => {
+				if (!isRowInUse(taskId)) {
+					releaseStickyRow(taskId);
+				}
+			};
+			if (!pointerDownRef.current) {
+				attempt();
 				return;
 			}
-			releaseStickyRow(taskId);
-		}, 0);
+			// The click event follows pointerup in the same task, so a zero timeout lets it land first.
+			const onRelease = () => {
+				document.removeEventListener("pointerup", onRelease);
+				document.removeEventListener("pointercancel", onRelease);
+				setTimeout(attempt, 0);
+			};
+			document.addEventListener("pointerup", onRelease);
+			document.addEventListener("pointercancel", onRelease);
+		},
+		[releaseStickyRow],
+	);
+	const handleRowBlur = (taskId: string) => {
+		// Wait for focus to land, then keep the row if it is still in use.
+		setTimeout(() => releaseWhenIdle(taskId), 0);
 	};
 
 	// A just-added row hidden by the assignee filter would make the confirmation point at nothing. This runs
@@ -262,7 +319,6 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		}
 		const timeout = setTimeout(() => {
 			const { id } = savedConfirmation;
-			const row = findVisible(`[data-task-id="${id}"]`);
 			const active = document.activeElement;
 			latestRef.current = { ...latestRef.current, savedConfirmation: null };
 			setSavedConfirmation(null);
@@ -271,12 +327,10 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 				focusTaskRow(id);
 				return;
 			}
-			if (!row?.contains(active)) {
-				releaseStickyRow(id);
-			}
+			releaseWhenIdle(id);
 		}, SAVED_CONFIRMATION_MS);
 		return () => clearTimeout(timeout);
-	}, [releaseStickyRow, savedConfirmation]);
+	}, [releaseWhenIdle, savedConfirmation]);
 
 	const updateTask = (
 		id: string,
@@ -322,10 +376,13 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			updateTask(variables.id, updates);
 			setSavedTasks((prev) => prev.map((task) => (task.id === variables.id ? { ...task, ...updates } : task)));
 			setSavedConfirmation((previous) => ({ id: variables.id, count: (previous?.count ?? 0) + 1 }));
-			setStickyRowId(variables.id);
 			const label = tasks.find((task) => task.id === variables.id)?.presetLabel ?? t("Task");
 			const leavesFilter =
 				assigneeFilter !== ASSIGNEE_ALL_VALUE && (updates.assigneeId ?? UNASSIGNED_VALUE) !== assigneeFilter;
+			// Only a row the save moves out of the filter needs retaining.
+			if (leavesFilter) {
+				setStickyRowIds((sticky) => new Set(sticky).add(variables.id));
+			}
 			setAnnouncement((previous) => ({
 				text: leavesFilter
 					? t("{{task}} saved. It no longer matches the assignee filter.", { task: label })
@@ -609,7 +666,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 							value={assigneeFilter}
 							onValueChange={(value) => {
 								setAssigneeFilter(value);
-								setStickyRowId(null);
+								setStickyRowIds(new Set());
 							}}
 							disabled={isPending}
 						>
@@ -681,6 +738,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 										>
 											<TableCell>
 												<span className="font-semibold">{task.presetLabel}</span>
+												{matchesFilter(task) ? null : (
+													<span className="block text-xs text-muted-foreground">{t("Not in this filter")}</span>
+												)}
 											</TableCell>
 											<TableCell>{renderAssignee(task)}</TableCell>
 											<TableCell>{renderRepeats(task)}</TableCell>
@@ -735,6 +795,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 									<div className="flex items-start justify-between gap-3">
 										<div className="min-w-0">
 											<p className="font-semibold">{task.presetLabel}</p>
+											{matchesFilter(task) ? null : (
+												<p className="text-xs text-muted-foreground">{t("Not in this filter")}</p>
+											)}
 											<p className="text-sm text-muted-foreground">{formatProgress(task)}</p>
 										</div>
 										<div className="-mr-2">{renderRemove(task)}</div>

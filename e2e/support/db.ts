@@ -118,7 +118,7 @@ export const createAssignment = async ({
 }: {
 	householdId: string;
 	presetId: string;
-	assignedToId: string;
+	assignedToId: string | null;
 	assignedById: string;
 }) => {
 	await getPrisma().assignedTask.create({

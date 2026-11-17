@@ -91,3 +91,38 @@ test("adding an inline task resets the form, keeps the task selectable until ser
 		container.remove();
 	}
 });
+
+test("the add status and its View action clear once the added task is removed from the list", async () => {
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const added = { id: "task-1", presetId: preset.id, presetLabel: preset.label, assigneeId: null };
+	const render = async (existingTasks: (typeof added)[]) =>
+		act(async () =>
+			root.render(
+				createElement(AssignTaskCard, {
+					householdId: "home",
+					currentUserId: "approver",
+					members: [{ id: "approver", name: "Alex", email: null }],
+					presets: mapPresetSummaries([preset]),
+					existingTasks,
+					onViewTask: jest.fn(),
+				}),
+			),
+		);
+	const viewButton = () =>
+		Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "View");
+	try {
+		await render([]);
+		await act(async () => mockOptions.onSuccess({ preset, assignedTask: { id: "task-1" } }));
+		expect(viewButton()).toBeDefined();
+		// The refreshed list includes the new task, then a later refresh no longer does.
+		await render([added]);
+		expect(viewButton()).toBeDefined();
+		await render([]);
+		expect(viewButton()).toBeUndefined();
+	} finally {
+		await act(async () => root.unmount());
+		container.remove();
+	}
+});
