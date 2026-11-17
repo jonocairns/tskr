@@ -83,20 +83,20 @@ const focusTaskRow = (taskId: string) =>
 		?.querySelector<HTMLElement>("button[role=combobox]")
 		?.focus({ preventScroll: true });
 
-// Focus is "in" a row when it is inside the row or inside a popup (select list, dialog) opened by one of the
-// row's own controls, which Radix portals elsewhere but links through aria-controls.
-const isRowInUse = (taskId: string) => {
+// A row is in use when the target (focus by default, or where a click landed) is inside the row or inside a
+// popup (select list, dialog) opened by one of the row's own controls, which Radix portals elsewhere but links
+// through aria-controls.
+const isRowInUse = (taskId: string, target: EventTarget | null = document.activeElement) => {
 	const row = findVisible(`[data-task-id="${taskId}"]`);
-	const active = document.activeElement;
-	if (!row || !active || active === document.body) {
+	if (!row || !(target instanceof Node) || target === document.body) {
 		return false;
 	}
-	if (row.contains(active)) {
+	if (row.contains(target)) {
 		return true;
 	}
 	return Array.from(row.querySelectorAll<HTMLElement>("[aria-controls]")).some((trigger) => {
 		const controlled = trigger.getAttribute("aria-controls");
-		return controlled ? document.getElementById(controlled)?.contains(active) : false;
+		return controlled ? document.getElementById(controlled)?.contains(target) : false;
 	});
 };
 
@@ -217,9 +217,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		}
 		const released = [...sticky].filter((taskId) => {
 			const row = current.find((task) => task.id === taskId);
-			const pressedInRow =
-				pressTarget instanceof Node && findVisible(`[data-task-id="${taskId}"]`)?.contains(pressTarget);
-			return confirming?.id !== taskId && !(row && dirty(row)) && !pressedInRow && !isRowInUse(taskId);
+			// After a click, where it landed decides: focus may not have settled yet (touch moves it after pointerup).
+			const inUse = pressTarget ? isRowInUse(taskId, pressTarget) : isRowInUse(taskId);
+			return confirming?.id !== taskId && !(row && dirty(row)) && !inUse;
 		});
 		if (released.length > 0) {
 			setStickyRowIds((previous) => new Set([...previous].filter((taskId) => !released.includes(taskId))));
@@ -245,15 +245,23 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 				setTimeout(() => sweepStickyRows(null), 0);
 			}
 		};
+		// Focus dropping to the page fires no focusin, so a focusout with nowhere to go sweeps too.
+		const focusLost = (event: FocusEvent) => {
+			if (event.relatedTarget === null) {
+				focusMoved();
+			}
+		};
 		document.addEventListener("pointerdown", down, true);
 		document.addEventListener("pointerup", up, true);
 		document.addEventListener("pointercancel", up, true);
 		document.addEventListener("focusin", focusMoved);
+		document.addEventListener("focusout", focusLost);
 		return () => {
 			document.removeEventListener("pointerdown", down, true);
 			document.removeEventListener("pointerup", up, true);
 			document.removeEventListener("pointercancel", up, true);
 			document.removeEventListener("focusin", focusMoved);
+			document.removeEventListener("focusout", focusLost);
 		};
 	}, [sweepStickyRows]);
 
