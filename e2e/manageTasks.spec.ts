@@ -98,6 +98,7 @@ test.describe("as an approver", () => {
 		// Newest first: Vacuum lists above Dishes, so removing Vacuum would shift the row being clicked.
 		for (const [label, assignedToId] of [
 			["Feed the cat", null],
+			["Mop the floor", userIds.approver],
 			["Do the dishes", userIds.approver],
 			["Vacuum the lounge", userIds.approver],
 		] as const) {
@@ -118,15 +119,32 @@ test.describe("as an approver", () => {
 		await expect(row("Vacuum the lounge").getByRole("button", { name: /saved$/ })).toBeVisible();
 		await expect(row("Vacuum the lounge")).toContainText("Not in this filter");
 
-		// It stays after the confirmation, until the next click elsewhere, and that click still lands.
+		// It stays after the confirmation, until the next click elsewhere. Remove acts on a full click, so the
+		// dialog opening proves the row below didn't shift between pointerdown and pointerup.
 		await expect(row("Vacuum the lounge").getByRole("button", { name: /^Save/ })).toBeHidden();
 		await expect(row("Vacuum the lounge")).toBeVisible();
 		await row("Do the dishes")
-			.getByRole("combobox", { name: /Repeats/ })
+			.getByRole("button", { name: /^Remove/ })
 			.click();
-		await expect(page.getByRole("option", { name: "Daily" })).toBeVisible();
-		await page.keyboard.press("Escape");
+		await expect(page.getByRole("alertdialog")).toBeVisible();
+		await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
 		await expect(row("Vacuum the lounge")).toHaveCount(0);
+		await expect(row("Do the dishes")).toBeVisible();
+
+		// Two quick saves out of the filter: neither row is left behind once you move on.
+		for (const label of ["Do the dishes", "Mop the floor"]) {
+			await row(label)
+				.getByRole("combobox", { name: /Assignee/ })
+				.click();
+			await page.getByRole("option", { name: "Morgan Member" }).click();
+		}
+		await row("Do the dishes").getByRole("button", { name: /^Save/ }).click();
+		await expect(row("Do the dishes").getByRole("button", { name: /saved$/ })).toBeVisible();
+		await row("Mop the floor").getByRole("button", { name: /^Save/ }).click();
+		await expect(row("Mop the floor").getByRole("button", { name: /saved$/ })).toBeVisible();
+		await page.mouse.click(5, 5);
+		await expect(row("Do the dishes")).toHaveCount(0);
+		await expect(row("Mop the floor")).toHaveCount(0);
 
 		// Emptying a filter offers a way back to everything.
 		await filter.click();
@@ -142,5 +160,6 @@ test.describe("as an approver", () => {
 		await page.getByRole("button", { name: "Show all assignees" }).click();
 		await expect(row("Feed the cat")).toBeVisible();
 		await expect(row("Vacuum the lounge")).toBeVisible();
+		await expect(row("Mop the floor")).toBeVisible();
 	});
 });

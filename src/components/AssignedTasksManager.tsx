@@ -199,75 +199,63 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 	const matchesFilter = (task: AssignedTaskRow) =>
 		assigneeFilter === ASSIGNEE_ALL_VALUE ||
 		((savedById.get(task.id) ?? task).assigneeId ?? UNASSIGNED_VALUE) === assigneeFilter;
-	// A row saved out of the current filter stays until the user is done with it: its confirmation has ended,
-	// focus has left it (popups and dialogs it opened count as inside), and it has no new unsaved edits.
-	// Several rows can be retained at once (e.g. one still has edits while another is saved).
+	// A row saved out of the current filter stays until the user is done with it: no "Saved" confirmation is
+	// showing for it, focus isn't in it (popups and dialogs it opened count as inside), it has no new unsaved
+	// edits, and the last click wasn't on it. Several rows can be retained at once; they are released together
+	// in one sweep, so the table reflows once rather than under each click.
 	const [stickyRowIds, setStickyRowIds] = useState<ReadonlySet<string>>(() => new Set());
 	const filteredTasks = sortedTasks.filter((task) => matchesFilter(task) || stickyRowIds.has(task.id));
-	const latestRef = useRef({ tasks, isDirty, savedConfirmation });
+	const latestRef = useRef({ tasks, isDirty, savedConfirmation, stickyRowIds });
 	useEffect(() => {
-		latestRef.current = { tasks, isDirty, savedConfirmation };
+		latestRef.current = { tasks, isDirty, savedConfirmation, stickyRowIds };
 	});
-	const releaseStickyRow = useCallback((taskId: string) => {
-		const { tasks: current, isDirty: dirty, savedConfirmation: confirming } = latestRef.current;
-		const row = current.find((task) => task.id === taskId);
-		if (confirming?.id === taskId || (row && dirty(row))) {
+	const sweepStickyRows = useCallback((pressTarget: EventTarget | null) => {
+		const { tasks: current, isDirty: dirty, savedConfirmation: confirming, stickyRowIds: sticky } = latestRef.current;
+		// An open dropdown or dialog would shift if rows above it left; its closing moves focus and sweeps again.
+		if (sticky.size === 0 || document.querySelector("[data-radix-popper-content-wrapper], [role=alertdialog]")) {
 			return;
 		}
-		setStickyRowIds((sticky) => {
-			if (!sticky.has(taskId)) {
-				return sticky;
-			}
-			const next = new Set(sticky);
-			next.delete(taskId);
-			return next;
+		const released = [...sticky].filter((taskId) => {
+			const row = current.find((task) => task.id === taskId);
+			const pressedInRow =
+				pressTarget instanceof Node && findVisible(`[data-task-id="${taskId}"]`)?.contains(pressTarget);
+			return confirming?.id !== taskId && !(row && dirty(row)) && !pressedInRow && !isRowInUse(taskId);
 		});
+		if (released.length > 0) {
+			setStickyRowIds((previous) => new Set([...previous].filter((taskId) => !released.includes(taskId))));
+		}
 	}, []);
-	// Removing a row mid-click would shift the rows below between pointerdown and pointerup, so the click
-	// would miss its target. Release waits for any pressed pointer to be let go.
+	// Sweeps run after a click completes and after focus moves. Removing rows mid-click would shift the rows
+	// below between pointerdown and pointerup, so nothing is released while a pointer is pressed; the click
+	// event follows pointerup in the same task, so a zero timeout lets it land first.
 	const pointerDownRef = useRef(false);
 	useEffect(() => {
-		const down = () => {
+		let pressTarget: EventTarget | null = null;
+		const down = (event: PointerEvent) => {
 			pointerDownRef.current = true;
+			pressTarget = event.target;
 		};
 		const up = () => {
 			pointerDownRef.current = false;
+			const target = pressTarget;
+			setTimeout(() => sweepStickyRows(target), 0);
+		};
+		const focusMoved = () => {
+			if (!pointerDownRef.current) {
+				setTimeout(() => sweepStickyRows(null), 0);
+			}
 		};
 		document.addEventListener("pointerdown", down, true);
 		document.addEventListener("pointerup", up, true);
 		document.addEventListener("pointercancel", up, true);
+		document.addEventListener("focusin", focusMoved);
 		return () => {
 			document.removeEventListener("pointerdown", down, true);
 			document.removeEventListener("pointerup", up, true);
 			document.removeEventListener("pointercancel", up, true);
+			document.removeEventListener("focusin", focusMoved);
 		};
-	}, []);
-	const releaseWhenIdle = useCallback(
-		(taskId: string) => {
-			const attempt = () => {
-				if (!isRowInUse(taskId)) {
-					releaseStickyRow(taskId);
-				}
-			};
-			if (!pointerDownRef.current) {
-				attempt();
-				return;
-			}
-			// The click event follows pointerup in the same task, so a zero timeout lets it land first.
-			const onRelease = () => {
-				document.removeEventListener("pointerup", onRelease);
-				document.removeEventListener("pointercancel", onRelease);
-				setTimeout(attempt, 0);
-			};
-			document.addEventListener("pointerup", onRelease);
-			document.addEventListener("pointercancel", onRelease);
-		},
-		[releaseStickyRow],
-	);
-	const handleRowBlur = (taskId: string) => {
-		// Wait for focus to land, then keep the row if it is still in use.
-		setTimeout(() => releaseWhenIdle(taskId), 0);
-	};
+	}, [sweepStickyRows]);
 
 	// A just-added row hidden by the assignee filter would make the confirmation point at nothing. This runs
 	// once per added row, so a filter chosen afterwards still applies.
@@ -312,7 +300,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 	}, [pendingRevealId, tasks]);
 
 	// "Saved" holds the button in place briefly, then hands focus to the row so keyboard users keep their place.
-	// A row saved out of the filter is released here only if the user has already moved on.
+	// Its end also sweeps retained rows, including any whose confirmation a later save replaced.
 	useEffect(() => {
 		if (!savedConfirmation) {
 			return;
@@ -327,10 +315,12 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 				focusTaskRow(id);
 				return;
 			}
-			releaseWhenIdle(id);
+			if (!pointerDownRef.current) {
+				sweepStickyRows(null);
+			}
 		}, SAVED_CONFIRMATION_MS);
 		return () => clearTimeout(timeout);
-	}, [releaseWhenIdle, savedConfirmation]);
+	}, [savedConfirmation, sweepStickyRows]);
 
 	const updateTask = (
 		id: string,
@@ -730,12 +720,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 								{/* Solid control backgrounds so row hover and highlight tints don't wash them out. */}
 								<TableBody className="[&_button[role=combobox]]:bg-card [&_input]:bg-card">
 									{filteredTasks.map((task) => (
-										<TableRow
-											key={task.id}
-											data-task-id={task.id}
-											className={highlightClass(task)}
-											onBlur={() => handleRowBlur(task.id)}
-										>
+										<TableRow key={task.id} data-task-id={task.id} className={highlightClass(task)}>
 											<TableCell>
 												<span className="font-semibold">{task.presetLabel}</span>
 												{matchesFilter(task) ? null : (
@@ -785,7 +770,6 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 								<li
 									key={task.id}
 									data-task-id={task.id}
-									onBlur={() => handleRowBlur(task.id)}
 									className={cn(
 										// Every item shares the same inset, so the highlight never changes an item's bounds.
 										"-mx-3 grid gap-3 px-3 py-4 [&_button[role=combobox]]:bg-card [&_input]:bg-card",
