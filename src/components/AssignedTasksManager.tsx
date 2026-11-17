@@ -247,7 +247,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 
 	const highlightClass = (task: AssignedTaskRow) =>
 		task.id === highlightTaskId
-			? "animate-row-highlight motion-reduce:animate-none motion-reduce:bg-emerald-500/15"
+			? "animate-row-highlight motion-reduce:animate-none motion-reduce:bg-emerald-500/10 motion-reduce:shadow-[inset_3px_0_0_oklch(69.6%_0.17_162.48)]"
 			: undefined;
 
 	const renderAssignee = (task: AssignedTaskRow, id?: string) => (
@@ -469,8 +469,8 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 								<li
 									key={task.id}
 									className={cn(
-										"grid gap-3 py-4 [&_button[role=combobox]]:bg-card [&_input]:bg-card",
-										task.id === highlightTaskId && "-mx-2 rounded-md px-2",
+										// Every item shares the same inset, so the highlight never changes an item's bounds.
+										"-mx-3 grid gap-3 px-3 py-4 [&_button[role=combobox]]:bg-card [&_input]:bg-card",
 										highlightClass(task),
 									)}
 								>
