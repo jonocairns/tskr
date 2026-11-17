@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/jonocairns/tskr/compare/1.7.0...1.8.0) (2026-11-17)
+
+
+### Features
+
+* **tasks:** reset and confirm after adding, clearer Manage layout ([#179](https://github.com/jonocairns/tskr/issues/179)) ([586d1f4](https://github.com/jonocairns/tskr/commit/586d1f4a064a29c448c386173990c15f32e28363))
+
+
+### Bug Fixes
+
+* **deps:** upgrade Next.js to 16.4.6 for security advisory ([#181](https://github.com/jonocairns/tskr/issues/181)) ([61ff9db](https://github.com/jonocairns/tskr/commit/61ff9dbedf1a4b13a73b58ef07730229444092eb))
+
 ## [1.7.0](https://github.com/jonocairns/tskr/compare/1.6.0...1.7.0) (2026-11-16)
 
 
