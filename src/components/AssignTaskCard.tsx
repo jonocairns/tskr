@@ -56,7 +56,6 @@ type AssignTaskCardProps = {
 };
 
 const ADDED_CONFIRMATION_MS = 1500;
-const ADDED_STATUS_MS = 5000;
 
 export const AssignTaskCard = ({
 	householdId,
@@ -117,12 +116,10 @@ export const AssignTaskCard = ({
 		if (addCount === 0) {
 			return;
 		}
+		// The status line (with its View action) has no timeout: it stays until the next edit, so it can't
+		// disappear while someone is reaching it.
 		const confirmation = setTimeout(() => setJustAdded(false), ADDED_CONFIRMATION_MS);
-		const status = setTimeout(() => setAdded(null), ADDED_STATUS_MS);
-		return () => {
-			clearTimeout(confirmation);
-			clearTimeout(status);
-		};
+		return () => clearTimeout(confirmation);
 	}, [addCount]);
 
 	// Any edit starts the next task, so the previous confirmation no longer applies.
@@ -477,11 +474,11 @@ export const AssignTaskCard = ({
 									})}
 						</p>
 					) : null}
-					<div className="flex flex-col-reverse sm:flex-row sm:gap-3 sm:items-center sm:justify-end">
+					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-end sm:gap-3">
 						<p
 							role="status"
 							aria-live="polite"
-							className="pt-3 text-sm text-muted-foreground empty:pt-0 sm:mr-auto sm:min-h-5 sm:pt-0"
+							className="pb-3 text-sm text-muted-foreground empty:pb-0 sm:mr-auto sm:min-h-5 sm:pb-0"
 						>
 							{added ? (
 								<span className="inline-flex flex-wrap items-center gap-x-1.5">
@@ -490,7 +487,7 @@ export const AssignTaskCard = ({
 									{onViewTask ? (
 										<button
 											type="button"
-											className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
+											className="rounded-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 											onClick={() => onViewTask(added.id)}
 										>
 											{t("View")}

@@ -334,6 +334,7 @@
 	"Set the language used across all households.": "Set the language used across all households.",
 	"Settings": "Settings",
 	"Share with household": "Share with household",
+	"Showing all assignees so the new task is visible.": "Showing all assignees so the new task is visible.",
 	"Sign in failed": "Sign in failed",
 	"Sign in with Google": "Sign in with Google",
 	"Sign in with Google or email to log tasks, watch your points climb, and keep an audit trail you can always undo.": "Sign in with Google or email to log tasks, watch your points climb, and keep an audit trail you can always undo.",
@@ -491,5 +492,7 @@
 	"{{task}} ({{assignee}})": "{{task}} ({{assignee}})",
 	"{{task}} is already on the list as Open. Adding it again creates a second copy.": "{{task}} is already on the list as Open. Adding it again creates a second copy.",
 	"{{task}} is already on the list for {{name}}. Adding it again creates a second copy.": "{{task}} is already on the list for {{name}}. Adding it again creates a second copy.",
-	"{{task}} saved": "{{task}} saved"
+	"{{task}} saved": "{{task}} saved",
+	"{{task}} saved.": "{{task}} saved.",
+	"{{task}} saved. It no longer matches the assignee filter.": "{{task}} saved. It no longer matches the assignee filter."
 }

@@ -102,6 +102,8 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 	const [savedTasks, setSavedTasks] = useState(initialTasks);
 	const [assigneeFilter, setAssigneeFilter] = useState(ASSIGNEE_ALL_VALUE);
 	const [savedConfirmation, setSavedConfirmation] = useState<{ id: string; count: number } | null>(null);
+	// Screen readers don't reliably announce a focused button's label change, so outcomes are also announced here.
+	const [announcement, setAnnouncement] = useState("");
 	const headingRef = useRef<HTMLDivElement>(null);
 	// After a removal, focus goes to a neighbouring row (or the heading), since the dialog and its trigger unmount.
 	const [focusAfterRemove, setFocusAfterRemove] = useState<{ removedId: string; targetId: string } | null>(null);
@@ -142,9 +144,10 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 	const isDirty = (task: AssignedTaskRow) =>
 		isCadenceDirty(task) || savedById.get(task.id)?.assigneeId !== task.assigneeId;
 
+	// Options follow saved assignees, matching how rows are filtered, so unsaved edits don't change them.
 	const assigneeOptions = useMemo(() => {
 		const map = new Map<string, { id: string; label: string }>();
-		for (const task of tasks) {
+		for (const task of savedTasks) {
 			if (!task.assigneeId) {
 				continue;
 			}
@@ -152,7 +155,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			map.set(task.assigneeId, { id: task.assigneeId, label });
 		}
 		return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-	}, [tasks, t]);
+	}, [savedTasks, t]);
 
 	useEffect(() => {
 		if (assigneeFilter === ASSIGNEE_ALL_VALUE || assigneeFilter === UNASSIGNED_VALUE) {
@@ -167,42 +170,58 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		() => [...tasks].sort((a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime()),
 		[tasks],
 	);
-	const filteredTasks = useMemo(() => {
-		if (assigneeFilter === ASSIGNEE_ALL_VALUE) {
-			return sortedTasks;
-		}
-		// Filter on the saved assignee, so reassigning a row doesn't hide it before it is saved.
-		return sortedTasks.filter(
-			(task) => ((savedById.get(task.id) ?? task).assigneeId ?? UNASSIGNED_VALUE) === assigneeFilter,
-		);
-	}, [assigneeFilter, savedById, sortedTasks]);
+	// Filter on the saved assignee, so reassigning a row doesn't hide it before it is saved.
+	const matchesFilter = (task: AssignedTaskRow) =>
+		assigneeFilter === ASSIGNEE_ALL_VALUE ||
+		((savedById.get(task.id) ?? task).assigneeId ?? UNASSIGNED_VALUE) === assigneeFilter;
+	// A row that no longer matches after saving stays until its "Saved" confirmation ends.
+	const filteredTasks = sortedTasks.filter((task) => matchesFilter(task) || task.id === savedConfirmation?.id);
+	const latestFilterRef = useRef({ filteredTasks, matchesFilter });
+	useEffect(() => {
+		latestFilterRef.current = { filteredTasks, matchesFilter };
+	});
 
-	// A just-added row hidden by the assignee filter would make the confirmation point at nothing.
+	// A just-added row hidden by the assignee filter would make the confirmation point at nothing. This runs
+	// once per added row, so a filter chosen afterwards still applies.
+	const autoRevealedIdRef = useRef<string | null>(null);
 	useEffect(() => {
 		if (
-			highlightTaskId &&
-			tasks.some((task) => task.id === highlightTaskId) &&
-			!filteredTasks.some((task) => task.id === highlightTaskId)
+			!highlightTaskId ||
+			highlightTaskId === autoRevealedIdRef.current ||
+			!tasks.some((task) => task.id === highlightTaskId)
 		) {
-			setAssigneeFilter(ASSIGNEE_ALL_VALUE);
-		}
-	}, [filteredTasks, highlightTaskId, tasks]);
-
-	// "View" from the add form scrolls to the row and focuses it, after any filter change has rendered.
-	useEffect(() => {
-		if (!revealRequest) {
 			return;
 		}
-		setAssigneeFilter(ASSIGNEE_ALL_VALUE);
-		const frame = requestAnimationFrame(() => {
-			const row = findVisible(`[data-task-id="${revealRequest.id}"]`);
+		autoRevealedIdRef.current = highlightTaskId;
+		if (!filteredTasks.some((task) => task.id === highlightTaskId)) {
+			setAssigneeFilter(ASSIGNEE_ALL_VALUE);
+			setAnnouncement(t("Showing all assignees so the new task is visible."));
+		}
+	}, [filteredTasks, highlightTaskId, t, tasks]);
+
+	// "View" from the add form scrolls to the row and focuses it. The request waits for the row if the
+	// refreshed list hasn't arrived yet.
+	const [pendingRevealId, setPendingRevealId] = useState<string | null>(null);
+	useEffect(() => {
+		if (revealRequest) {
+			setAssigneeFilter(ASSIGNEE_ALL_VALUE);
+			setPendingRevealId(revealRequest.id);
+		}
+	}, [revealRequest]);
+	useEffect(() => {
+		if (!pendingRevealId || !tasks.some((task) => task.id === pendingRevealId)) {
+			return;
+		}
+		requestAnimationFrame(() => {
+			const row = findVisible(`[data-task-id="${pendingRevealId}"]`);
 			row?.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
 			row?.querySelector<HTMLElement>("button[role=combobox]")?.focus({ preventScroll: true });
+			setPendingRevealId(null);
 		});
-		return () => cancelAnimationFrame(frame);
-	}, [revealRequest]);
+	}, [pendingRevealId, tasks]);
 
-	// "Saved" holds the button in place briefly, then hands focus to the row so keyboard users keep their place.
+	// "Saved" holds the button in place briefly, then hands focus to the row so keyboard users keep their place,
+	// or to a neighbour if the save moved the row out of the current filter.
 	useEffect(() => {
 		if (!savedConfirmation) {
 			return;
@@ -210,7 +229,19 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		const timeout = setTimeout(() => {
 			const button = document.activeElement;
 			if (button instanceof HTMLElement && button.dataset.saveFor === savedConfirmation.id) {
-				focusTaskRow(savedConfirmation.id);
+				const { filteredTasks: visible, matchesFilter: matches } = latestFilterRef.current;
+				const index = visible.findIndex((task) => task.id === savedConfirmation.id);
+				const row = visible[index];
+				if (row && matches(row)) {
+					focusTaskRow(row.id);
+				} else {
+					const neighbour = visible[index + 1] ?? visible[index - 1];
+					if (neighbour) {
+						focusTaskRow(neighbour.id);
+					} else {
+						headingRef.current?.focus();
+					}
+				}
 			}
 			setSavedConfirmation(null);
 		}, SAVED_CONFIRMATION_MS);
@@ -261,6 +292,14 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			updateTask(variables.id, updates);
 			setSavedTasks((prev) => prev.map((task) => (task.id === variables.id ? { ...task, ...updates } : task)));
 			setSavedConfirmation((previous) => ({ id: variables.id, count: (previous?.count ?? 0) + 1 }));
+			const label = tasks.find((task) => task.id === variables.id)?.presetLabel ?? t("Task");
+			const leavesFilter =
+				assigneeFilter !== ASSIGNEE_ALL_VALUE && (updates.assigneeId ?? UNASSIGNED_VALUE) !== assigneeFilter;
+			setAnnouncement(
+				leavesFilter
+					? t("{{task}} saved. It no longer matches the assignee filter.", { task: label })
+					: t("{{task}} saved.", { task: label }),
+			);
 			router.refresh();
 		},
 		onError: (error) => {
@@ -552,6 +591,9 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 				) : null}
 			</CardHeader>
 			<CardContent>
+				<p role="status" aria-live="polite" className="sr-only">
+					{announcement}
+				</p>
 				{sortedTasks.length === 0 ? (
 					<p className="text-sm text-muted-foreground">{t("No tasks yet.")}</p>
 				) : (
