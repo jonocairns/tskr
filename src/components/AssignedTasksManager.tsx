@@ -1,8 +1,8 @@
 "use client";
 
-import { Loader2Icon, Trash2Icon } from "lucide-react";
+import { CheckIcon, Loader2Icon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
 	AlertDialog,
@@ -37,6 +37,8 @@ import { cn } from "@/lib/utils";
 const UNASSIGNED_VALUE = "unassigned";
 
 const ASSIGNEE_ALL_VALUE = "all";
+const SAVED_CONFIRMATION_MS = 1500;
+const FOCUS_HEADING = "__heading__";
 
 type AssignedTaskRow = {
 	id: string;
@@ -52,14 +54,46 @@ type AssignedTaskRow = {
 	progress: { completed: number; target: number; isRecurring: boolean };
 };
 
+type DraftFields = Pick<
+	AssignedTaskRow,
+	"assigneeId" | "assigneeName" | "assigneeEmail" | "isRecurring" | "cadenceIntervalMinutes" | "cadenceTarget"
+>;
+
+const hasDraftChanges = (draft: AssignedTaskRow, saved: AssignedTaskRow) =>
+	draft.assigneeId !== saved.assigneeId ||
+	draft.isRecurring !== saved.isRecurring ||
+	(draft.isRecurring &&
+		(draft.cadenceIntervalMinutes !== saved.cadenceIntervalMinutes || draft.cadenceTarget !== saved.cadenceTarget));
+
+const pickDraftFields = (task: AssignedTaskRow): DraftFields => ({
+	assigneeId: task.assigneeId,
+	assigneeName: task.assigneeName,
+	assigneeEmail: task.assigneeEmail,
+	isRecurring: task.isRecurring,
+	cadenceIntervalMinutes: task.cadenceIntervalMinutes,
+	cadenceTarget: task.cadenceTarget,
+});
+
+// Desktop and mobile layouts both render; only one is displayed at a time.
+const findVisible = (selector: string) =>
+	Array.from(document.querySelectorAll<HTMLElement>(selector)).find((element) => element.offsetParent !== null);
+
+const focusTaskRow = (taskId: string) =>
+	findVisible(`[data-task-id="${taskId}"]`)
+		?.querySelector<HTMLElement>("button[role=combobox]")
+		?.focus({ preventScroll: true });
+
+const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 type Props = {
 	householdId: string;
 	initialTasks: AssignedTaskRow[];
 	members: Array<{ id: string; name: string | null; email: string | null }>;
 	highlightTaskId?: string | null;
+	revealRequest?: { id: string; count: number } | null;
 };
 
-export const AssignedTasksManager = ({ householdId, initialTasks, members, highlightTaskId }: Props) => {
+export const AssignedTasksManager = ({ householdId, initialTasks, members, highlightTaskId, revealRequest }: Props) => {
 	const router = useRouter();
 	const { toast } = useToast();
 	const { t } = useTranslation();
@@ -67,9 +101,27 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 	// The last saved values, so Save only enables for rows with unsaved changes.
 	const [savedTasks, setSavedTasks] = useState(initialTasks);
 	const [assigneeFilter, setAssigneeFilter] = useState(ASSIGNEE_ALL_VALUE);
+	const [savedConfirmation, setSavedConfirmation] = useState<{ id: string; count: number } | null>(null);
+	const headingRef = useRef<HTMLDivElement>(null);
+	// After a removal, focus goes to a neighbouring row (or the heading), since the dialog and its trigger unmount.
+	const [focusAfterRemove, setFocusAfterRemove] = useState<{ removedId: string; targetId: string } | null>(null);
+	const savedTasksRef = useRef(savedTasks);
 
 	useEffect(() => {
-		setTasks(initialTasks);
+		savedTasksRef.current = savedTasks;
+	}, [savedTasks]);
+
+	// Server refreshes (after adding, saving or removing) keep other rows' unsaved edits instead of discarding them.
+	useEffect(() => {
+		const previousSaved = new Map(savedTasksRef.current.map((task) => [task.id, task]));
+		setTasks((drafts) => {
+			const draftsById = new Map(drafts.map((task) => [task.id, task]));
+			return initialTasks.map((next) => {
+				const draft = draftsById.get(next.id);
+				const saved = previousSaved.get(next.id);
+				return draft && saved && hasDraftChanges(draft, saved) ? { ...next, ...pickDraftFields(draft) } : next;
+			});
+		});
 		setSavedTasks(initialTasks);
 	}, [initialTasks]);
 
@@ -119,8 +171,51 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 		if (assigneeFilter === ASSIGNEE_ALL_VALUE) {
 			return sortedTasks;
 		}
-		return sortedTasks.filter((task) => (task.assigneeId ?? UNASSIGNED_VALUE) === assigneeFilter);
-	}, [assigneeFilter, sortedTasks]);
+		// Filter on the saved assignee, so reassigning a row doesn't hide it before it is saved.
+		return sortedTasks.filter(
+			(task) => ((savedById.get(task.id) ?? task).assigneeId ?? UNASSIGNED_VALUE) === assigneeFilter,
+		);
+	}, [assigneeFilter, savedById, sortedTasks]);
+
+	// A just-added row hidden by the assignee filter would make the confirmation point at nothing.
+	useEffect(() => {
+		if (
+			highlightTaskId &&
+			tasks.some((task) => task.id === highlightTaskId) &&
+			!filteredTasks.some((task) => task.id === highlightTaskId)
+		) {
+			setAssigneeFilter(ASSIGNEE_ALL_VALUE);
+		}
+	}, [filteredTasks, highlightTaskId, tasks]);
+
+	// "View" from the add form scrolls to the row and focuses it, after any filter change has rendered.
+	useEffect(() => {
+		if (!revealRequest) {
+			return;
+		}
+		setAssigneeFilter(ASSIGNEE_ALL_VALUE);
+		const frame = requestAnimationFrame(() => {
+			const row = findVisible(`[data-task-id="${revealRequest.id}"]`);
+			row?.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+			row?.querySelector<HTMLElement>("button[role=combobox]")?.focus({ preventScroll: true });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [revealRequest]);
+
+	// "Saved" holds the button in place briefly, then hands focus to the row so keyboard users keep their place.
+	useEffect(() => {
+		if (!savedConfirmation) {
+			return;
+		}
+		const timeout = setTimeout(() => {
+			const button = document.activeElement;
+			if (button instanceof HTMLElement && button.dataset.saveFor === savedConfirmation.id) {
+				focusTaskRow(savedConfirmation.id);
+			}
+			setSavedConfirmation(null);
+		}, SAVED_CONFIRMATION_MS);
+		return () => clearTimeout(timeout);
+	}, [savedConfirmation]);
 
 	const updateTask = (
 		id: string,
@@ -146,12 +241,8 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 						isRecurring: true,
 					};
 				}
-				return {
-					...task,
-					isRecurring: false,
-					cadenceTarget: DEFAULT_CADENCE_TARGET,
-					cadenceIntervalMinutes: DEFAULT_CADENCE_INTERVAL_MINUTES,
-				};
+				// The schedule fields stay in the draft so switching back restores them.
+				return { ...task, isRecurring: false };
 			}),
 		);
 	};
@@ -169,7 +260,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			};
 			updateTask(variables.id, updates);
 			setSavedTasks((prev) => prev.map((task) => (task.id === variables.id ? { ...task, ...updates } : task)));
-			toast({ title: t("Task updated") });
+			setSavedConfirmation((previous) => ({ id: variables.id, count: (previous?.count ?? 0) + 1 }));
 			router.refresh();
 		},
 		onError: (error) => {
@@ -191,6 +282,8 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			if (context?.previousTasks) {
 				setTasks(context.previousTasks);
 			}
+			// The row is back, so focus returns to it instead of a neighbour.
+			setFocusAfterRemove((pending) => pending && { removedId: "", targetId: pending.removedId });
 			toast({
 				title: t("Unable to remove task"),
 				description: error.message ?? t("Please try again."),
@@ -225,11 +318,31 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 	};
 
 	const handleDelete = (taskId: string) => {
+		// Focus moves to a neighbouring row (or the heading) once the dialog closes, since the trigger is removed.
+		const index = filteredTasks.findIndex((task) => task.id === taskId);
+		const neighbour = filteredTasks[index + 1] ?? filteredTasks[index - 1];
+		setFocusAfterRemove({ removedId: taskId, targetId: neighbour?.id ?? FOCUS_HEADING });
 		deleteMutation.mutate({ householdId, id: taskId });
 	};
 
 	const isPending = updateMutation.isPending || deleteMutation.isPending;
 	const savingTaskId = updateMutation.isPending ? updateMutation.variables?.id : undefined;
+
+	// Row controls are disabled while the removal is pending, so focus waits for it to settle.
+	useEffect(() => {
+		if (!focusAfterRemove || isPending || tasks.some((task) => task.id === focusAfterRemove.removedId)) {
+			return;
+		}
+		const { targetId } = focusAfterRemove;
+		requestAnimationFrame(() => {
+			if (targetId === FOCUS_HEADING) {
+				headingRef.current?.focus();
+			} else {
+				focusTaskRow(targetId);
+			}
+			setFocusAfterRemove(null);
+		});
+	}, [focusAfterRemove, isPending, tasks]);
 
 	// Progress reflects the saved schedule, so an unsaved schedule change would contradict it.
 	const formatProgress = (task: AssignedTaskRow) =>
@@ -318,72 +431,105 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 			inputMode="numeric"
 			min={1}
 			className={className}
-			value={task.cadenceTarget}
+			value={task.cadenceTarget || ""}
 			onChange={(event) =>
-				updateTask(task.id, {
-					cadenceTarget: Number.parseInt(event.target.value, 10) || 1,
-				})
+				// Empty while retyping; clamped on blur and save.
+				updateTask(task.id, { cadenceTarget: Number.parseInt(event.target.value, 10) || 0 })
 			}
+			onBlur={() => updateTask(task.id, { cadenceTarget: Math.max(1, task.cadenceTarget || 1) })}
 			disabled={isPending}
 		/>
 	);
 
-	const renderActions = (task: AssignedTaskRow) => {
+	const showsSave = (task: AssignedTaskRow) =>
+		isDirty(task) || savingTaskId === task.id || savedConfirmation?.id === task.id;
+
+	// aria-disabled rather than disabled while saving and confirming, so the button keeps keyboard focus.
+	const renderSave = (task: AssignedTaskRow, className?: string) => {
 		const dirty = isDirty(task);
+		const saving = savingTaskId === task.id;
+		const confirming = !dirty && !saving && savedConfirmation?.id === task.id;
+		const inactive = saving || confirming;
 		return (
-			<div className="-mr-2 flex items-center justify-end gap-1 md:mr-0">
-				<Button
-					type="button"
-					size="sm"
-					variant={dirty ? "default" : "ghost"}
-					disabled={isPending || !dirty}
-					onClick={() => handleSave(task.id)}
-					aria-label={t("Save {{task}}", { task: task.presetLabel })}
-					className={cn("h-9 w-16", !dirty && "invisible")}
-				>
-					{savingTaskId === task.id ? <Loader2Icon className="h-4 w-4 animate-spin" /> : t("Save")}
-				</Button>
-				<AlertDialog>
-					<AlertDialogTrigger asChild>
-						<Button
-							type="button"
-							size="icon"
-							variant="ghost"
-							disabled={isPending}
-							aria-label={t("Remove {{task}}", { task: task.presetLabel })}
-							className="h-9 w-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-						>
-							<Trash2Icon className="h-4 w-4" />
-						</Button>
-					</AlertDialogTrigger>
-					<AlertDialogContent>
-						<AlertDialogHeader>
-							<AlertDialogTitle>{t("Remove task?")}</AlertDialogTitle>
-							<AlertDialogDescription>
-								{t("This removes the task from the list. Its completions stay in Done.")}
-							</AlertDialogDescription>
-						</AlertDialogHeader>
-						<AlertDialogFooter>
-							<AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
-							<AlertDialogAction
-								type="button"
-								onClick={() => handleDelete(task.id)}
-								className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							>
-								{t("Remove")}
-							</AlertDialogAction>
-						</AlertDialogFooter>
-					</AlertDialogContent>
-				</AlertDialog>
-			</div>
+			<Button
+				type="button"
+				size="sm"
+				variant={confirming ? "ghost" : "default"}
+				data-save-for={task.id}
+				disabled={isPending && !saving}
+				aria-disabled={inactive || undefined}
+				onClick={() => {
+					if (dirty && !inactive) {
+						handleSave(task.id);
+					}
+				}}
+				aria-label={
+					confirming ? t("{{task}} saved", { task: task.presetLabel }) : t("Save {{task}}", { task: task.presetLabel })
+				}
+				className={cn("h-9", !showsSave(task) && "invisible", className)}
+			>
+				{saving ? (
+					<Loader2Icon className="h-4 w-4 animate-spin" />
+				) : confirming ? (
+					<>
+						<CheckIcon className="mr-1 h-4 w-4" aria-hidden="true" />
+						{t("Saved")}
+					</>
+				) : (
+					t("Save")
+				)}
+			</Button>
 		);
 	};
+
+	const renderRemove = (task: AssignedTaskRow) => (
+		<AlertDialog>
+			<AlertDialogTrigger asChild>
+				<Button
+					type="button"
+					size="icon"
+					variant="ghost"
+					disabled={isPending}
+					aria-label={t("Remove {{task}}", { task: task.presetLabel })}
+					className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+				>
+					<Trash2Icon className="h-4 w-4" />
+				</Button>
+			</AlertDialogTrigger>
+			<AlertDialogContent
+				onCloseAutoFocus={(event) => {
+					if (focusAfterRemove?.removedId === task.id) {
+						event.preventDefault();
+					}
+				}}
+			>
+				<AlertDialogHeader>
+					<AlertDialogTitle>{t("Remove task?")}</AlertDialogTitle>
+					<AlertDialogDescription>
+						{t("This removes the task from the list. Its completions stay in Done.")}
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+					<AlertDialogAction
+						type="button"
+						onClick={() => handleDelete(task.id)}
+						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+					>
+						{t("Remove")}
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+	);
 
 	return (
 		<Card>
 			<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div className="space-y-1">
-					<CardTitle className="text-xl">{t("All tasks")}</CardTitle>
+					<CardTitle ref={headingRef} tabIndex={-1} className="text-xl focus:outline-none">
+						{t("All tasks")}
+					</CardTitle>
 					<CardDescription>{t("Change who does a task and how often, then save the row.")}</CardDescription>
 				</div>
 				{sortedTasks.length > 0 ? (
@@ -419,7 +565,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 										<TableHead className="w-44">{t("Repeats")}</TableHead>
 										<TableHead className="w-24">{t("Per period")}</TableHead>
 										<TableHead className="w-32">{t("Progress")}</TableHead>
-										<TableHead className="w-28 text-right">
+										<TableHead className="w-32 text-right">
 											<span className="sr-only">{t("Actions")}</span>
 										</TableHead>
 									</TableRow>
@@ -427,7 +573,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 								{/* Solid control backgrounds so row hover and highlight tints don't wash them out. */}
 								<TableBody className="[&_button[role=combobox]]:bg-card [&_input]:bg-card">
 									{filteredTasks.map((task) => (
-										<TableRow key={task.id} className={highlightClass(task)}>
+										<TableRow key={task.id} data-task-id={task.id} className={highlightClass(task)}>
 											<TableCell>
 												<span className="font-semibold">{task.presetLabel}</span>
 											</TableCell>
@@ -458,7 +604,12 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 											>
 												{formatProgress(task)}
 											</TableCell>
-											<TableCell>{renderActions(task)}</TableCell>
+											<TableCell>
+												<div className="flex items-center justify-end gap-1">
+													{renderSave(task, "w-20")}
+													{renderRemove(task)}
+												</div>
+											</TableCell>
 										</TableRow>
 									))}
 								</TableBody>
@@ -468,6 +619,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 							{filteredTasks.map((task) => (
 								<li
 									key={task.id}
+									data-task-id={task.id}
 									className={cn(
 										// Every item shares the same inset, so the highlight never changes an item's bounds.
 										"-mx-3 grid gap-3 px-3 py-4 [&_button[role=combobox]]:bg-card [&_input]:bg-card",
@@ -479,7 +631,7 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 											<p className="font-semibold">{task.presetLabel}</p>
 											<p className="text-sm text-muted-foreground">{formatProgress(task)}</p>
 										</div>
-										{renderActions(task)}
+										<div className="-mr-2">{renderRemove(task)}</div>
 									</div>
 									<div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-4">
 										<div className="col-span-2 grid gap-2">
@@ -499,6 +651,8 @@ export const AssignedTasksManager = ({ householdId, initialTasks, members, highl
 											</div>
 										) : null}
 									</div>
+									{/* After the fields, so tabbing from the last edited field reaches Save. */}
+									{showsSave(task) ? renderSave(task, "w-full") : null}
 								</li>
 							))}
 						</ul>

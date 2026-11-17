@@ -315,6 +315,7 @@
 	"Save to update progress": "Save to update progress",
 	"Save unused claims up to one extra month's allowance. Saved claims do not expire. Points are still required.": "Save unused claims up to one extra month's allowance. Saved claims do not expire. Points are still required.",
 	"Save {{task}}": "Save {{task}}",
+	"Saved": "Saved",
 	"Saving...": "Saving...",
 	"Search icons...": "Search icons...",
 	"Search tasks": "Search tasks",
@@ -353,7 +354,6 @@
 	"Task name": "Task name",
 	"Task recorded and points added.": "Task recorded and points added.",
 	"Task removed": "Task removed",
-	"Task updated": "Task updated",
 	"Tasks": "Tasks",
 	"Tasks (7 days)": "Tasks (7 days)",
 	"Tasks using it are removed from the list: {{tasks}}": "Tasks using it are removed from the list: {{tasks}}",
@@ -433,6 +433,7 @@
 	"Use completer's default": "Use completer's default",
 	"User": "User",
 	"Uses the completer's approval setting": "Uses the completer's approval setting",
+	"View": "View",
 	"Waiting for the browser subscription.": "Waiting for the browser subscription.",
 	"We deducted {{points}} points. Nice work!": "We deducted {{points}} points. Nice work!",
 	"We encountered an unexpected error": "We encountered an unexpected error",
@@ -489,5 +490,6 @@
 	"{{target}}: {{remaining}} of {{limit}} claims left ({{period}})": "{{target}}: {{remaining}} of {{limit}} claims left ({{period}})",
 	"{{task}} ({{assignee}})": "{{task}} ({{assignee}})",
 	"{{task}} is already on the list as Open. Adding it again creates a second copy.": "{{task}} is already on the list as Open. Adding it again creates a second copy.",
-	"{{task}} is already on the list for {{name}}. Adding it again creates a second copy.": "{{task}} is already on the list for {{name}}. Adding it again creates a second copy."
+	"{{task}} is already on the list for {{name}}. Adding it again creates a second copy.": "{{task}} is already on the list for {{name}}. Adding it again creates a second copy.",
+	"{{task}} saved": "{{task}} saved"
 }

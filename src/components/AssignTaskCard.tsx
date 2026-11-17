@@ -52,6 +52,7 @@ type AssignTaskCardProps = {
 	existingTasks: DuplicateTask[];
 	currentUserId: string;
 	onTaskAdded?: (assignedTaskId: string) => void;
+	onViewTask?: (assignedTaskId: string) => void;
 };
 
 const ADDED_CONFIRMATION_MS = 1500;
@@ -64,6 +65,7 @@ export const AssignTaskCard = ({
 	currentUserId,
 	existingTasks,
 	onTaskAdded,
+	onViewTask,
 }: AssignTaskCardProps) => {
 	const router = useRouter();
 	const { toast } = useToast();
@@ -102,26 +104,29 @@ export const AssignTaskCard = ({
 	const [cadenceInterval, setCadenceInterval] = useState(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
 	const [isRecurring, setIsRecurring] = useState(true);
 	const [justAdded, setJustAdded] = useState(false);
-	const [addedLabel, setAddedLabel] = useState<string | null>(null);
+	const [added, setAdded] = useState<{ id: string; label: string } | null>(null);
+	// Bumped on every add so confirmation timers restart when tasks are added in quick succession.
+	const [addCount, setAddCount] = useState(0);
 	const [nameError, setNameError] = useState<string | null>(null);
-	const [focusNamePending, setFocusNamePending] = useState(false);
+	const [focusTarget, setFocusTarget] = useState<"name" | "submit" | null>(null);
+	const formRef = useRef<HTMLFormElement>(null);
 	const nameInputRef = useRef<HTMLInputElement>(null);
+	const submitRef = useRef<HTMLButtonElement>(null);
 
 	useEffect(() => {
-		if (!addedLabel) {
+		if (addCount === 0) {
 			return;
 		}
-		const timeout = setTimeout(() => setAddedLabel(null), ADDED_STATUS_MS);
-		return () => clearTimeout(timeout);
-	}, [addedLabel]);
+		const confirmation = setTimeout(() => setJustAdded(false), ADDED_CONFIRMATION_MS);
+		const status = setTimeout(() => setAdded(null), ADDED_STATUS_MS);
+		return () => {
+			clearTimeout(confirmation);
+			clearTimeout(status);
+		};
+	}, [addCount]);
 
-	useEffect(() => {
-		if (!justAdded) {
-			return;
-		}
-		const timeout = setTimeout(() => setJustAdded(false), ADDED_CONFIRMATION_MS);
-		return () => clearTimeout(timeout);
-	}, [justAdded]);
+	// Any edit starts the next task, so the previous confirmation no longer applies.
+	const markEdited = () => setAdded(null);
 
 	// The assignee stays put so several tasks can be added for the same person in a row.
 	const resetAfterAdd = (assignedTaskId: string, label: string) => {
@@ -135,8 +140,9 @@ export const AssignTaskCard = ({
 		setCadenceInterval(String(DEFAULT_CADENCE_INTERVAL_MINUTES));
 		setNameError(null);
 		setJustAdded(true);
-		setAddedLabel(label);
-		setFocusNamePending(true);
+		setAdded({ id: assignedTaskId, label });
+		setAddCount((count) => count + 1);
+		setFocusTarget("name");
 		onTaskAdded?.(assignedTaskId);
 	};
 
@@ -159,6 +165,7 @@ export const AssignTaskCard = ({
 			router.refresh();
 		},
 		onError: (error) => {
+			setFocusTarget("submit");
 			toast({
 				title: t("Unable to add task"),
 				description: error.message ?? t("Please try again."),
@@ -177,6 +184,7 @@ export const AssignTaskCard = ({
 			router.refresh();
 		},
 		onError: (error) => {
+			setFocusTarget("submit");
 			toast({
 				title: t("Unable to add task"),
 				description: error.message ?? t("Please try again."),
@@ -209,7 +217,7 @@ export const AssignTaskCard = ({
 		if (value) {
 			setPresetId(value);
 			setNameError(null);
-			setAddedLabel(null);
+			markEdited();
 		}
 	};
 
@@ -226,6 +234,7 @@ export const AssignTaskCard = ({
 		const trimmedLabel = newLabel.trim();
 		if (isCreatingPreset && trimmedLabel.length < PRESET_LABEL_MIN_LENGTH) {
 			setNameError(t("Name the new task (at least {{min}} characters).", { min: PRESET_LABEL_MIN_LENGTH }));
+			markEdited();
 			nameInputRef.current?.focus();
 			return;
 		}
@@ -257,13 +266,18 @@ export const AssignTaskCard = ({
 
 	const disabled = !hydrated || createMutation.isPending || createWithPresetMutation.isPending;
 
-	// Inputs stay disabled until the mutation settles, so focus waits for them to re-enable.
+	// Inputs stay disabled until the mutation settles, so focus waits for them to re-enable. Focus only
+	// moves if it was lost to the disabled controls, not if the user has since moved elsewhere.
 	useEffect(() => {
-		if (focusNamePending && !disabled) {
-			nameInputRef.current?.focus({ preventScroll: true });
-			setFocusNamePending(false);
+		if (!focusTarget || disabled) {
+			return;
 		}
-	}, [disabled, focusNamePending]);
+		const active = document.activeElement;
+		if (!active || active === document.body || formRef.current?.contains(active)) {
+			(focusTarget === "name" ? nameInputRef.current : submitRef.current)?.focus({ preventScroll: true });
+		}
+		setFocusTarget(null);
+	}, [disabled, focusTarget]);
 
 	return (
 		<Card>
@@ -271,7 +285,7 @@ export const AssignTaskCard = ({
 				<CardTitle className="text-xl">{t("Add task")}</CardTitle>
 			</CardHeader>
 			<CardContent>
-				<form className="grid gap-6" onSubmit={handleSubmit} noValidate>
+				<form ref={formRef} className="grid gap-6" onSubmit={handleSubmit} noValidate>
 					<div className="grid gap-4">
 						<div className="grid content-start gap-2">
 							<Label htmlFor="preset">{t("Task")}</Label>
@@ -309,7 +323,10 @@ export const AssignTaskCard = ({
 											compact
 											aria-label={t("Icon")}
 											value={newIconKey}
-											onChange={setNewIconKey}
+											onChange={(value) => {
+												setNewIconKey(value);
+												markEdited();
+											}}
 											disabled={disabled}
 											placeholder={t("Pick an icon")}
 											searchPlaceholder={t("Search icons...")}
@@ -328,7 +345,7 @@ export const AssignTaskCard = ({
 											onChange={(event) => {
 												setNewLabel(event.target.value);
 												setNameError(null);
-												setAddedLabel(null);
+												markEdited();
 											}}
 											disabled={disabled}
 										/>
@@ -348,7 +365,10 @@ export const AssignTaskCard = ({
 									<PresetBucketSelect
 										id="new-preset-bucket"
 										value={newBucket}
-										onChange={setNewBucket}
+										onChange={(value) => {
+											setNewBucket(value);
+											markEdited();
+										}}
 										disabled={disabled}
 									/>
 								</div>
@@ -357,7 +377,10 @@ export const AssignTaskCard = ({
 									<PresetApprovalOverrideSelect
 										id="new-preset-approval"
 										value={newApprovalOverride}
-										onChange={setNewApprovalOverride}
+										onChange={(value) => {
+											setNewApprovalOverride(value);
+											markEdited();
+										}}
 										disabled={disabled}
 									/>
 								</div>
@@ -371,7 +394,7 @@ export const AssignTaskCard = ({
 								value={assigneeId}
 								onValueChange={(value) => {
 									setAssigneeId(value);
-									setAddedLabel(null);
+									markEdited();
 								}}
 								disabled={disabled}
 							>
@@ -396,7 +419,7 @@ export const AssignTaskCard = ({
 									if (!value) {
 										return;
 									}
-									setAddedLabel(null);
+									markEdited();
 									if (value === CADENCE_NONE_VALUE) {
 										setIsRecurring(false);
 										return;
@@ -429,11 +452,13 @@ export const AssignTaskCard = ({
 									type="number"
 									inputMode="numeric"
 									min={1}
-									value={cadenceTarget}
+									value={cadenceTarget || ""}
 									onChange={(event) => {
-										setCadenceTarget(Number.parseInt(event.target.value, 10) || 1);
-										setAddedLabel(null);
+										// Empty while retyping; clamped on blur and submit.
+										setCadenceTarget(Number.parseInt(event.target.value, 10) || 0);
+										markEdited();
 									}}
+									onBlur={() => setCadenceTarget((value) => Math.max(1, value || 1))}
 									disabled={disabled}
 								/>
 							</div>
@@ -458,14 +483,23 @@ export const AssignTaskCard = ({
 							aria-live="polite"
 							className="pt-3 text-sm text-muted-foreground empty:pt-0 sm:mr-auto sm:min-h-5 sm:pt-0"
 						>
-							{addedLabel ? (
-								<span className="inline-flex items-center gap-1.5">
+							{added ? (
+								<span className="inline-flex flex-wrap items-center gap-x-1.5">
 									<CheckIcon className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-									{t("{{label}} added to All tasks.", { label: addedLabel })}
+									{t("{{label}} added to All tasks.", { label: added.label })}
+									{onViewTask ? (
+										<button
+											type="button"
+											className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
+											onClick={() => onViewTask(added.id)}
+										>
+											{t("View")}
+										</button>
+									) : null}
 								</span>
 							) : null}
 						</p>
-						<Button type="submit" disabled={disabled} className="w-full sm:w-auto sm:min-w-36">
+						<Button ref={submitRef} type="submit" disabled={disabled} className="w-full sm:w-auto sm:min-w-36">
 							{disabled ? (
 								<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
 							) : justAdded ? (
