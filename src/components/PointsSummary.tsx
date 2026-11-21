@@ -282,7 +282,12 @@ export const PointsSummary = ({
 				headline: resumesAt
 					? t("You can claim again {{when}}", { when: formatWhen(resumesAt) })
 					: t("Claiming is paused"),
-				caption: blockedCaption(t("Your points are kept")),
+				caption: blockedCaption(
+					// Matches the paused badge's count, which links here.
+					rewardsAvailable > 1
+						? t("Your points are kept, enough for {{count}} rewards", { count: rewardsAvailable })
+						: t("Your points are kept"),
+				),
 				aside: soleBlocker ? ruleHeading(soleBlocker) : null,
 			})
 		: isBlockedBelow

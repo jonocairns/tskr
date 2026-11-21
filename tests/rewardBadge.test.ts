@@ -63,16 +63,34 @@ describe("getRewardBadgeState", () => {
 	test("is paused when no claims remain but still counts towards the next reward", () => {
 		expect(getRewardBadgeState({ points: 55, threshold: 50, claimsRemaining: 0 })).toEqual({
 			kind: "limited",
+			count: 1,
 			meterPoints: 5,
 			progress: 10,
 		});
 	});
 
-	test("pauses with several rewards banked and keeps the carryover", () => {
+	test("pauses with several rewards banked, counting them and keeping the carryover", () => {
 		expect(getRewardBadgeState({ points: 160, threshold: 50, claimsRemaining: 0 })).toEqual({
 			kind: "limited",
+			count: 3,
 			meterPoints: 10,
 			progress: 20,
+		});
+	});
+
+	test("counts banked rewards when paused at an exact multiple", () => {
+		expect(getRewardBadgeState({ points: 100, threshold: 50, claimsRemaining: 0 })).toEqual({
+			kind: "limited",
+			count: 2,
+			meterPoints: 0,
+			progress: 0,
+		});
+	});
+
+	test("keeps the ready count to claimable rewards while more are banked", () => {
+		expect(getRewardBadgeState({ points: 160, threshold: 50, claimsRemaining: 2 })).toMatchObject({
+			kind: "ready",
+			count: 2,
 		});
 	});
 
