@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Progress } from "@/components/ui/Progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
+import { useRelativeWhen } from "@/hooks/useRelativeWhen";
 import { useToast } from "@/hooks/useToast";
 import { formatCadenceInterval, getBucketLabels } from "@/lib/assignedTasksCadence";
 import { type DateFormat, formatDateTime, type TimeFormat } from "@/lib/formatDate";
@@ -72,6 +73,7 @@ export const AssignedTaskTable = ({
 	const [confirmEntry, setConfirmEntry] = useState<AssignedTaskEntry | null>(null);
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const bucketLabels = getBucketLabels(t);
+	const formatWhen = useRelativeWhen({ timeZone, dateFormat, timeFormat });
 	const [isMobile, setIsMobile] = useState(false);
 
 	useEffect(() => {
@@ -109,14 +111,15 @@ export const AssignedTaskTable = ({
 	const isPending = completeMutation.isPending;
 
 	const renderEntries = (groupEntries: AssignedTaskEntry[]) => (
-		<Table>
+		// Fixed widths keep every group's columns aligned; the task column takes what is left.
+		<Table className="table-fixed">
 			<TableHeader>
 				<TableRow>
 					<TableHead>{t("Task")}</TableHead>
-					<TableHead className="text-right sm:hidden">{t("Progress")}</TableHead>
-					<TableHead className="hidden sm:table-cell">{t("Progress")}</TableHead>
-					<TableHead className="hidden sm:table-cell">{t("Cadence")}</TableHead>
-					<TableHead className="text-right">{t("Actions")}</TableHead>
+					<TableHead className="w-20 text-right sm:hidden">{t("Progress")}</TableHead>
+					<TableHead className="hidden w-32 sm:table-cell lg:w-40">{t("Progress")}</TableHead>
+					<TableHead className="hidden w-48 sm:table-cell lg:w-56">{t("Cadence")}</TableHead>
+					<TableHead className="w-16 text-right sm:w-36">{t("Actions")}</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody>
@@ -128,7 +131,7 @@ export const AssignedTaskTable = ({
 					};
 					return (
 						<TableRow key={entry.id} style={isMobile ? bgStyle : undefined}>
-							<TableCell>
+							<TableCell className="break-words">
 								<div className="flex flex-col gap-1">
 									<span className="font-semibold">{entry.label}</span>
 									{entry.group === "others" ? (
@@ -160,9 +163,7 @@ export const AssignedTaskTable = ({
 									) : null}
 									{entry.nextResetAt ? (
 										<span className="text-xs text-muted-foreground">
-											{t("Resets {{date}}", {
-												date: formatDateTime(entry.nextResetAt, { timeZone, dateFormat, timeFormat }),
-											})}
+											{t("Resets {{when}}", { when: formatWhen(entry.nextResetAt) })}
 										</span>
 									) : null}
 								</div>
@@ -182,7 +183,7 @@ export const AssignedTaskTable = ({
 								</div>
 							</TableCell>
 							<TableCell className="hidden sm:table-cell">
-								<div className="flex items-center gap-2 text-sm">
+								<div className="flex flex-wrap items-center gap-2 text-sm">
 									<Badge variant="secondary">{entry.isRecurring ? t("Recurring") : t("One-off")}</Badge>
 									<span className="text-muted-foreground">
 										{entry.isRecurring ? formatCadenceInterval(entry.cadenceIntervalMinutes, t) : t("None")}

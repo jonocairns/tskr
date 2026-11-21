@@ -110,20 +110,25 @@ const contrast = (a: readonly number[], b: readonly number[]) => {
 };
 const toHex = (rgb: number[]) => `#${rgb.map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")}`;
 
+// Paused claiming keeps the household's colour but fades it, so the bar reads as inactive.
+export const SUBDUED_FILL_ALPHA = 0.45;
+
 // A custom fill that blends into the track gets an edge in its own hue, darkened on light
-// themes and lightened on dark ones, until the boundary reaches 3:1 against the track.
-export const getBarEdgeColors = (hex: string) => {
+// themes and lightened on dark ones, until the boundary reaches 3:1 against the track. A faded
+// fill (alpha < 1) starts from the colour it shows over the track, so its edge stays muted too.
+export const getBarEdgeColors = (hex: string, alpha = 1) => {
 	const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
 	if (!match) return { light: null, dark: null };
 	const rgb = match.slice(1).map((part) => Number.parseInt(part, 16));
 	const edge = (track: readonly number[], toward: number) => {
-		if (contrast(rgb, track) >= 3) return null;
+		const shown = rgb.map((c, index) => c * alpha + (track[index] ?? 0) * (1 - alpha));
+		if (contrast(shown, track) >= 3) return null;
 		for (let mix = 0.1; mix <= 1; mix += 0.05) {
 			// Measure the rounded colour that is actually emitted.
-			const candidate = rgb.map((c) => Math.round(c + (toward - c) * mix));
+			const candidate = shown.map((c) => Math.round(c + (toward - c) * mix));
 			if (contrast(candidate, track) >= 3) return toHex(candidate);
 		}
-		return toHex(rgb.map(() => toward));
+		return toHex(shown.map(() => toward));
 	};
 	return { light: edge(LIGHT_TRACK, 0), dark: edge(DARK_TRACK, 255) };
 };

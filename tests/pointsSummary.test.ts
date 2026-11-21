@@ -794,6 +794,17 @@ describe("getBarEdgeColors", () => {
 		expect(dark).toMatch(/^#[0-9a-f]{6}$/);
 	});
 
+	test("measures a faded fill as it shows over the track", () => {
+		// Yellow stands out on the dark track at full strength, but not once faded.
+		expect(getBarEdgeColors("#facc15").dark).toBeNull();
+		expect(getBarEdgeColors("#facc15", 0.45).dark).toMatch(/^#[0-9a-f]{6}$/);
+		// Navy faded over the light track loses contrast, so it gains an edge there too, muted rather than full navy.
+		expect(getBarEdgeColors("#1e3a8a").light).toBeNull();
+		const fadedNavy = getBarEdgeColors("#1e3a8a", 0.45).light;
+		expect(fadedNavy).toMatch(/^#[0-9a-f]{6}$/);
+		expect(fadedNavy).not.toBe("#1e3a8a");
+	});
+
 	test("ignores values that are not six-digit hex colours", () => {
 		expect(getBarEdgeColors("red")).toEqual({ light: null, dark: null });
 	});
@@ -813,9 +824,11 @@ describe("getBarEdgeColors", () => {
 		};
 		// Mirrors the light (#d8d6d3) and dark (#39393a) tracks the helper measures against.
 		for (const fill of ["#00177e", "#facc15", "#1e3a8a", "#22c55e"]) {
-			const { light, dark } = getBarEdgeColors(fill);
-			if (light) expect(contrast(light, "#d8d6d3")).toBeGreaterThanOrEqual(3);
-			if (dark) expect(contrast(dark, "#39393a")).toBeGreaterThanOrEqual(3);
+			for (const alpha of [1, 0.45]) {
+				const { light, dark } = getBarEdgeColors(fill, alpha);
+				if (light) expect(contrast(light, "#d8d6d3")).toBeGreaterThanOrEqual(3);
+				if (dark) expect(contrast(dark, "#39393a")).toBeGreaterThanOrEqual(3);
+			}
 		}
 	});
 });

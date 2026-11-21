@@ -1,4 +1,4 @@
-import { getStartOfWeekInTimeZone, getTimeZoneOptions, isValidTimeZone } from "@/lib/timeZones";
+import { getStartOfWeekInTimeZone, getTimeZoneCity, getTimeZoneOptions, isValidTimeZone } from "@/lib/timeZones";
 
 test("includes UTC in time zone options", () => {
 	const options = getTimeZoneOptions();
@@ -17,4 +17,10 @@ test.each([
 	["2024-04-07T12:00:00.000Z", "2024-04-07T12:00:00.000Z"],
 ])("calendar-week counts use household Monday across DST (%s)", (now, expectedStart) => {
 	expect(getStartOfWeekInTimeZone(new Date(now), "Pacific/Auckland").toISOString()).toBe(expectedStart);
+});
+
+test("names a time zone by its city", () => {
+	expect(getTimeZoneCity("Pacific/Auckland")).toBe("Auckland");
+	expect(getTimeZoneCity("America/Argentina/Buenos_Aires")).toBe("Buenos Aires");
+	expect(getTimeZoneCity("UTC")).toBe("UTC");
 });

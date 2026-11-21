@@ -1,3 +1,5 @@
+import { getStartOfDayInTimeZone, getTimeZoneDayNumber, resolveTimeZone } from "@/lib/timeZones";
+
 const DATE_LOCALE = "en-US";
 
 export const DATE_FORMATS = ["DMY", "MDY", "YMD"] as const;
@@ -165,4 +167,53 @@ export const formatDateTime = (value: string | Date, options?: DateTimeFormatOpt
 	const date = formatDate(value, { dateFormat, timeZone });
 	const time = formatTime(value, timeFormat, timeZone);
 	return `${date} ${time}`;
+};
+
+type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+type RelativeWhenOptions = {
+	t: Translate;
+	timeZone: string;
+	dateFormat: DateFormat;
+	timeFormat: TimeFormat;
+	now?: Date;
+};
+
+const weekdayFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+const formatWeekday = (date: Date, timeZone: string) => {
+	const cached = weekdayFormatterCache.get(timeZone);
+	const formatter = cached ?? new Intl.DateTimeFormat(DATE_LOCALE, { weekday: "long", timeZone });
+	if (!cached) weekdayFormatterCache.set(timeZone, formatter);
+	return formatter.format(date);
+};
+
+const keepTogether = (value: string) => value.replaceAll(" ", "\u00a0");
+
+// Phrases a future instant relative to now in the household time zone ("tomorrow", "on Monday",
+// "today at 14:01"). Calendar boundaries fall at midnight, where the time adds nothing, so those read as
+// a day alone. `hasTime` tells callers when a time-zone hint might help.
+export const formatRelativeWhen = (
+	value: string | Date,
+	{ t, timeZone, dateFormat, timeFormat, now = new Date() }: RelativeWhenOptions,
+) => {
+	const date = toDate(value);
+	const zone = resolveTimeZone(timeZone);
+	const dayDiff = getTimeZoneDayNumber(date, zone) - getTimeZoneDayNumber(now, zone);
+	const hasTime = getStartOfDayInTimeZone(date, zone).getTime() !== date.getTime();
+	const includeYear = getDateParts(date, zone).year !== getDateParts(now, zone).year;
+	const day =
+		dayDiff === 0
+			? t("today")
+			: dayDiff === 1
+				? t("tomorrow")
+				: dayDiff > 1 && dayDiff < 7
+					? t("on {{day}}", { day: formatWeekday(date, zone) })
+					: t("on {{day}}", {
+							day: keepTogether(formatReadableDate(date, { timeZone: zone, dateFormat, includeYear })),
+						});
+	const text = hasTime
+		? t("{{when}} at {{time}}", { when: day, time: keepTogether(formatTime(date, timeFormat, zone)) })
+		: day;
+	return { text, hasTime };
 };
