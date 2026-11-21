@@ -22,6 +22,11 @@ type Props = {
 	refreshAt?: string | null;
 	/** Hide the threshold on narrow phones, where a three-tab row is crowded. */
 	compact?: boolean;
+	/**
+	 * For the approver's three-tab Tasks row: below 390px, ready and paused badges keep the ring
+	 * and drop the number, which can grow to three digits, so the row stays on one line.
+	 */
+	tight?: boolean;
 	className?: string;
 };
 
@@ -53,6 +58,7 @@ export const RewardProgressBadge = ({
 	claimsRemaining,
 	progressBarColor,
 	compact = false,
+	tight = false,
 	refreshAt = null,
 	className,
 }: Props) => {
@@ -121,17 +127,7 @@ export const RewardProgressBadge = ({
 					{state.count > 1 ? <span className="text-xs font-semibold">{`×${format(state.count)}`}</span> : null}
 				</span>
 			) : null}
-			<svg
-				aria-hidden="true"
-				width="22"
-				height="22"
-				viewBox="0 0 22 22"
-				className={cn(
-					"-rotate-90",
-					// On the narrowest phones the icon and count keep a three-tab row on one line; the ring yields first.
-					compact && state.kind !== "progress" ? "max-[389px]:hidden" : null,
-				)}
-			>
+			<svg aria-hidden="true" width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
 				<circle
 					cx="11"
 					cy="11"
@@ -160,7 +156,7 @@ export const RewardProgressBadge = ({
 					style={state.kind === "progress" && progressBarColor ? { stroke: progressBarColor } : undefined}
 				/>
 			</svg>
-			<span aria-hidden="true">
+			<span aria-hidden="true" className={tight && state.kind !== "progress" ? "max-[389px]:hidden" : undefined}>
 				{meter.points}
 				<span
 					className={cn(

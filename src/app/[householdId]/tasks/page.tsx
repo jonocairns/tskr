@@ -159,6 +159,7 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 						householdId={householdId}
 						{...rewardBadge}
 						compact={membership.role !== "DOER"}
+						tight={membership.role !== "DOER"}
 						className="ml-auto"
 					/>
 				) : null}
