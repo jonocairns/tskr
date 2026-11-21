@@ -45,10 +45,11 @@ describe("getRewardBadgeState", () => {
 	});
 
 	test("caps ready rewards at the remaining claim allowance", () => {
-		expect(getRewardBadgeState({ points: 160, threshold: 50, claimsRemaining: 1 })).toMatchObject({
+		expect(getRewardBadgeState({ points: 160, threshold: 50, claimsRemaining: 1 })).toEqual({
 			kind: "ready",
 			count: 1,
 			meterPoints: 10,
+			progress: 20,
 		});
 	});
 
@@ -65,6 +66,36 @@ describe("getRewardBadgeState", () => {
 			meterPoints: 5,
 			progress: 10,
 		});
+	});
+
+	test("pauses with several rewards banked and keeps the carryover", () => {
+		expect(getRewardBadgeState({ points: 160, threshold: 50, claimsRemaining: 0 })).toEqual({
+			kind: "limited",
+			meterPoints: 10,
+			progress: 20,
+		});
+	});
+
+	test("starts the next reward from zero at an exact multiple", () => {
+		expect(getRewardBadgeState({ points: 100, threshold: 50, claimsRemaining: null })).toEqual({
+			kind: "ready",
+			count: 2,
+			meterPoints: 0,
+			progress: 0,
+		});
+	});
+
+	test("reports rounded carryover progress for the ring to cap", () => {
+		expect(getRewardBadgeState({ points: 999, threshold: 500, claimsRemaining: null })).toEqual({
+			kind: "ready",
+			count: 1,
+			meterPoints: 499,
+			progress: 100,
+		});
+	});
+
+	test("never treats a non-positive threshold as claimable", () => {
+		expect(getRewardBadgeState({ points: 10, threshold: 0, claimsRemaining: 0 })).toMatchObject({ kind: "progress" });
 	});
 
 	test("ignores an exhausted allowance below the threshold", () => {

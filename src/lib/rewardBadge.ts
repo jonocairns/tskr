@@ -12,7 +12,8 @@ export const getRewardBadgeState = ({ points, threshold, claimsRemaining }: Inpu
 		points,
 		threshold,
 	});
-	if (!canClaim) return { kind: "progress" as const, meterPoints: points, progress };
+	// Settings reject non-positive thresholds; never present one as claimable or paused.
+	if (!canClaim || threshold <= 0) return { kind: "progress" as const, meterPoints: points, progress };
 	// Like the dashboard meter, a claimable balance measures progress towards the reward after it.
 	const next = { meterPoints: carryoverPoints, progress: nextRewardProgress };
 	const count = Math.min(rewardsAvailable, claimsRemaining ?? Number.POSITIVE_INFINITY);

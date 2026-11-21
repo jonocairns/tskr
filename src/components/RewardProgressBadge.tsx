@@ -14,7 +14,7 @@ type Props = {
 	threshold: number;
 	claimsRemaining: number | null;
 	progressBarColor?: string | null;
-	/** Hide the threshold on the narrowest phones, where a three-tab row is crowded. */
+	/** Hide the threshold on narrow phones, where a three-tab row is crowded. */
 	compact?: boolean;
 	className?: string;
 };
@@ -62,8 +62,9 @@ export const RewardProgressBadge = ({
 			? state.count === 1
 				? t("Reward ready, {{points}} / {{threshold}} points towards another reward", meter)
 				: t("{{count}} rewards ready, {{points}} / {{threshold}} points towards another reward", {
-						...meter,
 						count: state.count,
+						points: meter.points,
+						threshold: meter.threshold,
 					})
 			: state.kind === "limited"
 				? t("Claiming is paused, {{points}} / {{threshold}} points towards another reward", meter)
@@ -126,8 +127,9 @@ export const RewardProgressBadge = ({
 				<span
 					className={cn(
 						"font-normal",
-						state.kind === "ready" ? "opacity-70" : "text-muted-foreground",
-						compact ? "max-[389px]:hidden" : null,
+						state.kind === "ready" ? null : "text-muted-foreground",
+						// Ready and paused badges carry an icon too, so they need the room on slightly wider phones.
+						compact ? (state.kind === "progress" ? "max-[389px]:hidden" : "max-[429px]:hidden") : null,
 					)}
 				>
 					{` / ${meter.threshold}`}
