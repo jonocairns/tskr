@@ -6,6 +6,7 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
 import { PointsSummary } from "@/components/PointsSummary";
+import { RewardProgressBadge } from "@/components/RewardProgressBadge";
 import { TaskActions } from "@/components/TaskActions";
 import { buildApprovalEntries } from "@/lib/dashboard/approvals";
 import { buildAuditEntries } from "@/lib/dashboard/buildAuditEntries";
@@ -116,6 +117,15 @@ export default async function DashboardPage({ params }: Props) {
 				presets={presetSummaries}
 				currentUserId={userId}
 				currentUserRole={membership.role}
+				headerAction={
+					<RewardProgressBadge
+						householdId={householdId}
+						points={myPoints}
+						threshold={rewardThreshold}
+						claimsRemaining={rewardClaimAllowance?.remaining ?? null}
+						progressBarColor={progressBarColor}
+					/>
+				}
 			/>
 
 			{showApprovals ? (

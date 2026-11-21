@@ -1,7 +1,7 @@
 "use client";
 
 import { PencilIcon, XIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import { QUICK_LOG_ANCHOR } from "@/components/PointsSummary";
 import { useTaskActions } from "@/components/task-actions/Context";
@@ -20,7 +20,7 @@ import { useTranslation } from "@/lib/i18nClient";
 import type { DurationKey } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
-export const PresetActionsCard = () => {
+export const PresetActionsCard = ({ headerAction }: { headerAction?: ReactNode }) => {
 	const {
 		householdId,
 		presetOptions,
@@ -141,24 +141,18 @@ export const PresetActionsCard = () => {
 					<div className="flex items-start justify-between gap-2">
 						<div className="space-y-1">
 							<div className="flex h-7 items-center gap-2">
-								<CardTitle className="text-xl">{t("Quick log")}</CardTitle>
-								<Badge
-									variant="secondary"
-									className={cn(
-										"h-5 px-2 text-[10px] uppercase tracking-wide transition-opacity",
-										isEditMode ? "opacity-100" : "pointer-events-none opacity-0",
-									)}
-								>
-									<span
-										className={cn(
-											isEditMode
-												? "text-rainbow-smooth animate-edit-mode-rainbow-pulse [text-shadow:0_0_10px_rgba(255,255,255,0.15)]"
-												: null,
-										)}
+								<CardTitle className="whitespace-nowrap text-xl">{t("Quick log")}</CardTitle>
+								{/* Rendered only in edit mode so the hidden chip never takes room from the header action. */}
+								{isEditMode ? (
+									<Badge
+										variant="secondary"
+										className="h-5 px-2 text-[10px] uppercase tracking-wide motion-safe:animate-in motion-safe:fade-in"
 									>
-										{t("Edit mode")}
-									</span>
-								</Badge>
+										<span className="text-rainbow-smooth animate-edit-mode-rainbow-pulse [text-shadow:0_0_10px_rgba(255,255,255,0.15)]">
+											{t("Edit mode")}
+										</span>
+									</Badge>
+								) : null}
 							</div>
 							<CardDescription className="min-h-5 leading-5">
 								{isEditMode
@@ -167,6 +161,7 @@ export const PresetActionsCard = () => {
 							</CardDescription>
 						</div>
 						<div className="flex items-center gap-1">
+							{isEditMode ? null : headerAction}
 							{canManagePresets ? (
 								<Button
 									type="button"

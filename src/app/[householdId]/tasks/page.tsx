@@ -5,12 +5,14 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import { ManageTasksPanel } from "@/components/ManageTasksPanel";
 import { PageHeader } from "@/components/PageHeader";
 import { PageShell } from "@/components/PageShell";
+import { RewardProgressBadge } from "@/components/RewardProgressBadge";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { WeekViewRangeControls } from "@/components/WeekViewRangeControls";
 import { WeekViewTimeline } from "@/components/WeekViewTimeline";
 import { DEFAULT_LANGUAGE } from "@/lib/i18nConfig";
 import { getServerT } from "@/lib/i18nServer";
 import { prisma } from "@/lib/prisma";
+import { getRewardBadgeData } from "@/lib/rewardBadgeData";
 import { getHouseholdContext } from "@/lib/serverAuth";
 import { buildTasksHref, getSingleSearchParamValue, resolveTasksTab, type TasksSearchParams } from "@/lib/tasks/href";
 import { getTasksManageData, getTasksTodoData } from "@/lib/tasks/queries";
@@ -32,7 +34,7 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 	const { session, userId, membership } = await getHouseholdContext(householdId);
 	const tab = resolveTasksTab(resolvedSearchParams, membership.role);
 	const t = await getServerT(session.user.language ?? DEFAULT_LANGUAGE);
-	const [settings, householdMembers, cookieStore] = await Promise.all([
+	const [settings, householdMembers, cookieStore, rewardBadge] = await Promise.all([
 		getWeekViewHouseholdSettings(householdId),
 		prisma.householdMember.findMany({
 			where: { householdId },
@@ -47,6 +49,7 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 			},
 		}),
 		cookies(),
+		getRewardBadgeData(householdId, userId),
 	]);
 	const getMemberLabel = (member: { user: { name: string | null; email: string | null } }) =>
 		member.user.name ?? member.user.email ?? t("Unknown");
@@ -129,27 +132,37 @@ const TasksPage = async ({ params, searchParams }: Props) => {
 				user={session.user}
 				household={{ id: householdId, role: membership.role }}
 			/>
-			<nav aria-label={t("Tasks")} className="flex gap-2">
-				{(
-					[
-						{ id: "todo", label: t("To do") },
-						{ id: "done", label: t("Done") },
-						...(membership.role !== "DOER" ? [{ id: "manage", label: t("Manage") } as const] : []),
-					] as const
-				).map((item) => (
-					<Link
-						key={item.id}
-						href={buildTasksHref(householdId, { tab: item.id, userId: selectedUserId, ...rangeParams })}
-						aria-current={tab === item.id ? "page" : undefined}
-						className={cn(
-							"rounded-md px-4 py-2 text-sm font-medium",
-							tab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
-						)}
-					>
-						{item.label}
-					</Link>
-				))}
-			</nav>
+			<div className="flex flex-wrap items-center gap-2">
+				<nav aria-label={t("Tasks")} className="flex gap-2">
+					{(
+						[
+							{ id: "todo", label: t("To do") },
+							{ id: "done", label: t("Done") },
+							...(membership.role !== "DOER" ? [{ id: "manage", label: t("Manage") } as const] : []),
+						] as const
+					).map((item) => (
+						<Link
+							key={item.id}
+							href={buildTasksHref(householdId, { tab: item.id, userId: selectedUserId, ...rangeParams })}
+							aria-current={tab === item.id ? "page" : undefined}
+							className={cn(
+								"rounded-md px-4 py-2 text-sm font-medium",
+								tab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+							)}
+						>
+							{item.label}
+						</Link>
+					))}
+				</nav>
+				{rewardBadge ? (
+					<RewardProgressBadge
+						householdId={householdId}
+						{...rewardBadge}
+						compact={membership.role !== "DOER"}
+						className="ml-auto"
+					/>
+				) : null}
+			</div>
 			{manageData ? (
 				<ManageTasksPanel
 					householdId={householdId}
