@@ -2,6 +2,7 @@
 
 import { GiftIcon, LockIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/lib/i18nClient";
@@ -14,6 +15,11 @@ type Props = {
 	threshold: number;
 	claimsRemaining: number | null;
 	progressBarColor?: string | null;
+	/**
+	 * When a claim limit next changes. Pages without the dashboard's points card pass it so the
+	 * badge leaves its paused state on time; the dashboard card already refreshes itself.
+	 */
+	refreshAt?: string | null;
 	/** Hide the threshold on narrow phones, where a three-tab row is crowded. */
 	compact?: boolean;
 	className?: string;
@@ -47,11 +53,21 @@ export const RewardProgressBadge = ({
 	claimsRemaining,
 	progressBarColor,
 	compact = false,
+	refreshAt = null,
 	className,
 }: Props) => {
+	const router = useRouter();
 	const { t, i18n } = useTranslation();
 	const state = getRewardBadgeState({ points, threshold, claimsRemaining });
 	const gain = usePointsGain(points);
+
+	useEffect(() => {
+		if (!refreshAt) return;
+		// Clamp to setTimeout's 32-bit limit, as PointsSummary does.
+		const delay = Math.min(2_147_483_647, Math.max(0, Date.parse(refreshAt) - Date.now()) + 100);
+		const timer = setTimeout(() => router.refresh(), delay);
+		return () => clearTimeout(timer);
+	}, [refreshAt, router]);
 	// Format with the app language so server and client render the same digits.
 	const format = (value: number) => value.toLocaleString(i18n.resolvedLanguage);
 

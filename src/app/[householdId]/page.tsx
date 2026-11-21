@@ -124,6 +124,7 @@ export default async function DashboardPage({ params }: Props) {
 						threshold={rewardThreshold}
 						claimsRemaining={rewardClaimAllowance?.remaining ?? null}
 						progressBarColor={progressBarColor}
+						compact
 					/>
 				}
 			/>

@@ -58,6 +58,7 @@ test("uses the approved, unreverted balance in this household after claims", asy
 		points: 15,
 		threshold: 40,
 		claimsRemaining: null,
+		refreshAt: null,
 		progressBarColor: "#123456",
 	});
 });
@@ -66,7 +67,10 @@ test("reports the remaining claim allowance when a limit applies", async () => {
 	await mockPrisma.rewardClaimLimit.create({
 		data: { householdId: "away", scope: "HOUSEHOLD", period: "WEEK", maxClaims: 2, sortOrder: 0 },
 	});
-	expect(await getRewardBadgeData("away", "member")).toMatchObject({ points: 50, claimsRemaining: 2 });
+	const data = await getRewardBadgeData("away", "member");
+	expect(data).toMatchObject({ points: 50, claimsRemaining: 2 });
+	// A calendar-week rule reports when its window next resets.
+	expect(data?.refreshAt).toEqual(expect.any(String));
 });
 
 test("returns null instead of throwing when the household is missing", async () => {

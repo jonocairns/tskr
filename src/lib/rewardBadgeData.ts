@@ -30,6 +30,7 @@ export const getRewardBadgeData = async (householdId: string, userId: string) =>
 			points: total._sum.points ?? 0,
 			threshold: household.rewardThreshold,
 			claimsRemaining: allowance?.remaining ?? null,
+			refreshAt: allowance?.changesAt ?? null,
 			progressBarColor: household.progressBarColor,
 		};
 	} catch (error) {
