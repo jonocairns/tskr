@@ -36,3 +36,6 @@ Capture new durable conventions, invariants, and recurring pitfalls here when th
 - Manage disables `LiveRefresh` to protect unsaved task drafts. Its Playwright hydration check must not wait for the disabled SSE stream.
 
 - Quick log matching runs inside `logs.create`'s transaction behind `lockAssignedTask`; `complete` and Quick log share `writePresetCompletion`. Add task warns softly about a same-task, same-assignee duplicate using Manage props. Quick log toast Undo calls `logs.updateStatus` revert with the returned `entry.id`, using the same permissions as History; scope e2e Undo selectors to the toast region.
+
+- Future reset/claim times use `useRelativeWhen` (`formatRelativeWhen` in `src/lib/formatDate.ts`): household-midnight instants read as a day alone ("tomorrow", "on Monday", "on Tue 1 Dec"); other instants add the time. The "(City time)" hint appears only with a time and only after mount, when the browser zone differs from the household's. Write copy around a `{{when}}` phrase that already carries its preposition. Past events (e.g. "Last completed") keep absolute timestamps.
+- Paused claiming fades a custom progress-bar colour (`SUBDUED_FILL_ALPHA`) instead of dropping it; `getBarEdgeColors(hex, alpha)` derives the edge from the faded colour so it stays muted. The default paused bar stays neutral grey.

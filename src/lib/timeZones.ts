@@ -258,3 +258,6 @@ export const getTimeZoneDayNumber = (date: Date, timeZone: string) => {
 	const zonedDateTime = toZonedDateTime(date, timeZone);
 	return Math.floor(Date.UTC(zonedDateTime.year, zonedDateTime.month - 1, zonedDateTime.day) / 86_400_000);
 };
+
+// "America/Argentina/Buenos_Aires" → "Buenos Aires".
+export const getTimeZoneCity = (timeZone: string) => (timeZone.split("/").at(-1) ?? timeZone).replaceAll("_", " ");

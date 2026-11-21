@@ -8,10 +8,17 @@ import { Button } from "@/components/ui/Button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Progress } from "@/components/ui/Progress";
+import { useRelativeWhen } from "@/hooks/useRelativeWhen";
 import { useToast } from "@/hooks/useToast";
-import { type DateFormat, formatDate, formatReadableDate, formatTime, type TimeFormat } from "@/lib/formatDate";
+import { type DateFormat, formatDate, type TimeFormat } from "@/lib/formatDate";
 import { useTranslation } from "@/lib/i18nClient";
-import { getBarEdgeColors, getClaimStatus, getPointsSummaryMetrics, getRulePlacement } from "@/lib/pointsSummary";
+import {
+	getBarEdgeColors,
+	getClaimStatus,
+	getPointsSummaryMetrics,
+	getRulePlacement,
+	SUBDUED_FILL_ALPHA,
+} from "@/lib/pointsSummary";
 import type { getRewardClaimAllowance } from "@/lib/rewardClaimLimits";
 import { getTimeZoneDayNumber, resolveTimeZone } from "@/lib/timeZones";
 import { trpc } from "@/lib/trpc/react";
@@ -82,7 +89,7 @@ export const PointsSummary = ({
 	const rules = rewardClaimAllowance?.rules ?? [];
 	const { blocking, inline, hidden } = getRulePlacement({ rules, blockingRuleIds, limitingRuleId });
 	const meterPoints = Math.min(threshold, Math.max(0, showCarryover ? carryoverPoints : points));
-	const formatWhen = (value: string) => formatClaimTime(value, resolvedTimeZone, dateFormat, timeFormat);
+	const formatWhen = useRelativeWhen({ timeZone: resolvedTimeZone, dateFormat, timeFormat });
 	const formatPoints = (value: number) => value.toLocaleString(i18n.resolvedLanguage);
 
 	useEffect(() => {
@@ -132,12 +139,6 @@ export const PointsSummary = ({
 	const lastToResetId = blocking.length > 1 && resumesAt ? blocking[0]?.id : undefined;
 	// The banner's own date covers a lone blocker's reset.
 	const showsReset = (rule: Rule) => Boolean(rule.changesAt) && rule !== soleBlocker;
-	const headlineHasTime = limitReached && resumesAt !== null;
-	const timeZoneNote = (className: string) => (
-		<p className={cn("text-sm text-muted-foreground", className)}>
-			{t("Times in {{timeZone}}", { timeZone: resolvedTimeZone })}
-		</p>
-	);
 
 	const ruleHeading = (rule: Rule) => (
 		<div className="flex items-start gap-2">
@@ -148,7 +149,7 @@ export const PointsSummary = ({
 
 	const ruleRow = (rule: Rule, index: number, columns: boolean) => {
 		const isLast = rule.id === lastToResetId;
-		const date = rule.changesAt ? formatWhen(rule.changesAt) : "";
+		const when = rule.changesAt ? formatWhen(rule.changesAt) : "";
 		return (
 			<li
 				key={rule.id}
@@ -169,11 +170,11 @@ export const PointsSummary = ({
 					<p className={cn("text-sm", isLast ? "font-medium text-foreground" : "text-muted-foreground")}>
 						{rule.period === "ROLLING"
 							? isLast
-								? t("Next claim frees up {{date}} · last to reset", { date })
-								: t("Next claim frees up {{date}}", { date })
+								? t("Next claim frees up {{when}} · last to reset", { when })
+								: t("Next claim frees up {{when}}", { when })
 							: isLast
-								? t("Resets {{date}} · last to reset", { date })
-								: t("Resets {{date}}", { date })}
+								? t("Resets {{when}} · last to reset", { when })
+								: t("Resets {{when}}", { when })}
 					</p>
 				) : null}
 			</li>
@@ -190,12 +191,9 @@ export const PointsSummary = ({
 	// Non-blocking rules sit in a neutral area: inline, or behind a disclosure when two or more would crowd it.
 	const otherLimits = (className: string) => {
 		if (inline.length === 0 && hidden.length === 0) return null;
-		const noteInline = !headlineHasTime && inline.some(showsReset);
-		const noteHidden = !headlineHasTime && !noteInline && hidden.some(showsReset);
 		return (
 			<div className={cn("px-4 py-1", className)}>
 				{ruleList(inline)}
-				{noteInline ? timeZoneNote("-mt-2 pb-3") : null}
 				{hidden.length > 0 ? (
 					<>
 						<button
@@ -221,7 +219,6 @@ export const PointsSummary = ({
 						</button>
 						<div id={limitsId} hidden={!limitsOpen} className="border-t border-current/10">
 							{ruleList(hidden)}
-							{noteHidden ? timeZoneNote("-mt-2 pb-3") : null}
 						</div>
 					</>
 				) : null}
@@ -276,18 +273,14 @@ export const PointsSummary = ({
 		),
 	});
 
-	const blockedCaption = (first: string | null) => (
-		<>
-			{first ? <p className="text-sm text-muted-foreground">{first}</p> : null}
-			{headlineHasTime ? timeZoneNote("") : null}
-		</>
-	);
+	const blockedCaption = (text: string | null) =>
+		text ? <p className="text-sm text-muted-foreground">{text}</p> : null;
 
 	const claimBanner = isPaused
 		? banner({
 				tone: "blocked",
 				headline: resumesAt
-					? t("You can claim again on {{date}}", { date: formatWhen(resumesAt) })
+					? t("You can claim again {{when}}", { when: formatWhen(resumesAt) })
 					: t("Claiming is paused"),
 				caption: blockedCaption(t("Your points are kept")),
 				aside: soleBlocker ? ruleHeading(soleBlocker) : null,
@@ -307,8 +300,8 @@ export const PointsSummary = ({
 					caption: blockedCaption(
 						resumesAt
 							? blocking.length > 1
-								? t("Claim limits reset by {{date}}", { date: formatWhen(resumesAt) })
-								: t("Claim limit resets {{date}}", { date: formatWhen(resumesAt) })
+								? t("Last claim limit resets {{when}}", { when: formatWhen(resumesAt) })
+								: t("Claim limit resets {{when}}", { when: formatWhen(resumesAt) })
 							: null,
 					),
 					aside: soleBlocker ? ruleHeading(soleBlocker) : null,
@@ -350,8 +343,10 @@ export const PointsSummary = ({
 			: meterDemoted
 				? t("{{points}} pts to another reward", { points: formatPoints(nextRewardPointsToGo) })
 				: t("{{points}} pts to your next reward", { points: formatPoints(pointsToGo) });
-	const customFill = progressBarColor && !limitReached ? progressBarColor : null;
-	const edges = customFill ? getBarEdgeColors(customFill) : null;
+	const customFill = progressBarColor || null;
+	// Blocked claiming fades a custom colour instead of dropping it; the edge stays at full strength.
+	const subdued = limitReached && customFill !== null;
+	const edges = customFill ? getBarEdgeColors(customFill, subdued ? SUBDUED_FILL_ALPHA : 1) : null;
 
 	return (
 		<DashboardCard>
@@ -386,7 +381,7 @@ export const PointsSummary = ({
 							indicatorClassName={cn(
 								"rounded-full",
 								// Dimmed whenever claiming is blocked, whatever the balance; both stay 3:1 against the track.
-								limitReached && "bg-stone-500 dark:bg-zinc-400",
+								limitReached && !customFill && "bg-stone-500 dark:bg-zinc-400",
 								edges?.light && "shadow-[inset_0_0_0_1.5px_var(--bar-edge-light)]",
 								edges?.dark && "dark:shadow-[inset_0_0_0_1.5px_var(--bar-edge-dark)]",
 								edges && !edges.dark && "dark:shadow-none",
@@ -394,7 +389,9 @@ export const PointsSummary = ({
 							indicatorStyle={
 								customFill
 									? ({
-											backgroundColor: customFill,
+											backgroundColor: subdued
+												? `color-mix(in srgb, ${customFill} ${SUBDUED_FILL_ALPHA * 100}%, transparent)`
+												: customFill,
 											"--bar-edge-light": edges?.light ?? undefined,
 											"--bar-edge-dark": edges?.dark ?? undefined,
 										} as CSSProperties)
@@ -461,19 +458,6 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
 		<dd className="text-lg font-semibold tabular-nums">{value}</dd>
 	</div>
 );
-
-const yearIn = (value: Date, timeZone: string) =>
-	new Intl.DateTimeFormat("en", { timeZone, year: "numeric" }).format(value);
-
-// One format everywhere ("Tue 1 Dec, 00:00"), following the household's date order and adding the
-// year only outside the current one.
-const formatClaimTime = (value: string, timeZone: string, dateFormat: DateFormat, timeFormat: TimeFormat) => {
-	const date = new Date(value);
-	const includeYear = yearIn(date, timeZone) !== yearIn(new Date(), timeZone);
-	// Keep the date together when the sentence wraps.
-	const day = formatReadableDate(date, { timeZone, dateFormat, includeYear }).replaceAll(" ", "\u00a0");
-	return `${day}, ${formatTime(date, timeFormat, timeZone)}`;
-};
 
 // Names who the allowance covers and over what span, so a chip never reads as a reward count.
 const formatRuleName = (rule: Rule, language: string | undefined, t: Translate) => {
