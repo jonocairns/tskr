@@ -22,6 +22,11 @@ type Props = {
 	refreshAt?: string | null;
 	/** Hide the threshold on narrow phones, where a three-tab row is crowded. */
 	compact?: boolean;
+	/**
+	 * For the approver's three-tab Tasks row: below 390px, ready and paused badges keep the ring
+	 * and drop the number, which can grow to three digits, so the row stays on one line.
+	 */
+	tight?: boolean;
 	className?: string;
 };
 
@@ -53,6 +58,7 @@ export const RewardProgressBadge = ({
 	claimsRemaining,
 	progressBarColor,
 	compact = false,
+	tight = false,
 	refreshAt = null,
 	className,
 }: Props) => {
@@ -83,7 +89,16 @@ export const RewardProgressBadge = ({
 						threshold: meter.threshold,
 					})
 			: state.kind === "limited"
-				? t("Claiming is paused, {{points}} / {{threshold}} points towards another reward", meter)
+				? state.count === 1
+					? t("Claiming is paused, {{points}} / {{threshold}} points towards another reward", meter)
+					: t(
+							"Claiming is paused, enough points for {{count}} rewards, {{points}} / {{threshold}} points towards another reward",
+							{
+								count: state.count,
+								points: meter.points,
+								threshold: meter.threshold,
+							},
+						)
 				: t("{{points}} / {{threshold}} points towards your next reward", meter);
 
 	return (
@@ -107,7 +122,10 @@ export const RewardProgressBadge = ({
 					{state.count > 1 ? <span className="text-xs font-semibold">{`×${format(state.count)}`}</span> : null}
 				</span>
 			) : state.kind === "limited" ? (
-				<LockIcon aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
+				<span aria-hidden="true" className="inline-flex items-center gap-0.5 text-muted-foreground">
+					<LockIcon className="h-3.5 w-3.5" />
+					{state.count > 1 ? <span className="text-xs font-semibold">{`×${format(state.count)}`}</span> : null}
+				</span>
 			) : null}
 			<svg aria-hidden="true" width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
 				<circle
@@ -138,7 +156,7 @@ export const RewardProgressBadge = ({
 					style={state.kind === "progress" && progressBarColor ? { stroke: progressBarColor } : undefined}
 				/>
 			</svg>
-			<span aria-hidden="true">
+			<span aria-hidden="true" className={tight && state.kind !== "progress" ? "max-[389px]:hidden" : undefined}>
 				{meter.points}
 				<span
 					className={cn(

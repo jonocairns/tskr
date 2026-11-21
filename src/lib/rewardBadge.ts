@@ -17,5 +17,8 @@ export const getRewardBadgeState = ({ points, threshold, claimsRemaining }: Inpu
 	// Like the dashboard meter, a claimable balance measures progress towards the reward after it.
 	const next = { meterPoints: carryoverPoints, progress: nextRewardProgress };
 	const count = Math.min(rewardsAvailable, claimsRemaining ?? Number.POSITIVE_INFINITY);
-	return count > 0 ? { kind: "ready" as const, count, ...next } : { kind: "limited" as const, ...next };
+	// "count" differs by state: ready counts rewards claimable now; paused counts rewards the points already cover.
+	return count > 0
+		? { kind: "ready" as const, count, ...next }
+		: { kind: "limited" as const, count: rewardsAvailable, ...next };
 };
