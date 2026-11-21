@@ -64,6 +64,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		weeklyPointSum,
 		taskLogDates,
 		approvalMemberCount,
+		pendingTaskCount,
 	] = await Promise.all([
 		prisma.pointLog.groupBy({
 			by: ["userId"],
@@ -180,6 +181,15 @@ export async function getDashboardData(userId: string, householdId: string) {
 		prisma.householdMember.count({
 			where: { householdId, requiresApprovalDefault: true },
 		}),
+		prisma.pointLog.count({
+			where: {
+				householdId,
+				userId,
+				revertedAt: null,
+				status: LogStatus.PENDING,
+				kind: { in: ["PRESET", "TIMED"] },
+			},
+		}),
 	]);
 
 	const timeZone = household?.timeZone ?? DEFAULT_TIME_ZONE;
@@ -251,6 +261,7 @@ export async function getDashboardData(userId: string, householdId: string) {
 		weeklyPoints: weeklyPointSum._sum?.points ?? 0,
 		hasApprovalMembers: approvalMemberCount > 0,
 		lastTaskAt: taskLogDates[0]?.createdAt ?? null,
+		hasPendingTasks: pendingTaskCount > 0,
 		currentStreak: getCurrentStreak(taskLogDates, household?.timeZone ?? DEFAULT_TIME_ZONE),
 	};
 }

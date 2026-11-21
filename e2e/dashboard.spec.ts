@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectBalance, history, openDashboard, openTasks, taskTile } from "./support/dashboard";
-import { createApprovedLog, createAssignment, createHousehold, createPreset } from "./support/db";
+import { createApprovedLog, createAssignment, createHousehold, createPreset, getPrisma } from "./support/db";
 import { AUTH_STATE, USERS } from "./support/env";
 
 test.use({ storageState: AUTH_STATE.member });
@@ -12,6 +12,8 @@ test("logs a task from the Quick log grid", async ({ page }) => {
 	await openDashboard(page, householdId);
 	await expectBalance(page, 0);
 	await expect(page.getByText("Quick log", { exact: true })).toBeVisible();
+	// New users get an in-page jump to the Quick log card.
+	await expect(page.getByRole("link", { name: "Log a task" })).toHaveAttribute("href", "#quick-log");
 
 	await taskTile(page, "Water the plants").click();
 
@@ -56,7 +58,52 @@ test("claims a reward once the balance reaches the threshold", async ({ page }) 
 
 	await expect(history(page).getByRole("row", { name: /Reward claimed/ })).toContainText("-50");
 	await expectBalance(page, 0);
-	await expect(page.getByRole("button", { name: "Keep earning" })).toBeDisabled();
+	await expect(page.getByText("50 pts to your next reward", { exact: true })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Claim reward" })).toHaveCount(0);
+});
+
+test("pauses claiming when a claim limit is used up and keeps other limits behind a disclosure", async ({ page }) => {
+	const { householdId, userIds } = await createHousehold([{ user: "member", role: "DICTATOR" }]);
+	await getPrisma().rewardClaimLimit.createMany({
+		data: [
+			// A rolling blocker can't reset mid-test the way a calendar day can at household midnight.
+			{ householdId, scope: "MEMBER", period: "ROLLING", maxClaims: 1, windowMinutes: 1440, sortOrder: 0 },
+			{ householdId, scope: "HOUSEHOLD", period: "WEEK", maxClaims: 3, sortOrder: 1 },
+			{ householdId, scope: "HOUSEHOLD", period: "ROLLING", maxClaims: 4, windowMinutes: 2880, sortOrder: 2 },
+		],
+	});
+	await createApprovedLog({
+		householdId,
+		userId: userIds.member,
+		description: "Spring clean",
+		bucket: "MAJOR",
+		points: 120,
+	});
+
+	await openDashboard(page, householdId);
+	const rewards = page.getByRole("region", { name: "Rewards" });
+	// 120 pts affords two rewards, but the rolling one-a-day limit allows only one; it stays in view.
+	await expect(rewards.getByText("1 reward ready to claim", { exact: true })).toBeVisible();
+	await expect(page.getByRole("status").filter({ hasText: "1 reward ready to claim" })).toHaveCount(1);
+	await expect(rewards.getByText(/^Your claims in any/)).toBeVisible();
+	await page.getByRole("button", { name: "Claim reward · 50 pts" }).click();
+
+	await expectBalance(page, 70);
+	await expect(rewards.getByText(/^You can claim again on/)).toBeVisible();
+	// The mounted status region carries the transition to screen readers.
+	await expect(page.getByRole("status").filter({ hasText: /^You can claim again on/ })).toHaveCount(1);
+	await expect(rewards.getByText("Your points are kept", { exact: true })).toBeVisible();
+	await expect(rewards.getByText("0 of 1 left")).toBeVisible();
+	await expect(page.getByRole("button", { name: "Claim reward" })).toHaveCount(0);
+
+	// The two non-blocking limits are reachable but collapsed by default.
+	const limits = rewards.getByRole("button", { name: "Other claim limits (2)" });
+	await expect(limits).toHaveAttribute("aria-expanded", "false");
+	await expect(rewards.getByText("2 of 3 left")).toBeHidden();
+	await limits.click();
+	await expect(limits).toHaveAttribute("aria-expanded", "true");
+	await expect(rewards.getByText("2 of 3 left")).toBeVisible();
+	await expect(rewards.getByText("3 of 4 left")).toBeVisible();
 });
 
 test("Quick log counts towards another member's task without confirmation or an extra badge", async ({ page }) => {

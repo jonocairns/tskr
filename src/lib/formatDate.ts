@@ -15,6 +15,7 @@ type DateFormatOptions = {
 };
 
 type ReadableDateOptions = {
+	dateFormat?: DateFormat;
 	includeYear?: boolean;
 	timeZone?: string;
 };
@@ -142,13 +143,16 @@ export const formatDate = (value: string | Date, options?: DateFormatOptions | s
 };
 
 export const formatReadableDate = (value: string | Date, options?: ReadableDateOptions | string) => {
-	const { includeYear = false, timeZone } = normalizeReadableDateOptions(options);
+	const { dateFormat, includeYear = false, timeZone } = normalizeReadableDateOptions(options);
+	// YMD households read dates numerically, so keep their format rather than spelling the month out.
+	if (dateFormat === "YMD") return formatDate(value, { dateFormat, timeZone });
 	const parts = getReadableDateFormatter({ includeYear, timeZone }).formatToParts(toDate(value));
 	const partMap = new Map(parts.map((part) => [part.type, part.value]));
 	const weekday = partMap.get("weekday") ?? "";
 	const day = partMap.get("day") ?? "";
 	const month = partMap.get("month") ?? "";
 	const year = partMap.get("year") ?? "";
+	if (dateFormat === "MDY") return includeYear ? `${weekday}, ${month} ${day}, ${year}` : `${weekday}, ${month} ${day}`;
 	return includeYear ? `${weekday} ${day} ${month} ${year}` : `${weekday} ${day} ${month}`;
 };
 
