@@ -4,24 +4,34 @@ describe("getRewardBadgeState", () => {
 	test("shows progress below the threshold", () => {
 		expect(getRewardBadgeState({ points: 38, threshold: 50, claimsRemaining: null })).toEqual({
 			kind: "progress",
-			points: 38,
-			threshold: 50,
+			meterPoints: 38,
 			progress: 76,
 		});
 	});
 
 	test("clamps progress for a negative balance", () => {
-		expect(getRewardBadgeState({ points: -10, threshold: 50, claimsRemaining: null })).toMatchObject({
+		expect(getRewardBadgeState({ points: -10, threshold: 50, claimsRemaining: null })).toEqual({
 			kind: "progress",
-			points: -10,
+			meterPoints: -10,
 			progress: 0,
 		});
 	});
 
-	test("is ready at the threshold without claim limits", () => {
+	test("is ready at the threshold and starts the next reward from zero", () => {
 		expect(getRewardBadgeState({ points: 50, threshold: 50, claimsRemaining: null })).toEqual({
 			kind: "ready",
 			count: 1,
+			meterPoints: 0,
+			progress: 0,
+		});
+	});
+
+	test("counts towards the next reward once one is ready", () => {
+		expect(getRewardBadgeState({ points: 63, threshold: 50, claimsRemaining: null })).toEqual({
+			kind: "ready",
+			count: 1,
+			meterPoints: 13,
+			progress: 26,
 		});
 	});
 
@@ -29,27 +39,31 @@ describe("getRewardBadgeState", () => {
 		expect(getRewardBadgeState({ points: 108, threshold: 50, claimsRemaining: null })).toEqual({
 			kind: "ready",
 			count: 2,
+			meterPoints: 8,
+			progress: 16,
 		});
 	});
 
 	test("caps ready rewards at the remaining claim allowance", () => {
-		expect(getRewardBadgeState({ points: 160, threshold: 50, claimsRemaining: 1 })).toEqual({
+		expect(getRewardBadgeState({ points: 160, threshold: 50, claimsRemaining: 1 })).toMatchObject({
 			kind: "ready",
 			count: 1,
+			meterPoints: 10,
 		});
 	});
 
 	test("does not let a larger allowance invent rewards", () => {
-		expect(getRewardBadgeState({ points: 60, threshold: 50, claimsRemaining: 5 })).toEqual({
+		expect(getRewardBadgeState({ points: 60, threshold: 50, claimsRemaining: 5 })).toMatchObject({
 			kind: "ready",
 			count: 1,
 		});
 	});
 
-	test("is limited when no claims remain", () => {
+	test("is paused when no claims remain but still counts towards the next reward", () => {
 		expect(getRewardBadgeState({ points: 55, threshold: 50, claimsRemaining: 0 })).toEqual({
 			kind: "limited",
-			points: 55,
+			meterPoints: 5,
+			progress: 10,
 		});
 	});
 
