@@ -1,4 +1,4 @@
-import { getPointsSummaryMetrics } from "../src/lib/pointsSummary";
+import { getBarEdgeColors, getClaimStatus, getPointsSummaryMetrics, getRulePlacement } from "../src/lib/pointsSummary";
 
 describe("getPointsSummaryMetrics", () => {
 	describe("basic functionality", () => {
@@ -658,5 +658,143 @@ describe("getPointsSummaryMetrics", () => {
 				showCarryover: true,
 			});
 		});
+	});
+});
+
+describe("getClaimStatus", () => {
+	const rule = (id: string, remaining: number, changesAt: string | null) => ({ id, remaining, changesAt });
+
+	test("without limits every earned reward is claimable", () => {
+		expect(getClaimStatus({ rewardsAvailable: 3, allowance: null })).toEqual({
+			blockingRuleIds: [],
+			limitingRuleId: null,
+			limitReached: false,
+			resumesAt: null,
+			claimableRewards: 3,
+		});
+	});
+
+	test("caps claimable rewards at the remaining allowance", () => {
+		const status = getClaimStatus({
+			rewardsAvailable: 5,
+			allowance: { remaining: 2, rules: [rule("week", 2, "2026-11-23T11:00:00.000Z")] },
+		});
+
+		expect(status.claimableRewards).toBe(2);
+		expect(status.limitingRuleId).toBe("week");
+		expect(status.limitReached).toBe(false);
+		expect(status.resumesAt).toBeNull();
+	});
+
+	test("resumes when the last blocking rule frees a slot, ignoring earlier non-blocking changes", () => {
+		const status = getClaimStatus({
+			rewardsAvailable: 9,
+			allowance: {
+				remaining: 0,
+				rules: [
+					rule("week", 3, "2026-11-22T11:00:00.000Z"),
+					rule("day", 0, "2026-11-21T11:00:00.000Z"),
+					rule("month", 0, "2026-11-30T11:00:00.000Z"),
+				],
+			},
+		});
+
+		expect(status).toEqual({
+			// The month rule sets the resume time, so it leads.
+			blockingRuleIds: ["month", "day"],
+			limitingRuleId: "day",
+			limitReached: true,
+			resumesAt: "2026-11-30T11:00:00.000Z",
+			claimableRewards: 0,
+		});
+	});
+
+	test("leaves the resume time unknown when a blocking rule has no next allowance", () => {
+		const status = getClaimStatus({
+			rewardsAvailable: 1,
+			allowance: {
+				remaining: 0,
+				rules: [rule("day", 0, "2026-11-21T11:00:00.000Z"), rule("rolling", 0, null)],
+			},
+		});
+
+		expect(status.limitReached).toBe(true);
+		expect(status.resumesAt).toBeNull();
+		expect(status.blockingRuleIds).toEqual(["rolling", "day"]);
+	});
+
+	test("picks the first rule with the least allowance as the limiting rule", () => {
+		const status = getClaimStatus({
+			rewardsAvailable: 4,
+			allowance: {
+				remaining: 2,
+				rules: [rule("week", 4, null), rule("rolling", 2, null), rule("month", 2, null)],
+			},
+		});
+
+		expect(status.limitingRuleId).toBe("rolling");
+		expect(status.claimableRewards).toBe(2);
+	});
+});
+
+describe("getRulePlacement", () => {
+	const rules = ["day", "week", "month", "rolling"].map((id) => ({ id }));
+	const ids = (list: { id: string }[]) => list.map((rule) => rule.id);
+
+	test("a single rule shows inline without a disclosure", () => {
+		const placement = getRulePlacement({ rules: [{ id: "week" }], blockingRuleIds: [], limitingRuleId: "week" });
+		expect(ids(placement.inline)).toEqual(["week"]);
+		expect(placement.hidden).toEqual([]);
+	});
+
+	test("a single blocking rule leaves nothing else to show", () => {
+		const placement = getRulePlacement({ rules: [{ id: "day" }], blockingRuleIds: ["day"], limitingRuleId: "day" });
+		expect(ids(placement.blocking)).toEqual(["day"]);
+		expect(placement.inline).toEqual([]);
+		expect(placement.hidden).toEqual([]);
+	});
+
+	test("never hides a lone rule behind a disclosure", () => {
+		const unblocked = getRulePlacement({ rules: rules.slice(0, 2), blockingRuleIds: [], limitingRuleId: "week" });
+		expect(ids(unblocked.inline)).toEqual(["week", "day"]);
+		expect(unblocked.hidden).toEqual([]);
+
+		const blocked = getRulePlacement({
+			rules: rules.slice(0, 3),
+			blockingRuleIds: ["week", "day"],
+			limitingRuleId: "day",
+		});
+		expect(ids(blocked.blocking)).toEqual(["week", "day"]);
+		expect(ids(blocked.inline)).toEqual(["month"]);
+		expect(blocked.hidden).toEqual([]);
+	});
+
+	test("hides two or more rules without repeating the ones on screen", () => {
+		const unblocked = getRulePlacement({ rules, blockingRuleIds: [], limitingRuleId: "month" });
+		expect(ids(unblocked.inline)).toEqual(["month"]);
+		expect(ids(unblocked.hidden)).toEqual(["day", "week", "rolling"]);
+
+		const blocked = getRulePlacement({ rules, blockingRuleIds: ["day"], limitingRuleId: "day" });
+		expect(ids(blocked.blocking)).toEqual(["day"]);
+		expect(blocked.inline).toEqual([]);
+		expect(ids(blocked.hidden)).toEqual(["week", "month", "rolling"]);
+	});
+});
+
+describe("getBarEdgeColors", () => {
+	test("adds a darker edge to light fills on light themes only", () => {
+		const { light, dark } = getBarEdgeColors("#facc15");
+		expect(light).toMatch(/^#[0-9a-f]{6}$/);
+		expect(dark).toBeNull();
+	});
+
+	test("adds a lighter edge to dark fills on dark themes only", () => {
+		const { light, dark } = getBarEdgeColors("#1e3a8a");
+		expect(light).toBeNull();
+		expect(dark).toMatch(/^#[0-9a-f]{6}$/);
+	});
+
+	test("ignores values that are not six-digit hex colours", () => {
+		expect(getBarEdgeColors("red")).toEqual({ light: null, dark: null });
 	});
 });

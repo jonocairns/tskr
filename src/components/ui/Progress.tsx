@@ -11,17 +11,22 @@ type ProgressProps = React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Roo
 };
 
 const Progress = React.forwardRef<React.ComponentRef<typeof ProgressPrimitive.Root>, ProgressProps>(
-	({ className, value, indicatorClassName, indicatorStyle, ...props }, ref) => (
+	({ className, value, max = 100, indicatorClassName, indicatorStyle, ...props }, ref) => (
 		<ProgressPrimitive.Root
 			ref={ref}
+			value={value}
+			max={max}
 			className={cn("relative h-2 w-full overflow-hidden rounded-full bg-primary/20", className)}
 			{...props}
 		>
 			<ProgressPrimitive.Indicator
-				className={cn("h-full w-full flex-1 bg-primary transition-all", indicatorClassName)}
+				className={cn(
+					"h-full w-full flex-1 bg-primary transition-all motion-reduce:transition-none",
+					indicatorClassName,
+				)}
 				style={{
 					...indicatorStyle,
-					transform: `translateX(-${100 - (value || 0)}%)`,
+					transform: `translateX(-${100 * (1 - (value ?? 0) / max)}%)`,
 				}}
 			/>
 		</ProgressPrimitive.Root>

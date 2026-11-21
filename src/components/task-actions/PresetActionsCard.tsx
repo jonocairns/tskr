@@ -3,6 +3,7 @@
 import { PencilIcon, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { QUICK_LOG_ANCHOR } from "@/components/PointsSummary";
 import { useTaskActions } from "@/components/task-actions/Context";
 import { OneOffTaskModal } from "@/components/task-actions/OneOffTaskModal";
 import { PresetActionsManager } from "@/components/task-actions/PresetActionsManager";
@@ -126,7 +127,13 @@ export const PresetActionsCard = () => {
 
 	return (
 		<>
-			<Card className={cn("relative overflow-hidden transition-colors", isEditMode ? "border-primary/60" : null)}>
+			<Card
+				id={QUICK_LOG_ANCHOR}
+				className={cn(
+					"relative scroll-mt-4 overflow-hidden transition-colors",
+					isEditMode ? "border-primary/60" : null,
+				)}
+			>
 				{isEditMode ? (
 					<div className="pointer-events-none absolute inset-0 rounded-xl border border-transparent animate-edit-border-pulse" />
 				) : null}
