@@ -797,4 +797,25 @@ describe("getBarEdgeColors", () => {
 	test("ignores values that are not six-digit hex colours", () => {
 		expect(getBarEdgeColors("red")).toEqual({ light: null, dark: null });
 	});
+
+	test("emitted edges reach 3:1 against the track after rounding", () => {
+		const channel = (c: number) => {
+			const v = c / 255;
+			return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+		};
+		const lum = (hex: string) => {
+			const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+			return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+		};
+		const contrast = (a: string, b: string) => {
+			const [high, low] = [lum(a), lum(b)].sort((x, y) => y - x);
+			return (high + 0.05) / (low + 0.05);
+		};
+		// Mirrors the light (#d8d6d3) and dark (#39393a) tracks the helper measures against.
+		for (const fill of ["#00177e", "#facc15", "#1e3a8a", "#22c55e"]) {
+			const { light, dark } = getBarEdgeColors(fill);
+			if (light) expect(contrast(light, "#d8d6d3")).toBeGreaterThanOrEqual(3);
+			if (dark) expect(contrast(dark, "#39393a")).toBeGreaterThanOrEqual(3);
+		}
+	});
 });

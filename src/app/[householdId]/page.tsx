@@ -54,6 +54,7 @@ export default async function DashboardPage({ params }: Props) {
 		timeFormat,
 		hasApprovalMembers,
 		lastTaskAt,
+		hasPendingTasks,
 		currentStreak,
 	} = await getDashboardData(userId, householdId);
 
@@ -91,6 +92,7 @@ export default async function DashboardPage({ params }: Props) {
 				pointsLastWeek={weeklyPoints}
 				lastTaskAt={lastTaskAt?.toISOString() ?? null}
 				currentStreak={currentStreak}
+				hasPendingTasks={hasPendingTasks}
 				timeZone={timeZone}
 				dateFormat={dateFormat}
 				timeFormat={timeFormat}

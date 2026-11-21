@@ -9,7 +9,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/useToast";
-import { type DateFormat, formatDate, formatReadableDate, formatTime, type TimeFormat } from "@/lib/formatDate";
+import { type DateFormat, formatDate, formatTime, type TimeFormat } from "@/lib/formatDate";
 import { useTranslation } from "@/lib/i18nClient";
 import { getBarEdgeColors, getClaimStatus, getPointsSummaryMetrics, getRulePlacement } from "@/lib/pointsSummary";
 import type { getRewardClaimAllowance } from "@/lib/rewardClaimLimits";
@@ -31,6 +31,7 @@ type Props = {
 	pointsLastWeek: number;
 	lastTaskAt: string | null;
 	currentStreak: number;
+	hasPendingTasks: boolean;
 	timeZone: string;
 	dateFormat: DateFormat;
 	timeFormat: TimeFormat;
@@ -49,6 +50,7 @@ export const PointsSummary = ({
 	pointsLastWeek,
 	lastTaskAt,
 	currentStreak,
+	hasPendingTasks,
 	timeZone,
 	dateFormat,
 	timeFormat,
@@ -72,14 +74,15 @@ export const PointsSummary = ({
 		rewardsAvailable,
 		allowance: rewardClaimAllowance,
 	});
-	const canClaim = hasEnoughPoints && !limitReached;
+	// Settings reject non-positive thresholds; never offer a free claim if one slips through.
+	const canClaim = hasEnoughPoints && !limitReached && threshold > 0;
 	const isPaused = hasEnoughPoints && limitReached;
 	const isBlockedBelow = !hasEnoughPoints && limitReached;
 	const resolvedTimeZone = resolveTimeZone(timeZone);
 	const rules = rewardClaimAllowance?.rules ?? [];
 	const { blocking, inline, hidden } = getRulePlacement({ rules, blockingRuleIds, limitingRuleId });
 	const meterPoints = Math.min(threshold, Math.max(0, showCarryover ? carryoverPoints : points));
-	const formatWhen = (value: string) => formatClaimTime(value, resolvedTimeZone, timeFormat);
+	const formatWhen = (value: string) => formatClaimTime(value, resolvedTimeZone, dateFormat, timeFormat);
 	const formatPoints = (value: number) => value.toLocaleString(i18n.resolvedLanguage);
 
 	useEffect(() => {
@@ -117,7 +120,8 @@ export const PointsSummary = ({
 	});
 
 	const isBusy = isPending || claimMutation.isPending;
-	const hasActivity = tasksLastWeek > 0 || lastTaskAt !== null || currentStreak > 0;
+	// Pending logs count as activity so a first task awaiting approval doesn't read as "No tasks logged yet".
+	const hasActivity = hasPendingTasks || tasksLastWeek > 0 || lastTaskAt !== null || currentStreak > 0;
 	const isZeroState = points <= 0 && threshold > 0 && !hasActivity;
 	// Once a reward is affordable, the meter only tracks the next one and steps back visually.
 	const meterDemoted = hasEnoughPoints && threshold > 0;
@@ -237,39 +241,40 @@ export const PointsSummary = ({
 		headline: string;
 		caption?: ReactNode;
 		aside?: ReactNode;
-	}) => (
-		<section
-			aria-label={t("Rewards")}
-			className={cn(
-				"overflow-hidden rounded-lg border",
-				tone === "ready"
-					? "border-emerald-700/30 bg-emerald-50 dark:border-emerald-400/35 dark:bg-emerald-400/[0.08]"
-					: "border-amber-600/40 bg-amber-50 text-amber-950 dark:border-amber-400/60 dark:bg-amber-400/[0.08] dark:text-amber-50",
-			)}
-		>
-			<div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:gap-x-8">
-				<div className="flex min-w-0 gap-3">
-					{tone === "ready" ? (
-						<CheckCircle2Icon
-							className="mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400"
-							aria-hidden="true"
-						/>
-					) : (
-						<LockIcon className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden="true" />
-					)}
-					<div className="min-w-0 space-y-1">
-						<p role="status" className="font-semibold text-foreground">
-							{headline}
-						</p>
-						{caption}
+	}) => ({
+		headline,
+		element: (
+			<section
+				aria-label={t("Rewards")}
+				className={cn(
+					"overflow-hidden rounded-lg border",
+					tone === "ready"
+						? "border-emerald-700/30 bg-emerald-50 dark:border-emerald-400/35 dark:bg-emerald-400/[0.08]"
+						: "border-amber-600/40 bg-amber-50 text-amber-950 dark:border-amber-400/60 dark:bg-amber-400/[0.08] dark:text-amber-50",
+				)}
+			>
+				<div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:gap-x-8">
+					<div className="flex min-w-0 gap-3">
+						{tone === "ready" ? (
+							<CheckCircle2Icon
+								className="mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400"
+								aria-hidden="true"
+							/>
+						) : (
+							<LockIcon className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+						)}
+						<div className="min-w-0 space-y-1">
+							<p className="font-semibold text-foreground">{headline}</p>
+							{caption}
+						</div>
 					</div>
+					{aside ? <div className="pl-8 md:shrink-0 md:pl-0">{aside}</div> : null}
 				</div>
-				{aside ? <div className="pl-8 md:shrink-0 md:pl-0">{aside}</div> : null}
-			</div>
-			{ruleList(blockingRows, "border-t border-current/10 px-4")}
-			{otherLimits("border-t border-current/10 bg-card text-foreground")}
-		</section>
-	);
+				{ruleList(blockingRows, "border-t border-current/10 px-4")}
+				{otherLimits("border-t border-current/10 bg-card text-foreground")}
+			</section>
+		),
+	});
 
 	const blockedCaption = (first: string | null) => (
 		<>
@@ -362,7 +367,11 @@ export const PointsSummary = ({
 					</p>
 				</section>
 
-				{claimBanner}
+				{/* Stays mounted across states so screen readers announce changes to it. */}
+				<p role="status" className="sr-only">
+					{claimBanner?.headline ?? ""}
+				</p>
+				{claimBanner?.element ?? null}
 
 				{threshold > 0 ? (
 					<div className="space-y-2">
@@ -456,13 +465,27 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
 const yearIn = (value: Date, timeZone: string) =>
 	new Intl.DateTimeFormat("en", { timeZone, year: "numeric" }).format(value);
 
-// One format everywhere: "Tue 1 Dec, 00:00", adding the year only outside the current one.
-const formatClaimTime = (value: string, timeZone: string, timeFormat: TimeFormat) => {
+// Readable claim times ("Tue 1 Dec, 00:00") that follow the household's date order; the year shows
+// only outside the current one, and YMD households keep their numeric dates.
+const formatClaimTime = (value: string, timeZone: string, dateFormat: DateFormat, timeFormat: TimeFormat) => {
 	const date = new Date(value);
+	const time = formatTime(date, timeFormat, timeZone);
+	if (dateFormat === "YMD") return `${formatDate(date, { timeZone, dateFormat })}, ${time}`;
 	const includeYear = yearIn(date, timeZone) !== yearIn(new Date(), timeZone);
-	// Keep "Tue 1 Dec" together when the sentence wraps.
-	const day = formatReadableDate(date, { timeZone, includeYear }).replaceAll(" ", " ");
-	return `${day}, ${formatTime(date, timeFormat, timeZone)}`;
+	const parts = new Map(
+		new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", day: "numeric", month: "short", year: "numeric" })
+			.formatToParts(date)
+			.map((part) => [part.type, part.value]),
+	);
+	const [weekday, day, month, year] = (["weekday", "day", "month", "year"] as const).map(
+		(type) => parts.get(type) ?? "",
+	);
+	const readable =
+		dateFormat === "MDY"
+			? `${weekday}, ${month} ${day}${includeYear ? `, ${year}` : ""}`
+			: `${weekday} ${day} ${month}${includeYear ? ` ${year}` : ""}`;
+	// Keep the date together when the sentence wraps.
+	return `${readable.replaceAll(" ", "\u00a0")}, ${time}`;
 };
 
 // Names who the allowance covers and over what span, so a chip never reads as a reward count.

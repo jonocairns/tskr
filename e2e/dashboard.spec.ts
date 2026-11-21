@@ -66,7 +66,8 @@ test("pauses claiming when a claim limit is used up and keeps other limits behin
 	const { householdId, userIds } = await createHousehold([{ user: "member", role: "DICTATOR" }]);
 	await getPrisma().rewardClaimLimit.createMany({
 		data: [
-			{ householdId, scope: "MEMBER", period: "DAY", maxClaims: 1, sortOrder: 0 },
+			// A rolling blocker can't reset mid-test the way a calendar day can at household midnight.
+			{ householdId, scope: "MEMBER", period: "ROLLING", maxClaims: 1, windowMinutes: 1440, sortOrder: 0 },
 			{ householdId, scope: "HOUSEHOLD", period: "WEEK", maxClaims: 3, sortOrder: 1 },
 			{ householdId, scope: "HOUSEHOLD", period: "ROLLING", maxClaims: 4, windowMinutes: 2880, sortOrder: 2 },
 		],
@@ -82,12 +83,13 @@ test("pauses claiming when a claim limit is used up and keeps other limits behin
 	await openDashboard(page, householdId);
 	const rewards = page.getByRole("region", { name: "Rewards" });
 	// 120 pts affords two rewards, but the daily limit allows only one; it stays in view.
-	await expect(rewards.getByRole("status")).toHaveText("1 reward ready to claim");
-	await expect(rewards.getByText("Your claims today")).toBeVisible();
+	await expect(rewards.getByText("1 reward ready to claim", { exact: true })).toBeVisible();
+	await expect(page.getByRole("status").filter({ hasText: "1 reward ready to claim" })).toHaveCount(1);
+	await expect(rewards.getByText(/^Your claims in any/)).toBeVisible();
 	await page.getByRole("button", { name: "Claim reward · 50 pts" }).click();
 
 	await expectBalance(page, 70);
-	await expect(rewards.getByRole("status")).toContainText("You can claim again on");
+	await expect(rewards.getByText(/^You can claim again on/)).toBeVisible();
 	await expect(rewards.getByText("Your points are kept", { exact: true })).toBeVisible();
 	await expect(rewards.getByText("0 of 1 left")).toBeVisible();
 	await expect(page.getByRole("button", { name: "Claim reward" })).toHaveCount(0);

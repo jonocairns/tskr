@@ -119,7 +119,8 @@ export const getBarEdgeColors = (hex: string) => {
 	const edge = (track: readonly number[], toward: number) => {
 		if (contrast(rgb, track) >= 3) return null;
 		for (let mix = 0.1; mix <= 1; mix += 0.05) {
-			const candidate = rgb.map((c) => c + (toward - c) * mix);
+			// Measure the rounded colour that is actually emitted.
+			const candidate = rgb.map((c) => Math.round(c + (toward - c) * mix));
 			if (contrast(candidate, track) >= 3) return toHex(candidate);
 		}
 		return toHex(rgb.map(() => toward));
