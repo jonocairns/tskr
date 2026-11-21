@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/jonocairns/tskr/compare/1.10.0...1.11.0) (2026-11-21)
+
+
+### Features
+
+* **rewards:** show banked rewards on the paused points badge ([#188](https://github.com/jonocairns/tskr/issues/188)) ([42ad5eb](https://github.com/jonocairns/tskr/commit/42ad5ebf9c9811f47e613e539853a0edb08333d1))
+
 ## [1.10.0](https://github.com/jonocairns/tskr/compare/1.9.1...1.10.0) (2026-11-21)
 
 
