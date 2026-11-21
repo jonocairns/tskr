@@ -82,7 +82,7 @@ test("pauses claiming when a claim limit is used up and keeps other limits behin
 
 	await openDashboard(page, householdId);
 	const rewards = page.getByRole("region", { name: "Rewards" });
-	// 120 pts affords two rewards, but the daily limit allows only one; it stays in view.
+	// 120 pts affords two rewards, but the rolling one-a-day limit allows only one; it stays in view.
 	await expect(rewards.getByText("1 reward ready to claim", { exact: true })).toBeVisible();
 	await expect(page.getByRole("status").filter({ hasText: "1 reward ready to claim" })).toHaveCount(1);
 	await expect(rewards.getByText(/^Your claims in any/)).toBeVisible();
@@ -90,6 +90,8 @@ test("pauses claiming when a claim limit is used up and keeps other limits behin
 
 	await expectBalance(page, 70);
 	await expect(rewards.getByText(/^You can claim again on/)).toBeVisible();
+	// The mounted status region carries the transition to screen readers.
+	await expect(page.getByRole("status").filter({ hasText: /^You can claim again on/ })).toHaveCount(1);
 	await expect(rewards.getByText("Your points are kept", { exact: true })).toBeVisible();
 	await expect(rewards.getByText("0 of 1 left")).toBeVisible();
 	await expect(page.getByRole("button", { name: "Claim reward" })).toHaveCount(0);

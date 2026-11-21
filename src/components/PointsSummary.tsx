@@ -9,7 +9,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Progress } from "@/components/ui/Progress";
 import { useToast } from "@/hooks/useToast";
-import { type DateFormat, formatDate, formatTime, type TimeFormat } from "@/lib/formatDate";
+import { type DateFormat, formatDate, formatReadableDate, formatTime, type TimeFormat } from "@/lib/formatDate";
 import { useTranslation } from "@/lib/i18nClient";
 import { getBarEdgeColors, getClaimStatus, getPointsSummaryMetrics, getRulePlacement } from "@/lib/pointsSummary";
 import type { getRewardClaimAllowance } from "@/lib/rewardClaimLimits";
@@ -120,9 +120,9 @@ export const PointsSummary = ({
 	});
 
 	const isBusy = isPending || claimMutation.isPending;
-	// Pending logs count as activity so a first task awaiting approval doesn't read as "No tasks logged yet".
-	const hasActivity = hasPendingTasks || tasksLastWeek > 0 || lastTaskAt !== null || currentStreak > 0;
-	const isZeroState = points <= 0 && threshold > 0 && !hasActivity;
+	const hasActivity = tasksLastWeek > 0 || lastTaskAt !== null || currentStreak > 0;
+	// A first task awaiting approval isn't activity yet, but it shouldn't read as "No tasks logged yet" either.
+	const isZeroState = points <= 0 && threshold > 0 && !hasActivity && !hasPendingTasks;
 	// Once a reward is affordable, the meter only tracks the next one and steps back visually.
 	const meterDemoted = hasEnoughPoints && threshold > 0;
 
@@ -465,27 +465,14 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
 const yearIn = (value: Date, timeZone: string) =>
 	new Intl.DateTimeFormat("en", { timeZone, year: "numeric" }).format(value);
 
-// Readable claim times ("Tue 1 Dec, 00:00") that follow the household's date order; the year shows
-// only outside the current one, and YMD households keep their numeric dates.
+// One format everywhere ("Tue 1 Dec, 00:00"), following the household's date order and adding the
+// year only outside the current one.
 const formatClaimTime = (value: string, timeZone: string, dateFormat: DateFormat, timeFormat: TimeFormat) => {
 	const date = new Date(value);
-	const time = formatTime(date, timeFormat, timeZone);
-	if (dateFormat === "YMD") return `${formatDate(date, { timeZone, dateFormat })}, ${time}`;
 	const includeYear = yearIn(date, timeZone) !== yearIn(new Date(), timeZone);
-	const parts = new Map(
-		new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", day: "numeric", month: "short", year: "numeric" })
-			.formatToParts(date)
-			.map((part) => [part.type, part.value]),
-	);
-	const [weekday, day, month, year] = (["weekday", "day", "month", "year"] as const).map(
-		(type) => parts.get(type) ?? "",
-	);
-	const readable =
-		dateFormat === "MDY"
-			? `${weekday}, ${month} ${day}${includeYear ? `, ${year}` : ""}`
-			: `${weekday} ${day} ${month}${includeYear ? ` ${year}` : ""}`;
 	// Keep the date together when the sentence wraps.
-	return `${readable.replaceAll(" ", "\u00a0")}, ${time}`;
+	const day = formatReadableDate(date, { timeZone, dateFormat, includeYear }).replaceAll(" ", "\u00a0");
+	return `${day}, ${formatTime(date, timeFormat, timeZone)}`;
 };
 
 // Names who the allowance covers and over what span, so a chip never reads as a reward count.
