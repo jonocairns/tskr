@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/jonocairns/tskr/compare/1.9.1...1.10.0) (2026-11-21)
+
+
+### Features
+
+* **rewards:** show progress towards the next reward on Tasks and Quick log ([#186](https://github.com/jonocairns/tskr/issues/186)) ([1edba86](https://github.com/jonocairns/tskr/commit/1edba861c370fe29567036abf5e523428b7f8168))
+
 ## [1.9.1](https://github.com/jonocairns/tskr/compare/1.9.0...1.9.1) (2026-11-21)
 
 
