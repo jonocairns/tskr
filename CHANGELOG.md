@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/jonocairns/tskr/compare/1.9.0...1.9.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **dashboard:** friendlier reset times and aligned To do tables ([#184](https://github.com/jonocairns/tskr/issues/184)) ([6f48965](https://github.com/jonocairns/tskr/commit/6f48965e9f03f227ead4f6a8b9de8e62192d4c1c))
+
 ## [1.9.0](https://github.com/jonocairns/tskr/compare/1.8.0...1.9.0) (2026-11-21)
 
 
