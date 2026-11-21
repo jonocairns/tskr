@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/jonocairns/tskr/compare/1.8.0...1.9.0) (2026-11-21)
+
+
+### Features
+
+* **dashboard:** redesign the Overview points card ([#182](https://github.com/jonocairns/tskr/issues/182)) ([7528d98](https://github.com/jonocairns/tskr/commit/7528d98af2695d5e8c16827da20d2dc487ed2c83))
+
 ## [1.8.0](https://github.com/jonocairns/tskr/compare/1.7.0...1.8.0) (2026-11-17)
 
 
