@@ -121,7 +121,17 @@ export const RewardProgressBadge = ({
 					{state.count > 1 ? <span className="text-xs font-semibold">{`×${format(state.count)}`}</span> : null}
 				</span>
 			) : null}
-			<svg aria-hidden="true" width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
+			<svg
+				aria-hidden="true"
+				width="22"
+				height="22"
+				viewBox="0 0 22 22"
+				className={cn(
+					"-rotate-90",
+					// On the narrowest phones the icon and count keep a three-tab row on one line; the ring yields first.
+					compact && state.kind !== "progress" ? "max-[389px]:hidden" : null,
+				)}
+			>
 				<circle
 					cx="11"
 					cy="11"
