@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { TaskActionsProvider } from "@/components/task-actions/Context";
 import { PresetActionsCard } from "@/components/task-actions/PresetActionsCard";
 import type { PresetSummary } from "@/components/task-actions/types";
@@ -9,9 +11,17 @@ type TaskActionsProps = {
 	presets: PresetSummary[];
 	currentUserId: string;
 	currentUserRole: "DICTATOR" | "APPROVER" | "DOER";
+	/** Shown in the Quick log header outside edit mode. */
+	headerAction?: ReactNode;
 };
 
-export const TaskActions = ({ householdId, presets, currentUserId, currentUserRole }: TaskActionsProps) => {
+export const TaskActions = ({
+	householdId,
+	presets,
+	currentUserId,
+	currentUserRole,
+	headerAction,
+}: TaskActionsProps) => {
 	return (
 		<TaskActionsProvider
 			householdId={householdId}
@@ -20,7 +30,7 @@ export const TaskActions = ({ householdId, presets, currentUserId, currentUserRo
 			currentUserRole={currentUserRole}
 		>
 			<div className="grid gap-4">
-				<PresetActionsCard />
+				<PresetActionsCard headerAction={headerAction} />
 			</div>
 		</TaskActionsProvider>
 	);

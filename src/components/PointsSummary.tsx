@@ -349,7 +349,7 @@ export const PointsSummary = ({
 	const edges = customFill ? getBarEdgeColors(customFill, subdued ? SUBDUED_FILL_ALPHA : 1) : null;
 
 	return (
-		<DashboardCard>
+		<DashboardCard id="points" className="scroll-mt-4">
 			<CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-4">
 				<TrophyIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<CardTitle className="text-xl font-semibold">{t("Overview")}</CardTitle>
